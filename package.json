@@ -1,0 +1,31 @@
+{
+  "name": "gorda-api",
+  "version": "1.0.0",
+  "description": "WhatsApp chatbot to gorda admin",
+  "main": "src/app.ts",
+  "scripts": {
+    "serve": "tsc",
+    "watch": "nodemon src/app.ts"
+  },
+  "keywords": [
+    "chat",
+    "bot",
+    "whatsapp",
+    "api"
+  ],
+  "author": "devalexandrecr@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.3",
+    "socket.io": "^4.4.1",
+    "whatsapp-web.js": "^1.16.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/node": "^17.0.22",
+    "@types/socket.io": "^3.0.2",
+    "nodemon": "^2.0.15",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.2"
+  }
+}
