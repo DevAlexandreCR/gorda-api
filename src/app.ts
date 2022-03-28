@@ -5,18 +5,45 @@ import WhatsAppClient from "./Services/whatsapp/WhatsAppClient";
 
 const app: express.Application = express()
 const server = createServer(app)
+let wpService: WhatsAppClient
 
 server.listen(3000, () => {
   console.log('listen 3000')
+  wpService = new WhatsAppClient()
 })
 
 const io = new Server(server, {cors: {origin: true}})
 
 io.on('connection', (socket: Socket) => {
+  console.log('admin connected -> ' + socket.id)
+  wpService.setSocket(socket)
+  
+  socket.emit('client', wpService.client.info)
+  
   socket.on('auth', async () => {
-    const wpService = new WhatsAppClient(socket)
+    console.log('auth ....')
     wpService.init().then(() => {
       console.log('initialized !!!!')
     })
+  })
+  
+  socket.on('reset', async () => {
+    console.log('reset ....')
+    wpService.reset()
+  })
+  
+  socket.on('get-state', async () => {
+    console.log('get-state ....')
+    wpService.getState()
+  })
+  
+  socket.on('destroy', async () => {
+    console.log('destroy ....')
+    wpService.destroy()
+  })
+  
+  socket.on('disconnect', reason => {
+    console.log('disconnecting ...', reason)
+    socket.disconnect(true)
   })
 })
