@@ -33,6 +33,7 @@ export default class WhatsAppClient {
     this.client.on(Events.READY, this.onReady)
     this.client.on(Events.AUTHENTICATED, this.onAuth)
     this.client.on(Events.AUTHENTICATION_FAILURE, (message) => {
+      this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
       console.log(Events.AUTHENTICATION_FAILURE, message)
     })
     this.client.on(Events.STATE_CHANGED, (message) => {
@@ -43,7 +44,7 @@ export default class WhatsAppClient {
       console.log('disconnected ', message)
       if (message !== WAState.CONFLICT) fs.unlinkSync(WhatsAppClient.SESSION_PATH)
       this.socket.emit(Events.DISCONNECTED, message)
-      this.client.destroy()
+      await this.client.destroy()
         .catch(e => {
           console.log('destroy ', e.message)
         })
@@ -104,7 +105,7 @@ export default class WhatsAppClient {
     })
   }
   
-  destroy = (): void => {
+  logout = (): void => {
     this.client.logout().then(() => {
       this.socket.emit('destroy')
     })

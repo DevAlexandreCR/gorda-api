@@ -24,6 +24,10 @@ io.on('connection', (socket: Socket) => {
     console.log('auth ....')
     wpService.init().then(() => {
       console.log('initialized !!!!')
+    }).catch(async e => {
+      console.log(e.message)
+      await wpService.client.destroy()
+      await wpService.initClient()
     })
   })
   
@@ -39,7 +43,7 @@ io.on('connection', (socket: Socket) => {
   
   socket.on('destroy', async () => {
     console.log('destroy ....')
-    wpService.destroy()
+    wpService.logout()
   })
   
   socket.on('disconnect', reason => {
