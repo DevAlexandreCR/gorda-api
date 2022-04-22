@@ -1,4 +1,4 @@
 node_modules
 /build/
 .idea/
-/storage/sessions/session.json
+/storage/sessions

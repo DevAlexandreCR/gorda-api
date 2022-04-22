@@ -1,4 +1,4 @@
-import {Client, ClientSession, LegacySessionAuth, WAState, Events} from 'whatsapp-web.js'
+import {Client, ClientSession, LocalAuth, WAState, Events} from 'whatsapp-web.js'
 import {Socket} from 'socket.io'
 import * as fs from 'fs'
 import qrcode from 'qrcode-terminal' //TODO remove, it is only for tests
@@ -8,7 +8,7 @@ export default class WhatsAppClient {
   public client: Client
   private socket: Socket
   private sessionData: ClientSession
-  static SESSION_PATH = 'storage/sessions/session.json'
+  static SESSION_PATH = 'storage/sessions'
   
   constructor() {
     console.log('init client wp')
@@ -17,7 +17,8 @@ export default class WhatsAppClient {
   
   initClient(): void {
     this.client = new Client({
-      authStrategy: new LegacySessionAuth({session: this.getSessionData()}),
+      restartOnAuthFail: true,
+      authStrategy: new LocalAuth({clientId: 'client', dataPath: 'storage/sessions'}),
       puppeteer: {args: [
           '--disable-gpu',
           '--no-sandbox',
@@ -76,11 +77,11 @@ export default class WhatsAppClient {
   
   onAuth = (session: ClientSession): void => {
     console.log('authenticated')
-    fs.writeFile(WhatsAppClient.SESSION_PATH, JSON.stringify(session), (err) => {
-      if (err) {
-        console.error(err);
-      }
-    })
+    // fs.writeFile(WhatsAppClient.SESSION_PATH, session, (err) => {
+    //   if (err) {
+    //     console.error(err);
+    //   }
+    // })
   }
   
   init = (): Promise<void> => {
