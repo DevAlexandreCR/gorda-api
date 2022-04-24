@@ -1,7 +1,8 @@
 import {Client, ClientSession, LocalAuth, WAState, Events} from 'whatsapp-web.js'
 import {Socket} from 'socket.io'
 import * as fs from 'fs'
-import qrcode from 'qrcode-terminal' //TODO remove, it is only for tests
+import qrcode from 'qrcode-terminal'
+import ChatBot from '../chatBot/ChatBot' //TODO remove, it is only for tests
 
 export default class WhatsAppClient {
   
@@ -9,6 +10,7 @@ export default class WhatsAppClient {
   private socket: Socket
   private sessionData: ClientSession
   static SESSION_PATH = 'storage/sessions'
+  private chatBot: ChatBot
   
   constructor() {
     console.log('init client wp')
@@ -28,7 +30,7 @@ export default class WhatsAppClient {
     })
   
     this.client.on(Events.MESSAGE_RECEIVED, (msg) => {
-      console.log(msg.body)
+      this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
     })
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
@@ -56,16 +58,8 @@ export default class WhatsAppClient {
     this.socket = socket
   }
   
-  getSessionData = (): ClientSession => {
-    if(fs.existsSync(WhatsAppClient.SESSION_PATH)) {
-      this.sessionData = require('../../../' + WhatsAppClient.SESSION_PATH);
-    }
-    
-    return this.sessionData
-  }
-  
   onReady = (): void => {
-    console.log('ready')
+    this.chatBot = new ChatBot(this.client)
     this.socket.emit(Events.READY)
   }
   
@@ -77,11 +71,6 @@ export default class WhatsAppClient {
   
   onAuth = (session: ClientSession): void => {
     console.log('authenticated')
-    // fs.writeFile(WhatsAppClient.SESSION_PATH, session, (err) => {
-    //   if (err) {
-    //     console.error(err);
-    //   }
-    // })
   }
   
   init = (): Promise<void> => {

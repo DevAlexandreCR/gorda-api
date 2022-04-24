@@ -1,14 +1,15 @@
 import express from 'express'
 import {createServer} from 'http'
 import {Server, Socket} from 'socket.io'
-import WhatsAppClient from "./Services/whatsapp/WhatsAppClient";
+import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
+import config from '../config'
 
 const app: express.Application = express()
 const server = createServer(app)
 let wpService: WhatsAppClient
 
-server.listen(3000, () => {
-  console.log('listen 3000')
+server.listen(config.PORT, () => {
+  console.log('listen: ', config.PORT)
   wpService = new WhatsAppClient()
 })
 

@@ -2,3 +2,5 @@ node_modules
 /build/
 .idea/
 /storage/sessions
+.env
+firebase.config.js
