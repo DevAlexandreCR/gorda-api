@@ -4,8 +4,8 @@ import {database} from 'firebase-admin'
 
 class SessionRepository {
   
-  public async findSessionByChatId(chatId: string): Promise<SessionInterface> {
-    const snapshot: database.DataSnapshot = await Database.dbSessions().child(chatId).get()
+  public async findSessionByChatId(chatId: string): Promise<SessionInterface|null> {
+    const snapshot: database.DataSnapshot = await Database.dbSessions().orderByChild('chat_id').equalTo(chatId).limitToLast(1).get()
     return <SessionInterface>snapshot.val()
   }
   

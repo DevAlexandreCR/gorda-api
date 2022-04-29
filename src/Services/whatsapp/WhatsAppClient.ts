@@ -45,7 +45,7 @@ export default class WhatsAppClient {
     })
     this.client.on(Events.DISCONNECTED, async (message) => {
       console.log('disconnected ', message)
-      if (message !== WAState.CONFLICT) fs.unlinkSync(WhatsAppClient.SESSION_PATH)
+      // if (message !== WAState.CONFLICT) fs.unlinkSync(WhatsAppClient.SESSION_PATH)
       this.socket.emit(Events.DISCONNECTED, message)
       await this.client.destroy()
         .catch(e => {
@@ -56,6 +56,7 @@ export default class WhatsAppClient {
   
   setSocket(socket: Socket): void {
     this.socket = socket
+    if(!this.chatBot) this.init().then(() => console.log('init constructor'))
   }
   
   onReady = (): void => {
