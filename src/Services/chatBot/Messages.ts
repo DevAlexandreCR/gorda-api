@@ -10,3 +10,6 @@ export const ASK_FOR_DRIVER = 'El servicio se creó correctamente, en cuanto un 
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te estaremos informando \n por favor espera unos segundos. si deseas cancelar el servicio envía *CANCELAR*'
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta ms tarde. lamentamos las molestias'
 export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ...'
+export const SERVICE_ASSIGNED = 'El Móvil 🚘  834 🚗  en un momento se comunica contigo. Recuerda verificar tus pertenencias antes de bajarte del vehículo\n'
+export const SERVICE_COMPLETED = 'Esperamos hayas disfrutado tu viaje, si tienes alguna sugerencia por favor escribe al ******\n\n' +
+  'GRACIAS POR CONFIAR EN RED BLANCA POPAYÁN❣️✨'

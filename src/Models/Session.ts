@@ -1,4 +1,5 @@
 import {SessionInterface} from '../Interfaces/SessionInterface'
+import SessionRepository from '../Repositories/SessionRepository'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -23,5 +24,10 @@ export default class Session implements SessionInterface {
   
   isCompleted(): boolean {
     return this.status === Session.STATUS_COMPLETED
+  }
+  
+  async setStatus(status: string): Promise<void> {
+    this.status = status
+    await SessionRepository.update(this)
   }
 }

@@ -64,11 +64,8 @@ export default class ChatBot {
   }
   
   cancelService(): void {
-    this.service.cancel().then(() => {
-      this.setSessionStatus(Session.STATUS_COMPLETED).then(async () => {
-        await this.sendMessage(this.messageFrom, Messages.CANCELED)
-      })
-    })
+    this.service.cancel().then(async () => await this.session.setStatus(Session.STATUS_COMPLETED)
+    )
   }
   
   async isSessionActive(): Promise<boolean> {
@@ -106,7 +103,7 @@ export default class ChatBot {
       await this.validateNeighborhood()
     } else {
       await this.sendMessage(this.messageFrom, Messages.WELCOME).then(async () => {
-        await this.setSessionStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
       })
     }
   }
@@ -118,7 +115,7 @@ export default class ChatBot {
         await this.createService(neighborhood)
           .then(async () => {
             await this.sendMessage(this.messageFrom, Messages.ASK_FOR_DRIVER).then(async () => {
-              await this.setSessionStatus(Session.STATUS_REQUESTING_SERVICE)
+              await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)
             })
           })
           .catch(async (e) => {
@@ -128,14 +125,9 @@ export default class ChatBot {
       })
     } else {
       await this.sendMessage(this.messageFrom, Messages.NON_NEIGHBORHOOD_FOUND).then(async () => {
-        await this.setSessionStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
       })
     }
-  }
-  
-  async setSessionStatus(status: string): Promise<void> {
-    this.session.status = status
-    await SessionRepository.update(this.session)
   }
   
   async sendMessage(chatId: string, content: MessageContent): Promise<void> {

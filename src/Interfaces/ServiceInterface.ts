@@ -8,6 +8,6 @@ export interface ServiceInterface {
   comment: string | null
   amount: number | null
   driver_id: string | null
-  client_id: string | null
+  client_id: string
   created_at: number
 }

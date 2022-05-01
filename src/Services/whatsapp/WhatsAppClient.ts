@@ -1,6 +1,13 @@
 import {Client, ClientSession, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
 import {Socket} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
+import {DataSnapshot} from 'firebase-admin/lib/database'
+import ServiceRepository from '../../Repositories/ServiceRepository'
+import Service from '../../Models/Service'
+import {ServiceInterface} from '../../Interfaces/ServiceInterface'
+import SessionRepository from '../../Repositories/SessionRepository'
+import Session from '../../Models/Session'
+import * as Messages from '../chatBot/Messages'
 
 export default class WhatsAppClient {
   
@@ -41,6 +48,7 @@ export default class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
+    ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
     this.socket.emit(Events.READY)
   }
   
@@ -87,6 +95,31 @@ export default class WhatsAppClient {
       console.log('getState:: ', e.message)
       this.socket.emit('get-state', WAState.UNPAIRED)
     })
+  }
+  
+  serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
+    const service = new Service()
+    Object.assign(service, snapshot.val() as ServiceInterface)
+    const session = new Session(service.client_id)
+    const sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
+    Object.assign(session, sessionDB)
+    switch (service.status) {
+      case Service.STATUS_IN_PROGRESS:
+        await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+        await this.chatBot.sendMessage(session.chat_id, Messages.SERVICE_ASSIGNED)
+        break
+      case Service.STATUS_TERMINATED:
+        await session.setStatus(Session.STATUS_COMPLETED)
+        await this.chatBot.sendMessage(session.chat_id, Messages.SERVICE_COMPLETED)
+        break
+      case Service.STATUS_CANCELED:
+        await session.setStatus(Session.STATUS_COMPLETED)
+        await this.chatBot.sendMessage(session.chat_id, Messages.CANCELED)
+        break
+      default:
+        console.log(service.status)
+    }
+    console.log(snapshot.val())
   }
   
   logout = (): void => {
