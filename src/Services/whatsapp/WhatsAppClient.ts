@@ -1,19 +1,15 @@
-import {Client, ClientSession, LocalAuth, WAState, Events} from 'whatsapp-web.js'
+import {Client, ClientSession, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
 import {Socket} from 'socket.io'
-import * as fs from 'fs'
-import qrcode from 'qrcode-terminal'
-import ChatBot from '../chatBot/ChatBot' //TODO remove, it is only for tests
+import ChatBot from '../chatBot/ChatBot'
 
 export default class WhatsAppClient {
   
   public client: Client
   private socket: Socket
-  private sessionData: ClientSession
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
   
   constructor() {
-    console.log('init client wp')
     this.initClient()
   }
   
@@ -29,34 +25,18 @@ export default class WhatsAppClient {
         ]}
     })
   
-    this.client.on(Events.MESSAGE_RECEIVED, (msg) => {
-      this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
-    })
+    this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
     this.client.on(Events.AUTHENTICATED, this.onAuth)
-    this.client.on(Events.AUTHENTICATION_FAILURE, (message) => {
-      this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
-      console.log(Events.AUTHENTICATION_FAILURE, message)
-    })
-    this.client.on(Events.STATE_CHANGED, (message) => {
-      this.socket.emit(Events.STATE_CHANGED, message)
-      console.log('change_state ', message)
-    })
-    this.client.on(Events.DISCONNECTED, async (message) => {
-      console.log('disconnected ', message)
-      // if (message !== WAState.CONFLICT) fs.unlinkSync(WhatsAppClient.SESSION_PATH)
-      this.socket.emit(Events.DISCONNECTED, message)
-      await this.client.destroy()
-        .catch(e => {
-          console.log('destroy ', e.message)
-        })
-    })
+    this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
+    this.client.on(Events.STATE_CHANGED, this.onStateChanged)
+    this.client.on(Events.DISCONNECTED, this.onDisconnected)
   }
   
   setSocket(socket: Socket): void {
     this.socket = socket
-    if(!this.chatBot) this.init().then(() => console.log('init constructor'))
+    if(!this.chatBot) this.init().then(() => console.log('whatsapp is ready'))
   }
   
   onReady = (): void => {
@@ -64,14 +44,36 @@ export default class WhatsAppClient {
     this.socket.emit(Events.READY)
   }
   
+  onMessageReceived = (msg: Message): void => {
+    this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
+  }
+  
   onQR = (qr: string): void => {
     console.log(qr)
-    qrcode.generate(qr, {small: true}); //TODO remove, it is only for tests
     this.socket.emit(Events.QR_RECEIVED, qr)
   }
   
   onAuth = (session: ClientSession): void => {
-    console.log('authenticated')
+    console.log('authenticated ', session)
+  }
+  
+  onDisconnected = async (message): Promise<void> => {
+    console.log('disconnected ', message)
+    this.socket.emit(Events.DISCONNECTED, message)
+    await this.client.destroy()
+      .catch(e => {
+        console.log('destroy ', e.message)
+      })
+  }
+  
+  onAuthFailure = (message: string): void => {
+      this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
+      console.log(Events.AUTHENTICATION_FAILURE, message)
+    }
+  
+  onStateChanged = (message): void => {
+    this.socket.emit(Events.STATE_CHANGED, message)
+    console.log('change_state ', message)
   }
   
   init = (): Promise<void> => {
