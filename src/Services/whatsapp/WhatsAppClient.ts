@@ -49,7 +49,6 @@ export default class WhatsAppClient {
   }
   
   onQR = (qr: string): void => {
-    console.log(qr)
     this.socket.emit(Events.QR_RECEIVED, qr)
   }
   
@@ -57,9 +56,9 @@ export default class WhatsAppClient {
     console.log('authenticated ', session)
   }
   
-  onDisconnected = async (message): Promise<void> => {
-    console.log('disconnected ', message)
-    this.socket.emit(Events.DISCONNECTED, message)
+  onDisconnected = async (reason: string | WAState): Promise<void> => {
+    console.log('disconnected ', reason)
+    this.socket.emit(Events.DISCONNECTED, reason)
     await this.client.destroy()
       .catch(e => {
         console.log('destroy ', e.message)
@@ -71,9 +70,9 @@ export default class WhatsAppClient {
       console.log(Events.AUTHENTICATION_FAILURE, message)
     }
   
-  onStateChanged = (message): void => {
-    this.socket.emit(Events.STATE_CHANGED, message)
-    console.log('change_state ', message)
+  onStateChanged = (waState: WAState): void => {
+    this.socket.emit(Events.STATE_CHANGED, waState)
+    console.log('change_state ', waState)
   }
   
   init = (): Promise<void> => {
