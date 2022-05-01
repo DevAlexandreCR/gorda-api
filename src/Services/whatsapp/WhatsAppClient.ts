@@ -84,6 +84,7 @@ export default class WhatsAppClient {
     this.client.resetState().then(() => {
       this.socket.emit('reset', this.client.info)
     }).catch(e=> {
+      this.socket.emit('reset', this.client.info)
       console.log(e.message)
     })
   }
@@ -98,8 +99,8 @@ export default class WhatsAppClient {
   }
   
   logout = (): void => {
-    this.client.logout().then(() => {
-      this.socket.emit('destroy')
-    })
+    this.client.logout()
+      .then(() => this.socket.emit('destroy'))
+      .catch(e => console.log(e.message))
   }
 }
