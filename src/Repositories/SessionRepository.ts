@@ -1,12 +1,17 @@
 import Database from '../Services/firebase/Database'
 import {SessionInterface} from '../Interfaces/SessionInterface'
-import {database} from 'firebase-admin'
+import {DataSnapshot} from 'firebase-admin/database'
 
 class SessionRepository {
   
-  public async findSessionByChatId(chatId: string): Promise<SessionInterface|null> {
-    const snapshot: database.DataSnapshot = await Database.dbSessions().orderByChild('chat_id').equalTo(chatId).limitToLast(1).get()
-    return <SessionInterface>snapshot.val()
+  public async findSessionByChatId(chatId: string): Promise<SessionInterface | null> {
+    let val: SessionInterface | null = null
+    const snapshot: DataSnapshot = await Database.dbSessions().orderByChild('chat_id')
+      .equalTo(chatId).limitToLast(1).once('value')
+    snapshot.forEach(snapshot => {
+      val = <SessionInterface>snapshot.val()
+    })
+    return val
   }
   
   public async update(session: SessionInterface): Promise<SessionInterface> {

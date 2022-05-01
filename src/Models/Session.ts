@@ -11,11 +11,16 @@ export default class Session implements SessionInterface {
   static readonly STATUS_CREATED = 'CREATED'
   static readonly STATUS_ASKING_FOR_NEIGHBORHOOD = 'ASKING_FOR_NEIGHBORHOOD'
   static readonly STATUS_REQUESTING_SERVICE = 'REQUESTING_SERVICE'
+  static readonly STATUS_COMPLETED = 'COMPLETED'
   
   constructor(chat_id: string) {
     this.chat_id = chat_id
     this.created_at = new Date().getTime()
     this.status = Session.STATUS_CREATED
     this.service_id = null
+  }
+  
+  isCompleted(): boolean {
+    return this.status === Session.STATUS_COMPLETED
   }
 }

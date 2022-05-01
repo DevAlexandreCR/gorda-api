@@ -5,7 +5,7 @@ import {database} from 'firebase-admin'
 class ServiceRepository {
   
   public async findServiceById(serviceId: string): Promise<ServiceInterface> {
-    const snapshot: database.DataSnapshot = await Database.dbServices().child(serviceId).get()
+    const snapshot: database.DataSnapshot = await Database.dbServices().child(serviceId).once('value')
     return <ServiceInterface>snapshot.val()
   }
   
