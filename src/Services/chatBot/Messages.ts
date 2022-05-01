@@ -9,3 +9,4 @@ export const NON_NEIGHBORHOOD_FOUND = 'No logramos identificar el barrio por fav
 export const ASK_FOR_DRIVER = 'El servicio se creó correctamente, en cuanto un conductor se reporte te estaremos informando \n por favor espera unos segundos...'
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te estaremos informando \n por favor espera unos segundos. si deseas cancelar el servicio envía *CANCELAR*'
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta ms tarde. lamentamos las molestias'
+export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ...'

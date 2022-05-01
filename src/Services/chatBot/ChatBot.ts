@@ -54,6 +54,9 @@ export default class ChatBot {
           await this.sendMessage(this.messageFrom, Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
         }
         break
+      case Session.STATUS_SERVICE_IN_PROGRESS:
+        await this.sendMessage(this.messageFrom, Messages.SERVICE_IN_PROGRESS)
+        break
       default:
         await this.sendMessage(this.messageFrom, Messages.ASK_FOR_NEIGHBORHOOD)
         break
@@ -113,8 +116,14 @@ export default class ChatBot {
     if (neighborhood) {
       await this.sendMessage(this.messageFrom, Messages.requestingService(neighborhood)).then(async () => {
         await this.createService(neighborhood)
-        this.sendMessage(this.messageFrom, Messages.ASK_FOR_DRIVER).then(async () => {
-          await this.setSessionStatus(Session.STATUS_REQUESTING_SERVICE)
+          .then(async () => {
+            await this.sendMessage(this.messageFrom, Messages.ASK_FOR_DRIVER).then(async () => {
+              await this.setSessionStatus(Session.STATUS_REQUESTING_SERVICE)
+            })
+          })
+          .catch(async (e) => {
+          console.log(e.message)
+          await this.sendMessage(this.messageFrom, Messages.ERROR_CREATING_SERVICE)
         })
       })
     } else {

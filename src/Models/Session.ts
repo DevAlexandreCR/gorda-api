@@ -11,6 +11,7 @@ export default class Session implements SessionInterface {
   static readonly STATUS_CREATED = 'CREATED'
   static readonly STATUS_ASKING_FOR_NEIGHBORHOOD = 'ASKING_FOR_NEIGHBORHOOD'
   static readonly STATUS_REQUESTING_SERVICE = 'REQUESTING_SERVICE'
+  static readonly STATUS_SERVICE_IN_PROGRESS = 'SERVICE_IN_PROGRESS'
   static readonly STATUS_COMPLETED = 'COMPLETED'
   
   constructor(chat_id: string) {
