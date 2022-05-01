@@ -80,15 +80,6 @@ export default class WhatsAppClient {
     return this.client.initialize()
   }
   
-  reset(): void {
-    this.client.resetState().then(() => {
-      this.socket.emit('reset', this.client.info)
-    }).catch(e=> {
-      this.socket.emit('reset', this.client.info)
-      console.log(e.message)
-    })
-  }
-  
   getState = (): void => {
     this.client.getState().then(state => {
       this.socket.emit('get-state', state)

@@ -33,8 +33,7 @@ io.on('connection', (socket: Socket) => {
   })
   
   socket.on('reset', async () => {
-    console.log('reset ....')
-    wpService.reset()
+    console.log('reset was removed')
   })
   
   socket.on('get-state', async () => {
