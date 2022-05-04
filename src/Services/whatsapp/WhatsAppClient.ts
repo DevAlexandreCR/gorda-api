@@ -43,12 +43,13 @@ export default class WhatsAppClient {
   
   setSocket(socket: Socket): void {
     this.socket = socket
-    if(!this.chatBot) this.init().then(() => console.log('whatsapp is ready'))
+    if(!this.chatBot) this.init().then(() => console.log('init'))
   }
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
-    ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
+    ServiceRepository.onServiceChanged(this.serviceChanged)
+      .catch(e => console.log(e.message))
     this.socket.emit(Events.READY)
   }
   
@@ -101,20 +102,23 @@ export default class WhatsAppClient {
     const service = new Service()
     Object.assign(service, snapshot.val() as ServiceInterface)
     const session = new Session(service.client_id)
-    const sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
+    let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
+    if (!sessionDB) {
+      sessionDB = await SessionRepository.create(session)
+    }
     Object.assign(session, sessionDB)
     switch (service.status) {
       case Service.STATUS_IN_PROGRESS:
         await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-        await this.chatBot.sendMessage(session.chat_id, Messages.SERVICE_ASSIGNED)
+        await this.chatBot.sendMessage(service.client_id, Messages.SERVICE_ASSIGNED)
         break
       case Service.STATUS_TERMINATED:
         await session.setStatus(Session.STATUS_COMPLETED)
-        await this.chatBot.sendMessage(session.chat_id, Messages.SERVICE_COMPLETED)
+        await this.chatBot.sendMessage(service.client_id, Messages.SERVICE_COMPLETED)
         break
       case Service.STATUS_CANCELED:
         await session.setStatus(Session.STATUS_COMPLETED)
-        await this.chatBot.sendMessage(session.chat_id, Messages.CANCELED)
+        await this.chatBot.sendMessage(service.client_id, Messages.CANCELED)
         break
       default:
         console.log(service.status)
