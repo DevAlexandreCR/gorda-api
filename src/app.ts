@@ -3,6 +3,7 @@ import {createServer} from 'http'
 import {Server, Socket} from 'socket.io'
 import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
+import {Store} from './Services/store/Store'
 
 const app: express.Application = express()
 const server = createServer(app)
@@ -12,6 +13,8 @@ server.listen(config.PORT, () => {
   console.log('listen: ', config.PORT)
   wpService = new WhatsAppClient()
 })
+
+Store.getInstance()
 
 const io = new Server(server, {cors: {origin: true}})
 

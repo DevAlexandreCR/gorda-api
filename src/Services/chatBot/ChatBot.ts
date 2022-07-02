@@ -4,6 +4,9 @@ import SessionRepository from '../../Repositories/SessionRepository'
 import * as Messages from './Messages'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
+import Driver from '../../Models/Driver'
+import Place from '../../Models/Place'
+import {Store} from '../store/Store'
 
 export default class ChatBot {
   private client: Client
@@ -11,9 +14,14 @@ export default class ChatBot {
   private messageFrom: string
   private service: Service
   private message: Message
+  private drivers = new Set<Driver>()
+  private places = new Set<Place>()
+  private store: Store = Store.getInstance()
   
   constructor(client: Client) {
     this.client = client
+    this.drivers = this.store.drivers
+    this.places = this.store.places
   }
   
   async processMessage(message: Message): Promise<void> {
@@ -88,7 +96,7 @@ export default class ChatBot {
   async createService(neighborhood: string): Promise<void> {
     this.service = new Service()
     this.service.client_id = this.session.chat_id
-    this.service.start_address = neighborhood
+    this.service.start_loc.name = neighborhood
     const chat = await this.message.getChat()
     this.service.phone = chat.id.user
     this.service.name = chat.name
@@ -125,13 +133,13 @@ export default class ChatBot {
       })
     } else {
       await this.sendMessage(this.messageFrom, Messages.NON_NEIGHBORHOOD_FOUND).then(async () => {
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD).catch(e => console.log(e))
       })
     }
   }
   
   async sendMessage(chatId: string, content: MessageContent): Promise<void> {
-    await this.client.sendMessage(chatId, content)
+    await this.client.sendMessage(chatId, content).catch(e => console.log(e))
   }
   
   getNeighborhood(): string|null {

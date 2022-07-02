@@ -1,8 +1,10 @@
+import {LocType} from './LocType'
+
 export interface ServiceInterface {
   id: string | null
   status: string
-  start_address: string
-  end_address: string | null
+  start_loc: LocType
+  end_loc: LocType
   phone: string
   name: string
   comment: string | null

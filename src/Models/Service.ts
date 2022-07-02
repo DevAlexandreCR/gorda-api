@@ -1,14 +1,15 @@
 import {ServiceInterface} from '../Interfaces/ServiceInterface'
 import dayjs from 'dayjs'
 import ServiceRepository from '../Repositories/ServiceRepository'
+import {LocType} from '../Interfaces/LocType'
 
 export default class Service implements ServiceInterface {
   id: string
   status: string
-  start_address: string
-  end_address: string | null
   phone: string
   name: string
+  end_loc: LocType
+  start_loc: LocType
   amount: number | null
   driver_id: string | null
   client_id: string

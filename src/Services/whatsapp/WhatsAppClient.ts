@@ -23,7 +23,7 @@ export default class WhatsAppClient {
   initClient(): void {
     this.client = new Client({
       restartOnAuthFail: true,
-      authStrategy: new LocalAuth({clientId: 'client', dataPath: 'storage/sessions'}),
+      authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
       puppeteer: {args: [
           '--disable-gpu',
           '--no-sandbox',
@@ -48,8 +48,7 @@ export default class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
-    ServiceRepository.onServiceChanged(this.serviceChanged)
-      .catch(e => console.log(e.message))
+    ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
     this.socket.emit(Events.READY)
   }
   

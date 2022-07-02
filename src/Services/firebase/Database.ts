@@ -15,6 +15,14 @@ class DatabaseService {
   public dbServices(): Reference {
     return this.db.ref('services/')
   }
+  
+  public dbDrivers(): Reference {
+    return this.db.ref('drivers/')
+  }
+  
+  public dbPlaces(): Reference {
+    return this.db.ref('places/')
+  }
 }
 
 export default new DatabaseService()
