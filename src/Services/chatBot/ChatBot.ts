@@ -7,6 +7,7 @@ import Service from '../../Models/Service'
 import Driver from '../../Models/Driver'
 import Place from '../../Models/Place'
 import {Store} from '../store/Store'
+import MessageHelper from '../../Helpers/MessageHelper'
 
 export default class ChatBot {
   private client: Client
@@ -93,10 +94,10 @@ export default class ChatBot {
     await SessionRepository.create(this.session)
   }
   
-  async createService(neighborhood: string): Promise<void> {
+  async createService(place: Place): Promise<void> {
     this.service = new Service()
     this.service.client_id = this.session.chat_id
-    this.service.start_loc.name = neighborhood
+    this.service.start_loc = place
     const chat = await this.message.getChat()
     this.service.phone = chat.id.user
     this.service.name = chat.name
@@ -117,10 +118,10 @@ export default class ChatBot {
   }
   
   async validateNeighborhood(): Promise<void> {
-    const neighborhood = this.getNeighborhood()
-    if (neighborhood) {
-      await this.sendMessage(this.messageFrom, Messages.requestingService(neighborhood)).then(async () => {
-        await this.createService(neighborhood)
+    const place = this.getNeighborhood()
+    if (place.length) {
+      await this.sendMessage(this.messageFrom, Messages.requestingService(place[0].name)).then(async () => {
+        await this.createService(place[0])
           .then(async () => {
             await this.sendMessage(this.messageFrom, Messages.ASK_FOR_DRIVER).then(async () => {
               await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)
@@ -142,8 +143,19 @@ export default class ChatBot {
     await this.client.sendMessage(chatId, content).catch(e => console.log(e))
   }
   
-  getNeighborhood(): string|null {
+  getNeighborhood(): Array<Place> {
     const indexInit = this.message.body.indexOf(' ') + 1
-    return this.message.body.toLowerCase().substring(indexInit)
+    let findPlace = this.message.body.toLowerCase().substring(indexInit)
+    findPlace = MessageHelper.normalice(findPlace)
+    const foundPlaces: Array<Place> = []
+    Array.from(this.places).some(place => {
+      const placeName = MessageHelper.normalice(place.name)
+      if (placeName.includes(findPlace)) {
+        foundPlaces.push(place)
+        return true
+      }
+    })
+    
+    return foundPlaces
   }
 }

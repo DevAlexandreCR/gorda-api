@@ -1,10 +1,10 @@
-import {LocType} from './LocType'
+import Place from '../Models/Place'
 
 export interface ServiceInterface {
   id: string | null
   status: string
-  start_loc: LocType
-  end_loc: LocType
+  start_loc: Place
+  end_loc: Place
   phone: string
   name: string
   comment: string | null
