@@ -4,7 +4,6 @@ import SessionRepository from '../../Repositories/SessionRepository'
 import * as Messages from './Messages'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
-import Driver from '../../Models/Driver'
 import Place from '../../Models/Place'
 import {Store} from '../store/Store'
 import MessageHelper from '../../Helpers/MessageHelper'
@@ -15,14 +14,10 @@ export default class ChatBot {
   private messageFrom: string
   private service: Service
   private message: Message
-  private drivers = new Set<Driver>()
-  private places = new Set<Place>()
   private store: Store = Store.getInstance()
   
   constructor(client: Client) {
     this.client = client
-    this.drivers = this.store.drivers
-    this.places = this.store.places
   }
   
   async processMessage(message: Message): Promise<void> {
@@ -50,14 +45,10 @@ export default class ChatBot {
     const body = this.message.body.toLowerCase()
     switch (this.session.status) {
       case Session.STATUS_ASKING_FOR_NEIGHBORHOOD:
-        if (body.includes('barrio')) {
-          await this.validateNeighborhood()
-        } else {
-          await this.sendMessage(this.messageFrom, Messages.ASK_FOR_NEIGHBORHOOD)
-        }
+        await this.validatePlace()
         break
       case Session.STATUS_REQUESTING_SERVICE:
-        if (body.includes('cancelar')) {
+        if (body.includes(MessageHelper.CANCEL)) {
           this.cancelService()
         } else {
           await this.sendMessage(this.messageFrom, Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
@@ -107,9 +98,8 @@ export default class ChatBot {
   }
   
   async validateKey(): Promise<void> {
-    const body = this.message.body.toLowerCase()
-    if (body.includes('barrio')) {
-      await this.validateNeighborhood()
+    if (this.isLocation() || MessageHelper.hasPlace(this.message.body)) {
+      await this.validatePlace()
     } else {
       await this.sendMessage(this.messageFrom, Messages.WELCOME).then(async () => {
         await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
@@ -117,8 +107,14 @@ export default class ChatBot {
     }
   }
   
-  async validateNeighborhood(): Promise<void> {
-    const place = this.getNeighborhood()
+  async validatePlace(): Promise<void> {
+    let place: Array<Place> = []
+    if (this.isChat()) {
+      place = this.getPlaceFromMessage()
+    } else {
+      place = this.getPlaceFromLocation()
+    }
+    
     if (place.length) {
       await this.sendMessage(this.messageFrom, Messages.requestingService(place[0].name)).then(async () => {
         await this.createService(place[0])
@@ -143,12 +139,25 @@ export default class ChatBot {
     await this.client.sendMessage(chatId, content).catch(e => console.log(e))
   }
   
-  getNeighborhood(): Array<Place> {
-    const indexInit = this.message.body.indexOf(' ') + 1
-    let findPlace = this.message.body.toLowerCase().substring(indexInit)
-    findPlace = MessageHelper.normalice(findPlace)
+  getPlaceFromLocation(): Array<Place> {
+    const locationMessage = this.message.location
+    const place = new Place()
+    if (locationMessage.description && locationMessage.description.length > 2) {
+      place.name = locationMessage.description
+    } else {
+      place.name = MessageHelper.USER_LOCATION
+    }
+    place.lat = parseFloat(locationMessage.latitude)
+    place.lng = parseFloat(locationMessage.longitude)
+    
+    return [place]
+  }
+  
+  getPlaceFromMessage(): Array<Place> {
+    const findPlace = MessageHelper.hasPlace(this.message.body)
     const foundPlaces: Array<Place> = []
-    Array.from(this.places).some(place => {
+    if (findPlace)
+    Array.from(this.store.places).some(place => {
       const placeName = MessageHelper.normalice(place.name)
       if (placeName.includes(findPlace)) {
         foundPlaces.push(place)
@@ -157,5 +166,13 @@ export default class ChatBot {
     })
     
     return foundPlaces
+  }
+  
+  isChat(): boolean {
+    return this.message.type === 'chat'
+  }
+  
+  isLocation(): boolean {
+    return this.message.type === 'location'
   }
 }

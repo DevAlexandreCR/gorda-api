@@ -32,4 +32,9 @@ export class Store {
       this.drivers.add(driver)
     })
   }
+  
+  findDriverById(driverId: string): Driver {
+    const driversArray = Array.from(this.drivers)
+    return  driversArray.find(dri => dri.id === driverId) ?? new Driver()
+  }
 }

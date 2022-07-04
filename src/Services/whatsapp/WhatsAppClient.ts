@@ -8,6 +8,7 @@ import {ServiceInterface} from '../../Interfaces/ServiceInterface'
 import SessionRepository from '../../Repositories/SessionRepository'
 import Session from '../../Models/Session'
 import * as Messages from '../chatBot/Messages'
+import {Store} from '../store/Store'
 
 export default class WhatsAppClient {
   
@@ -15,6 +16,7 @@ export default class WhatsAppClient {
   private socket: Socket
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
+  private store: Store = Store.getInstance()
   
   constructor() {
     this.initClient()
@@ -108,8 +110,9 @@ export default class WhatsAppClient {
     Object.assign(session, sessionDB)
     switch (service.status) {
       case Service.STATUS_IN_PROGRESS:
+        const driver = this.store.findDriverById(service.driver_id!!)
         await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-        await this.chatBot.sendMessage(service.client_id, Messages.SERVICE_ASSIGNED)
+        await this.chatBot.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle.plate))
         break
       case Service.STATUS_TERMINATED:
         await session.setStatus(Session.STATUS_COMPLETED)

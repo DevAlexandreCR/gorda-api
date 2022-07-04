@@ -1,5 +1,5 @@
 export interface PlaceInterface { 
     name: string
-    lat: string
-    lng: string
+    lat: number
+    lng: number
   }
