@@ -14,7 +14,7 @@ export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
   '- *CC* Hotel San Martin \n' +
   '- *Urbanización* La Villa \n' +
   'O también puedes enviar tu ubicación 📍'
-export const REQUESTING_SERVICE = '*Creando servicio...'
+export const REQUESTING_SERVICE = '* Creando servicio...'
 export const WELCOME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLANCA POPAYÁN ✨ ' + ASK_FOR_NEIGHBORHOOD
 export const CANCELED = 'Tu servicio ha sido cancelado correctamente, gracias por usar nuestros servicios.'
 

@@ -125,7 +125,6 @@ export default class WhatsAppClient {
       default:
         console.log(service.status)
     }
-    console.log(snapshot.val())
   }
   
   logout = (): void => {
