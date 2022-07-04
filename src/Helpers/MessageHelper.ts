@@ -20,6 +20,9 @@ export default class MessageHelper {
     message = MessageHelper.normalice(message)
     let findPlace = ''
     switch (true) {
+      case message.includes(MessageHelper.NEIGHBOR):
+        findPlace = MessageHelper.getPlace(MessageHelper.NEIGHBOR, message)
+        return MessageHelper.normalice(findPlace)
       case message.includes(MessageHelper.CC):
         findPlace = MessageHelper.getPlace(MessageHelper.CC, message)
         return MessageHelper.normalice(findPlace)
