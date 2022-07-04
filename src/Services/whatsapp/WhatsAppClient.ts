@@ -123,7 +123,7 @@ export default class WhatsAppClient {
         await this.chatBot.sendMessage(service.client_id, Messages.CANCELED)
         break
       default:
-        console.log(service.status)
+        console.log('new service', service)
     }
   }
   
