@@ -1,11 +1,11 @@
-import {Database, Reference, getDatabase} from 'firebase-admin/database'
+import {Database, Reference} from 'firebase-admin/database'
 import Admin from './Admin'
 
 class DatabaseService {
   public db: Database
   
   constructor() {
-    this.db = getDatabase(Admin.getInstance())
+    this.db = Admin.getInstance().db
   }
   
   public dbSessions(): Reference {
