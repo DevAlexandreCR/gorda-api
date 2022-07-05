@@ -26,7 +26,9 @@ export default class WhatsAppClient {
     this.client = new Client({
       restartOnAuthFail: true,
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
-      puppeteer: {args: [
+      puppeteer: {
+        headless: true,
+        args: [
           '--disable-gpu',
           '--no-sandbox',
           '--disable-setuid-sandbox',
