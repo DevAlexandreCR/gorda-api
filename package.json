@@ -4,7 +4,7 @@
   "description": "WhatsApp chatbot to gorda admin",
   "main": "src/app.ts",
   "scripts": {
-    "serve": "tsc && node build/app.js",
+    "serve": "tsc && node build/src/app.js",
     "watch": "nodemon src/app.ts --ignore 'storage/'"
   },
   "keywords": [
