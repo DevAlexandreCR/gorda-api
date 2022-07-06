@@ -4,10 +4,23 @@ import {Server, Socket} from 'socket.io'
 import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
 import {Store} from './Services/store/Store'
+import * as Sentry from '@sentry/node'
+import * as Tracing from '@sentry/tracing'
 
 const app: express.Application = express()
 const server = createServer(app)
 let wpService: WhatsAppClient
+
+Sentry.init({
+  dsn: config.SENTRY_DSN,
+  integrations: [
+    new Sentry.Integrations.Http({tracing: true}),
+    new Tracing.Integrations.Express({app})],
+  
+  tracesSampleRate: 1.0
+})
+app.use(Sentry.Handlers.requestHandler())
+app.use(Sentry.Handlers.tracingHandler())
 
 server.listen(config.PORT, () => {
   console.log('listen: ', config.PORT)
@@ -40,7 +53,6 @@ io.on('connection', (socket: Socket) => {
   })
   
   socket.on('get-state', async () => {
-    console.log('get-state ....')
     wpService.getState()
   })
   
