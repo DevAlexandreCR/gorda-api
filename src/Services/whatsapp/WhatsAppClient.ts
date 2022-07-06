@@ -1,25 +1,34 @@
-import {Client, ClientSession, LocalAuth, WAState, Events} from 'whatsapp-web.js'
+import {Client, ClientSession, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
 import {Socket} from 'socket.io'
-import * as fs from 'fs'
-import qrcode from 'qrcode-terminal' //TODO remove, it is only for tests
+import ChatBot from '../chatBot/ChatBot'
+import {DataSnapshot} from 'firebase-admin/lib/database'
+import ServiceRepository from '../../Repositories/ServiceRepository'
+import Service from '../../Models/Service'
+import {ServiceInterface} from '../../Interfaces/ServiceInterface'
+import SessionRepository from '../../Repositories/SessionRepository'
+import Session from '../../Models/Session'
+import * as Messages from '../chatBot/Messages'
+import {Store} from '../store/Store'
 
 export default class WhatsAppClient {
   
   public client: Client
   private socket: Socket
-  private sessionData: ClientSession
   static SESSION_PATH = 'storage/sessions'
+  private chatBot: ChatBot
+  private store: Store = Store.getInstance()
   
   constructor() {
-    console.log('init client wp')
     this.initClient()
   }
   
   initClient(): void {
     this.client = new Client({
       restartOnAuthFail: true,
-      authStrategy: new LocalAuth({clientId: 'client', dataPath: 'storage/sessions'}),
-      puppeteer: {args: [
+      authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
+      puppeteer: {
+        headless: true,
+        args: [
           '--disable-gpu',
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -27,74 +36,60 @@ export default class WhatsAppClient {
         ]}
     })
   
-    this.client.on(Events.MESSAGE_RECEIVED, (msg) => {
-      console.log(msg.body)
-    })
+    this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
     this.client.on(Events.AUTHENTICATED, this.onAuth)
-    this.client.on(Events.AUTHENTICATION_FAILURE, (message) => {
-      this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
-      console.log(Events.AUTHENTICATION_FAILURE, message)
-    })
-    this.client.on(Events.STATE_CHANGED, (message) => {
-      this.socket.emit(Events.STATE_CHANGED, message)
-      console.log('change_state ', message)
-    })
-    this.client.on(Events.DISCONNECTED, async (message) => {
-      console.log('disconnected ', message)
-      if (message !== WAState.CONFLICT) fs.unlinkSync(WhatsAppClient.SESSION_PATH)
-      this.socket.emit(Events.DISCONNECTED, message)
-      await this.client.destroy()
-        .catch(e => {
-          console.log('destroy ', e.message)
-        })
-    })
+    this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
+    this.client.on(Events.STATE_CHANGED, this.onStateChanged)
+    this.client.on(Events.DISCONNECTED, this.onDisconnected)
   }
   
   setSocket(socket: Socket): void {
     this.socket = socket
-  }
-  
-  getSessionData = (): ClientSession => {
-    if(fs.existsSync(WhatsAppClient.SESSION_PATH)) {
-      this.sessionData = require('../../../' + WhatsAppClient.SESSION_PATH);
-    }
-    
-    return this.sessionData
+    if(!this.chatBot) this.init().then(() => console.log('init'))
   }
   
   onReady = (): void => {
-    console.log('ready')
+    this.chatBot = new ChatBot(this.client)
+    ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
     this.socket.emit(Events.READY)
   }
   
+  onMessageReceived = (msg: Message): void => {
+    this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
+  }
+  
   onQR = (qr: string): void => {
-    console.log(qr)
-    qrcode.generate(qr, {small: true}); //TODO remove, it is only for tests
     this.socket.emit(Events.QR_RECEIVED, qr)
   }
   
   onAuth = (session: ClientSession): void => {
-    console.log('authenticated')
-    // fs.writeFile(WhatsAppClient.SESSION_PATH, session, (err) => {
-    //   if (err) {
-    //     console.error(err);
-    //   }
-    // })
+    console.log('authenticated ', session)
+  }
+  
+  onDisconnected = async (reason: string | WAState): Promise<void> => {
+    console.log('disconnected ', reason)
+    this.socket.emit(Events.DISCONNECTED, reason)
+    await this.client.destroy()
+      .catch(e => {
+        console.log('destroy ', e.message)
+      })
+  }
+  
+  onAuthFailure = (message: string): void => {
+      this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
+      console.log(Events.AUTHENTICATION_FAILURE, message)
+    }
+  
+  onStateChanged = (waState: WAState): void => {
+    this.socket.emit(Events.STATE_CHANGED, waState)
+    console.log('change_state ', waState)
   }
   
   init = (): Promise<void> => {
     console.log('init wp authentication')
     return this.client.initialize()
-  }
-  
-  reset(): void {
-    this.client.resetState().then(() => {
-      this.socket.emit('reset', this.client.info)
-    }).catch(e=> {
-      console.log(e.message)
-    })
   }
   
   getState = (): void => {
@@ -106,9 +101,37 @@ export default class WhatsAppClient {
     })
   }
   
+  serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
+    const service = new Service()
+    Object.assign(service, snapshot.val() as ServiceInterface)
+    const session = new Session(service.client_id)
+    let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
+    if (!sessionDB) {
+      sessionDB = await SessionRepository.create(session)
+    }
+    Object.assign(session, sessionDB)
+    switch (service.status) {
+      case Service.STATUS_IN_PROGRESS:
+        const driver = this.store.findDriverById(service.driver_id!!)
+        await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+        await this.chatBot.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle.plate))
+        break
+      case Service.STATUS_TERMINATED:
+        await session.setStatus(Session.STATUS_COMPLETED)
+        await this.chatBot.sendMessage(service.client_id, Messages.SERVICE_COMPLETED)
+        break
+      case Service.STATUS_CANCELED:
+        await session.setStatus(Session.STATUS_COMPLETED)
+        await this.chatBot.sendMessage(service.client_id, Messages.CANCELED)
+        break
+      default:
+        console.log('new service', service)
+    }
+  }
+  
   logout = (): void => {
-    this.client.logout().then(() => {
-      this.socket.emit('destroy')
-    })
+    this.client.logout()
+      .then(() => this.socket.emit('destroy'))
+      .catch(e => console.log(e.message))
   }
 }
