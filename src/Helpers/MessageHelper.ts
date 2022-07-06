@@ -24,7 +24,7 @@ export default class MessageHelper {
         findPlace = MessageHelper.getPlace(MessageHelper.NEIGHBOR, message)
         return MessageHelper.normalice(findPlace)
       case message.includes(MessageHelper.CC):
-        findPlace = MessageHelper.getPlace(MessageHelper.CC, message)
+        findPlace = message.substring(3)
         return MessageHelper.normalice(findPlace)
       case message.includes(MessageHelper.MOL):
         findPlace = MessageHelper.getPlace(MessageHelper.MOL, message)
