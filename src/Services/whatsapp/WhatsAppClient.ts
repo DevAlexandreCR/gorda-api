@@ -13,14 +13,10 @@ import {Store} from '../store/Store'
 export default class WhatsAppClient {
   
   public client: Client
-  private socket: Socket
+  private socket: Socket|null
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
-  
-  constructor() {
-    this.initClient()
-  }
   
   initClient(): void {
     this.client = new Client({
@@ -32,9 +28,13 @@ export default class WhatsAppClient {
           '--disable-gpu',
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage'
+          '--disable-dev-shm-usage',
+          '--shm-size=1gb',
+          '--disable-dev-shm-usage',
+          '--unhandled-rejections=strict'
         ]}
     })
+    
   
     this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
@@ -43,17 +43,21 @@ export default class WhatsAppClient {
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
+    
+    this.init()
+      .then(() => console.log('authenticated after init server'))
+      .catch(e => console.log(e))
   }
   
   setSocket(socket: Socket): void {
     this.socket = socket
-    if(!this.chatBot) this.init().then(() => console.log('init'))
+    // if(!this.chatBot) this.init().then(() => console.log('init'))
   }
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
     ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
-    this.socket.emit(Events.READY)
+    if (this.socket) this.socket.emit(Events.READY)
   }
   
   onMessageReceived = (msg: Message): void => {
@@ -61,7 +65,8 @@ export default class WhatsAppClient {
   }
   
   onQR = (qr: string): void => {
-    this.socket.emit(Events.QR_RECEIVED, qr)
+    if (this.socket) this.socket.emit(Events.QR_RECEIVED, qr)
+    console.log('sending qr code..', qr)
   }
   
   onAuth = (session: ClientSession): void => {
@@ -70,7 +75,7 @@ export default class WhatsAppClient {
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
     console.log('disconnected ', reason)
-    this.socket.emit(Events.DISCONNECTED, reason)
+    if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
     await this.client.destroy()
       .catch(e => {
         console.log('destroy ', e.message)
@@ -78,26 +83,26 @@ export default class WhatsAppClient {
   }
   
   onAuthFailure = (message: string): void => {
-      this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
-      console.log(Events.AUTHENTICATION_FAILURE, message)
-    }
+    if (this.socket) this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
+    console.log(Events.AUTHENTICATION_FAILURE, message)
+  }
   
   onStateChanged = (waState: WAState): void => {
-    this.socket.emit(Events.STATE_CHANGED, waState)
+    if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
     console.log('change_state ', waState)
   }
   
   init = (): Promise<void> => {
-    console.log('init wp authentication')
+    console.log('initializing whatsapp client...')
     return this.client.initialize()
   }
   
   getState = (): void => {
     this.client.getState().then(state => {
-      this.socket.emit('get-state', state)
+      if (this.socket) this.socket.emit('get-state', state)
     }).catch(e => {
       console.log('getState:: ', e.message)
-      this.socket.emit('get-state', WAState.UNPAIRED)
+      if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
     })
   }
   
@@ -131,7 +136,7 @@ export default class WhatsAppClient {
   
   logout = (): void => {
     this.client.logout()
-      .then(() => this.socket.emit('destroy'))
+      .then(() => {if (this.socket) this.socket.emit('destroy')})
       .catch(e => console.log(e.message))
   }
 }
