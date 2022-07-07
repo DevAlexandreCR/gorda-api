@@ -1,4 +1,4 @@
-import {Client, ClientSession, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
+import {Client, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
 import {Socket} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
 import {DataSnapshot} from 'firebase-admin/lib/database'
@@ -29,8 +29,6 @@ export default class WhatsAppClient {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--shm-size=1gb',
-          '--disable-dev-shm-usage',
           '--unhandled-rejections=strict'
         ]}
     })
@@ -58,6 +56,7 @@ export default class WhatsAppClient {
     this.chatBot = new ChatBot(this.client)
     ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
     if (this.socket) this.socket.emit(Events.READY)
+    console.table(this.client.pupBrowser?._targets)
   }
   
   onMessageReceived = (msg: Message): void => {
@@ -69,8 +68,8 @@ export default class WhatsAppClient {
     console.log('sending qr code..', qr)
   }
   
-  onAuth = (session: ClientSession): void => {
-    console.log('authenticated ', session)
+  onAuth = (): void => {
+    console.log('authentication successfully!')
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {

@@ -27,5 +27,6 @@ export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, 
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta ms tarde. lamentamos las molestias'
 export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER
 export const SERVICE_ASSIGNED = 'en un momento se comunica contigo. Recuerda verificar tus pertenencias antes de bajarte del vehículo\n'
+export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
 export const SERVICE_COMPLETED = `Esperamos hayas disfrutado tu viaje, si tienes alguna sugerencia por favor escribe al ${config.PQR_NUMBER}\n\n` +
   'GRACIAS POR CONFIAR EN RED BLANCA POPAYÁN❣️✨'
