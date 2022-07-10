@@ -33,7 +33,6 @@ export default class WhatsAppClient {
         ]}
     })
     
-  
     this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
@@ -49,7 +48,6 @@ export default class WhatsAppClient {
   
   setSocket(socket: Socket): void {
     this.socket = socket
-    // if(!this.chatBot) this.init().then(() => console.log('init'))
   }
   
   onReady = (): void => {
