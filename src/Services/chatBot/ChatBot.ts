@@ -111,8 +111,12 @@ export default class ChatBot {
     let place: Array<Place> = []
     if (this.isChat()) {
       place = this.getPlaceFromMessage()
-    } else {
+    } else if (this.isLocation()){
       place = this.getPlaceFromLocation()
+    } else {
+      return this.sendMessage(this.messageFrom, Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(async () => {
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD).catch(e => console.log(e))
+      })
     }
     
     if (place.length) {

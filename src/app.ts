@@ -22,9 +22,10 @@ Sentry.init({
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 
-server.listen(config.PORT, () => {
+server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
   wpService = new WhatsAppClient()
+  wpService.initClient()
 })
 
 Store.getInstance()
@@ -32,35 +33,32 @@ Store.getInstance()
 const io = new Server(server, {cors: {origin: true}})
 
 io.on('connection', (socket: Socket) => {
-  console.log('admin connected -> ' + socket.id)
   wpService.setSocket(socket)
-  
+
   socket.emit('client', wpService.client.info)
-  
+
   socket.on('auth', async () => {
-    console.log('auth ....')
+    console.log('auth from gorda web...')
     wpService.init().then(() => {
-      console.log('initialized !!!!')
+      console.log('whatsapp client initialized !!!!')
     }).catch(async e => {
-      console.log(e.message)
-      await wpService.client.destroy()
-      await wpService.initClient()
+      console.log('error while authentication', e)
     })
   })
-  
+
   socket.on('reset', async () => {
     console.log('reset was removed')
   })
-  
+
   socket.on('get-state', async () => {
     wpService.getState()
   })
-  
+
   socket.on('destroy', async () => {
     console.log('destroy ....')
     wpService.logout()
   })
-  
+
   socket.on('disconnect', reason => {
     console.log('disconnecting ...', reason)
     socket.disconnect(true)
