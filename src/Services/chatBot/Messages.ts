@@ -40,3 +40,4 @@ export const SERVICE_COMPLETED = `Esperamos hayas disfrutado tu viaje, si tienes
 export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLANCA POPAYÁN ✨* por favor dime tu nombre para una atención personalizada. ejemplo: \n' +
   '*Pepito Perez*\n' +
   '*Maria Paz*'
+export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'

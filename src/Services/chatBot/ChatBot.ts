@@ -60,9 +60,13 @@ export default class ChatBot {
     const body = this.message.body.toLowerCase()
     switch (this.session.status) {
       case Session.STATUS_ASKING_FOR_NAME:
-        await this.createClient()
-        await this.sendMessage(this.messageFrom, Messages.welcomeNews(this.currentClient.name))
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        if (this.isChat()) {
+          await this.createClient()
+          await this.sendMessage(this.messageFrom, Messages.welcomeNews(this.currentClient.name))
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        } else {
+          await this.sendMessage(this.messageFrom, Messages.MESSAGE_TYPE_NOT_SUPPORTED)
+        }
         break
       case Session.STATUS_ASKING_FOR_NEIGHBORHOOD:
         await this.validatePlace()
@@ -121,7 +125,7 @@ export default class ChatBot {
     this.service = new Service()
     this.service.client_id = this.session.chat_id
     this.service.start_loc = place
-    this.service.phone = this.currentClient.name
+    this.service.phone = this.currentClient.phone
     this.service.name = this.currentClient.name
     const dbService = await ServiceRepository.create(this.service)
     this.session.service_id = dbService.id
