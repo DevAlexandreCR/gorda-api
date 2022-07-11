@@ -23,6 +23,10 @@ class DatabaseService {
   public dbPlaces(): Reference {
     return this.db.ref('places/')
   }
+  
+  public dbClients(): Reference {
+    return this.db.ref('clients/')
+  }
 }
 
 export default new DatabaseService()

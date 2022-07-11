@@ -1,5 +1,6 @@
-import {Client, Message, MessageContent} from 'whatsapp-web.js'
+import {Client, Contact, Message, MessageContent} from 'whatsapp-web.js'
 import Session from '../../Models/Session'
+import CurrentClient from '../../Models/Client'
 import SessionRepository from '../../Repositories/SessionRepository'
 import * as Messages from './Messages'
 import ServiceRepository from '../../Repositories/ServiceRepository'
@@ -7,29 +8,34 @@ import Service from '../../Models/Service'
 import Place from '../../Models/Place'
 import {Store} from '../store/Store'
 import MessageHelper from '../../Helpers/MessageHelper'
+import ClientRepository from '../../Repositories/ClientRepository'
 
 export default class ChatBot {
-  private client: Client
+  private wpClient: Client
   private session: Session
   private messageFrom: string
   private service: Service
   private message: Message
+  private contact: Contact
+  private currentClient: CurrentClient
   private store: Store = Store.getInstance()
   
   constructor(client: Client) {
-    this.client = client
+    this.wpClient = client
   }
   
   async processMessage(message: Message): Promise<void> {
     this.setMessage(message)
     this.setMessageFrom(message)
+    await this.setContact(message)
     this.session = new Session(message.from)
     const active = await this.isSessionActive()
     if (active) {
       await this.validateStatusSession()
     } else {
       await this.createSession().catch(e => console.log(e.message))
-      await this.validateKey()
+      if (this.clientExists()) await this.validateKey()
+      else await this.askForName()
     }
   }
   
@@ -41,9 +47,27 @@ export default class ChatBot {
     this.messageFrom = message.from
   }
   
+  async setContact(message: Message): Promise<void> {
+    this.contact = await message.getContact()
+  }
+  
+  async askForName(): Promise<void> {
+    await this.session.setStatus(Session.STATUS_ASKING_FOR_NAME)
+    await this.wpClient.sendMessage(this.messageFrom, Messages.ASK_FOR_NAME)
+  }
+  
   async validateStatusSession(): Promise<void> {
     const body = this.message.body.toLowerCase()
     switch (this.session.status) {
+      case Session.STATUS_ASKING_FOR_NAME:
+        if (this.isChat()) {
+          await this.createClient()
+          await this.sendMessage(this.messageFrom, Messages.welcomeNews(this.currentClient.name))
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        } else {
+          await this.sendMessage(this.messageFrom, Messages.MESSAGE_TYPE_NOT_SUPPORTED)
+        }
+        break
       case Session.STATUS_ASKING_FOR_NEIGHBORHOOD:
         await this.validatePlace()
         break
@@ -68,6 +92,18 @@ export default class ChatBot {
     )
   }
   
+  async createClient(): Promise<void> {
+    this.contact.name = MessageHelper.normaliceName(this.message.body)
+    this.currentClient = await ClientRepository.create(this.contact)
+  }
+  
+  clientExists(): boolean {
+    const client = this.store.findClientById(this.messageFrom)
+    if (client) this.currentClient = client
+    return client != undefined
+  }
+  
+  
   async isSessionActive(): Promise<boolean> {
     const session = await SessionRepository.findSessionByChatId(this.message.from)
     if (session) {
@@ -89,9 +125,8 @@ export default class ChatBot {
     this.service = new Service()
     this.service.client_id = this.session.chat_id
     this.service.start_loc = place
-    const chat = await this.message.getChat()
-    this.service.phone = chat.id.user
-    this.service.name = chat.name
+    this.service.phone = this.currentClient.phone
+    this.service.name = this.currentClient.name
     const dbService = await ServiceRepository.create(this.service)
     this.session.service_id = dbService.id
     await SessionRepository.update(this.session)
@@ -101,7 +136,7 @@ export default class ChatBot {
     if (this.isLocation() || MessageHelper.hasPlace(this.message.body)) {
       await this.validatePlace()
     } else {
-      await this.sendMessage(this.messageFrom, Messages.WELCOME).then(async () => {
+      await this.sendMessage(this.messageFrom, Messages.welcome(this.currentClient.name)).then(async () => {
         await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
       })
     }
@@ -140,7 +175,7 @@ export default class ChatBot {
   }
   
   async sendMessage(chatId: string, content: MessageContent): Promise<void> {
-    await this.client.sendMessage(chatId, content).catch(e => console.log(e))
+    await this.wpClient.sendMessage(chatId, content).catch(e => console.log(e))
   }
   
   getPlaceFromLocation(): Array<Place> {

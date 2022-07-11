@@ -2,6 +2,7 @@ import {ServiceInterface} from '../Interfaces/ServiceInterface'
 import dayjs from 'dayjs'
 import ServiceRepository from '../Repositories/ServiceRepository'
 import {PlaceInterface} from '../Interfaces/PlaceInterface'
+import {Metadata} from '../Interfaces/Metadata'
 
 export default class Service implements ServiceInterface {
   id: string
@@ -15,6 +16,7 @@ export default class Service implements ServiceInterface {
   client_id: string
   created_at: number
   comment: string | null
+  metadata: Metadata
 
   static readonly STATUS_PENDING = 'pending'
   static readonly STATUS_IN_PROGRESS = 'in_progress'

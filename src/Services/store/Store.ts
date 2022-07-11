@@ -2,16 +2,20 @@ import Driver from '../../Models/Driver'
 import Place from '../../Models/Place'
 import PlaceRepository from '../../Repositories/PlaceRepository'
 import DriverRepository from '../../Repositories/DriverRepository'
+import ClientRepository from '../../Repositories/ClientRepository'
+import Client from '../../Models/Client'
 
 export class Store {
   
   static instance: Store;
   drivers: Set<Driver> = new Set<Driver>()
   places: Set<Place> = new Set<Place>()
+  clients: Set<Client> = new Set<Client>()
   
   private constructor() {
     this.setDrivers()
     this.setPlaces()
+    this.setClients()
   }
   
   public static getInstance(): Store {
@@ -27,6 +31,12 @@ export class Store {
     })
   }
   
+  private setClients() {
+    ClientRepository.getAll((client) => {
+      this.clients.add(client)
+    })
+  }
+  
   private setDrivers() {
     DriverRepository.getAll((driver) => {
       this.drivers.add(driver)
@@ -36,5 +46,10 @@ export class Store {
   findDriverById(driverId: string): Driver {
     const driversArray = Array.from(this.drivers)
     return  driversArray.find(dri => dri.id === driverId) ?? new Driver()
+  }
+  
+  findClientById(clientId: string): Client|undefined {
+    const clientsArray = Array.from(this.clients)
+    return  clientsArray.find(dri => dri.id === clientId)
   }
 }
