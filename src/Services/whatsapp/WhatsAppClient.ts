@@ -33,7 +33,6 @@ export default class WhatsAppClient {
         ]}
     })
     
-  
     this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
@@ -49,7 +48,6 @@ export default class WhatsAppClient {
   
   setSocket(socket: Socket): void {
     this.socket = socket
-    // if(!this.chatBot) this.init().then(() => console.log('init'))
   }
   
   onReady = (): void => {
@@ -117,8 +115,12 @@ export default class WhatsAppClient {
     switch (service.status) {
       case Service.STATUS_IN_PROGRESS:
         const driver = this.store.findDriverById(service.driver_id!!)
-        await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-        await this.chatBot.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle.plate))
+        if (service.metadata && service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
+          await this.chatBot.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
+        } else if (!service.metadata) {
+          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+          await this.chatBot.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle.plate))
+        }
         break
       case Service.STATUS_TERMINATED:
         await session.setStatus(Session.STATUS_COMPLETED)

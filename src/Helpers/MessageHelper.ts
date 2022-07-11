@@ -51,4 +51,14 @@ export default class MessageHelper {
   static getPlace(find: string, message: string): string {
     return message.substring(find.length + 1)
   }
+  
+  static normaliceName(name: string): string {
+    const parts = name.split(' ')
+    let normalizedName = ''
+    parts.forEach(part => {
+      normalizedName += part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() + ' '
+    })
+    
+    return normalizedName.trim()
+  }
 }
