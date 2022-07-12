@@ -21,7 +21,7 @@ class ClientRepository {
     const newClient: Client = new Client
     newClient.id = contact.id._serialized
     newClient.name = contact.name?? contact.pushname
-    newClient.phone = contact.number
+    newClient.phone = `+${contact.number}`
     newClient.photoUrl = await contact.getProfilePicUrl()
     if (!newClient.photoUrl) newClient.photoUrl = config.DEFAULT_CLIENT_PHOTO_URL
     await Database.dbClients().child(contact.number).set(newClient).catch(e => console.log(e))
