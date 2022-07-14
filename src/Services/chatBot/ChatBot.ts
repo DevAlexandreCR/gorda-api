@@ -27,6 +27,7 @@ export default class ChatBot {
   async processMessage(message: Message): Promise<void> {
     this.setMessage(message)
     this.setMessageFrom(message)
+    console.log(message)
     await this.setContact(message)
     this.session = new Session(message.from)
     const active = await this.isSessionActive()
@@ -48,7 +49,9 @@ export default class ChatBot {
   }
   
   async setContact(message: Message): Promise<void> {
-    this.contact = await message.getContact()
+    await message.getContact()
+      .then(contact => this.contact = contact)
+      .catch(e => console.log(e))
   }
   
   async askForName(): Promise<void> {

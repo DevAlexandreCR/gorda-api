@@ -9,11 +9,12 @@ import SessionRepository from '../../Repositories/SessionRepository'
 import Session from '../../Models/Session'
 import * as Messages from '../chatBot/Messages'
 import {Store} from '../store/Store'
+import MessageHelper from '../../Helpers/MessageHelper'
 
 export default class WhatsAppClient {
   
   public client: Client
-  private socket: Socket|null
+  private socket: Socket | null
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
@@ -30,7 +31,8 @@ export default class WhatsAppClient {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--unhandled-rejections=strict'
-        ]}
+        ]
+      }
     })
     
     this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
@@ -119,7 +121,8 @@ export default class WhatsAppClient {
           await this.chatBot.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
         } else if (!service.metadata) {
           await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-          await this.chatBot.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle.plate))
+          await this.chatBot.sendMessage(service.client_id,
+            Messages.serviceAssigned(MessageHelper.truncatePlate(driver.vehicle.plate)))
         }
         break
       case Service.STATUS_TERMINATED:
@@ -137,7 +140,9 @@ export default class WhatsAppClient {
   
   logout = (): void => {
     this.client.logout()
-      .then(() => {if (this.socket) this.socket.emit('destroy')})
+      .then(() => {
+        if (this.socket) this.socket.emit('destroy')
+      })
       .catch(e => console.log(e.message))
   }
 }
