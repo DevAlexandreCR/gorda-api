@@ -6,6 +6,9 @@ import config from '../config'
 import {Store} from './Services/store/Store'
 import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
+import {Locale} from './Helpers/Locale'
+
+Locale.getInstance()
 
 const app: express.Application = express()
 const server = createServer(app)
