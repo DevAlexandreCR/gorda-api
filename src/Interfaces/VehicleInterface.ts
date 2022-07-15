@@ -3,4 +3,5 @@ export interface VehicleInterface {
   model: string
   photoUrl: string|null
   plate: string
+  color: {name: string, hex: string}
 }

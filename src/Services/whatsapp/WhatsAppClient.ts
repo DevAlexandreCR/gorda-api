@@ -9,7 +9,6 @@ import SessionRepository from '../../Repositories/SessionRepository'
 import Session from '../../Models/Session'
 import * as Messages from '../chatBot/Messages'
 import {Store} from '../store/Store'
-import MessageHelper from '../../Helpers/MessageHelper'
 
 export default class WhatsAppClient {
   
@@ -122,7 +121,7 @@ export default class WhatsAppClient {
         } else if (!service.metadata) {
           await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
           await this.chatBot.sendMessage(service.client_id,
-            Messages.serviceAssigned(MessageHelper.truncatePlate(driver.vehicle.plate)))
+            Messages.serviceAssigned(driver.vehicle))
         }
         break
       case Service.STATUS_TERMINATED:

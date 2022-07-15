@@ -1,10 +1,15 @@
 import config from '../../../config'
+import Vehicle from '../../Models/Vehicle'
+import MessageHelper from '../../Helpers/MessageHelper'
+import {Locale} from '../../Helpers/Locale'
+
+const locale = Locale.getInstance()
 
 export const requestingService = (placeName: string): string => {
   return  'Lugar: *' + placeName + REQUESTING_SERVICE
 }
-export const serviceAssigned = (plate: string): string => {
-  return `El Móvil 🚘  ${plate} 🚗 ${SERVICE_ASSIGNED}`
+export const serviceAssigned = (vehicle: Vehicle): string => {
+  return `El Móvil 🚘  ${MessageHelper.truncatePlate(vehicle.plate)} 🚗 ${vehicle.brand} color ${locale.__('colors.' + vehicle.color.name)} ${SERVICE_ASSIGNED}`
 }
 export const welcome = (name: string): string => {
   return `Hola 🙋🏻‍♀ *${name}*  ${WELCOME}`

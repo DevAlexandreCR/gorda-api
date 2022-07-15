@@ -21,7 +21,6 @@ Sentry.init({
 })
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
-
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
   wpService = new WhatsAppClient()
