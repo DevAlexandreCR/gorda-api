@@ -66,12 +66,12 @@ export default class ChatBot {
         if (this.isChat()) {
           await this.createClient()
           await this.sendMessage(this.messageFrom, Messages.welcomeNews(this.currentClient.name))
-          await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
         } else {
           await this.sendMessage(this.messageFrom, Messages.MESSAGE_TYPE_NOT_SUPPORTED)
         }
         break
-      case Session.STATUS_ASKING_FOR_NEIGHBORHOOD:
+      case Session.STATUS_ASKING_FOR_PLACE:
         await this.validatePlace()
         break
       case Session.STATUS_REQUESTING_SERVICE:
@@ -140,7 +140,7 @@ export default class ChatBot {
       await this.validatePlace()
     } else {
       await this.sendMessage(this.messageFrom, Messages.welcome(this.currentClient.name)).then(async () => {
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD)
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
       })
     }
   }
@@ -153,7 +153,7 @@ export default class ChatBot {
       place = this.getPlaceFromLocation()
     } else {
       return this.sendMessage(this.messageFrom, Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(async () => {
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD).catch(e => console.log(e))
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE).catch(e => console.log(e))
       })
     }
     
@@ -172,7 +172,7 @@ export default class ChatBot {
       })
     } else {
       await this.sendMessage(this.messageFrom, Messages.NON_NEIGHBORHOOD_FOUND).then(async () => {
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_NEIGHBORHOOD).catch(e => console.log(e))
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE).catch(e => console.log(e))
       })
     }
   }

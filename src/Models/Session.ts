@@ -10,7 +10,9 @@ export default class Session implements SessionInterface {
   public updated_at: number | null
   
   static readonly STATUS_CREATED = 'CREATED'
-  static readonly STATUS_ASKING_FOR_NEIGHBORHOOD = 'ASKING_FOR_NEIGHBORHOOD'
+  static readonly STATUS_ASKING_FOR_PLACE = 'ASKING_FOR_PLACE'
+  static readonly STATUS_CHOOSING_PLACE = 'CHOOSING_PLACE'
+  static readonly STATUS_ASKING_FOR_COMMENT = 'ASKING_FOR_COMMENT'
   static readonly STATUS_REQUESTING_SERVICE = 'REQUESTING_SERVICE'
   static readonly STATUS_SERVICE_IN_PROGRESS = 'SERVICE_IN_PROGRESS'
   static readonly STATUS_COMPLETED = 'COMPLETED'
