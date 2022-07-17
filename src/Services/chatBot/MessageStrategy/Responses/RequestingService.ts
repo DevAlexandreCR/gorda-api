@@ -1,5 +1,5 @@
 import {ResponseContract} from '../ResponseContract'
-import {Client, Message} from 'whatsapp-web.js'
+import {Client, Message, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import * as Messages from '../../Messages'
@@ -9,6 +9,8 @@ import Service from '../../../../Models/Service'
 export class RequestingService extends ResponseContract {
   
   private service: Service
+  
+  public messageSupported: Array<string> = [MessageTypes.TEXT]
   
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     await this.setService(session)

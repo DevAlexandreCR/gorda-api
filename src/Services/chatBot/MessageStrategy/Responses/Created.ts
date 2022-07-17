@@ -1,11 +1,14 @@
 import {ResponseContract} from '../ResponseContract'
-import {Client, Message} from 'whatsapp-web.js'
+import {Client, Message, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import * as Messages from '../../Messages'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import {AskingForPlace} from './AskingForPlace'
 
 export class Created extends ResponseContract {
+  
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
+  
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     if (this.clientExists(message)) await this.validateKey(client, session, message)
     else {

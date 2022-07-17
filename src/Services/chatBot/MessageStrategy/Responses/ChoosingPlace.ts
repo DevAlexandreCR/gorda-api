@@ -1,10 +1,13 @@
 import {ResponseContract} from '../ResponseContract'
-import {Client, Message} from 'whatsapp-web.js'
+import {Client, Message, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import {ASK_FOR_NEIGHBORHOOD, NONE_OF_THE_ABOVE, sendPlaceOptions} from '../../Messages'
 import * as Messages from '../../Messages'
 
 export class ChoosingPlace extends ResponseContract {
+  
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
+  
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     if (this.isLocation(message)) {
       const places = this.getPlaceFromLocation(message)

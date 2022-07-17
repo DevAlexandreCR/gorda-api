@@ -1,4 +1,4 @@
-import {Client, Contact, Message} from 'whatsapp-web.js'
+import {Client, Contact, Message, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import {ResponseContract} from '../ResponseContract'
 import MessageHelper from '../../../../Helpers/MessageHelper'
@@ -6,6 +6,8 @@ import ClientRepository from '../../../../Repositories/ClientRepository'
 import * as Messages from '../../Messages'
 
 export class AskingForName extends ResponseContract{
+  
+  public messageSupported: Array<string> = [MessageTypes.TEXT]
   
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     if (this.isChat(message)) {

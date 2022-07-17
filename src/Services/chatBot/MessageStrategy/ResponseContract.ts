@@ -14,6 +14,8 @@ export abstract class ResponseContract {
   protected store: Store = Store.getInstance()
   protected currentClient: CurrentClient
   
+  abstract messageSupported: Array<string>
+  
   abstract processMessage(client: Client, session: Session, message: Message): Promise<void>
   
   isChat(message: Message): boolean {
@@ -95,5 +97,9 @@ export abstract class ResponseContract {
       })
     
     return foundPlaces
+  }
+  
+  supportMessage(message: Message): boolean {
+    return this.messageSupported.includes(message.type)
   }
 }

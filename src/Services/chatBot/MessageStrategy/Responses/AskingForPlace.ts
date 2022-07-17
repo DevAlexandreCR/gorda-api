@@ -1,12 +1,14 @@
-import {Client, Message} from 'whatsapp-web.js'
+import {Client, Message, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import {ResponseContract} from '../ResponseContract'
 import * as Messages from '../../Messages'
+import {sendPlaceOptions} from '../../Messages'
 import Place from '../../../../Models/Place'
 import {PlaceOption} from '../../../../Interfaces/PlaceOption'
-import {sendPlaceOptions} from '../../Messages'
 
 export class AskingForPlace extends ResponseContract{
+  
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
   
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     let places: Array<Place> = []

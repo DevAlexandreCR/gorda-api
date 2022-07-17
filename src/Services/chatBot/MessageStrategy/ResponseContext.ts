@@ -1,5 +1,5 @@
 import Session from '../../../Models/Session'
-import {Client, Message, MessageTypes} from 'whatsapp-web.js'
+import {Client, Message} from 'whatsapp-web.js'
 import {AskingForName} from './Responses/AskingForName'
 import {ResponseContract} from './ResponseContract'
 import {AskingForPlace} from './Responses/AskingForPlace'
@@ -33,14 +33,10 @@ export class ResponseContext {
   }
   
   public async processMessage(session: Session, message: Message, client: Client): Promise<void> {
-    if (!this.isMessageSupported(message))
-    return client.sendMessage(message.from, Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(async () => {
-      await session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+    if (!this.response.supportMessage(message))
+    return client.sendMessage(message.from, Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(() => {
+      console.log('Message not supported')
     })
     await this.response.processMessage(client, session, message)
-  }
-  
-  public isMessageSupported(message: Message): boolean {
-    return message.type === MessageTypes.TEXT || message.type === MessageTypes.LOCATION
   }
 }

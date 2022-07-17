@@ -1,10 +1,13 @@
 import {ResponseContract} from '../ResponseContract'
-import {Client, Message} from 'whatsapp-web.js'
+import {Client, Message, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import * as Messages from '../../Messages'
 
 export class AskingForComment extends ResponseContract {
+  
+  public messageSupported: Array<string> = [MessageTypes.TEXT]
+  
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     this.setCurrentClient(message)
     let comment = null
