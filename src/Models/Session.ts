@@ -1,6 +1,7 @@
 import {SessionInterface} from '../Interfaces/SessionInterface'
 import SessionRepository from '../Repositories/SessionRepository'
 import {PlaceOption} from '../Interfaces/PlaceOption'
+import Place from './Place'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -10,7 +11,7 @@ export default class Session implements SessionInterface {
   public service_id: string | null
   public created_at: number
   public updated_at: number | null
-  public place_id: string
+  public place: Place | null = null
   
   static readonly STATUS_CREATED = 'CREATED'
   static readonly STATUS_ASKING_FOR_PLACE = 'ASKING_FOR_PLACE'
@@ -37,8 +38,8 @@ export default class Session implements SessionInterface {
     await SessionRepository.update(this)
   }
   
-  async setPlace(placeId: string): Promise<void> {
-    this.place_id = placeId
+  async setPlace(place: Place): Promise<void> {
+    this.place = place
     await SessionRepository.update(this)
   }
   

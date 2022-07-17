@@ -24,7 +24,7 @@ export class AskingForPlace extends ResponseContract{
     } else if (places.length == 1) {
       await this.sendMessage(client, message.from, Messages.requestingService(places[0].name)).then(async () => {
         await session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
-        await session.setPlace(places[0].key)
+        await session.setPlace(places[0])
       })
     } else {
       await session.setStatus(Session.STATUS_CHOOSING_PLACE)

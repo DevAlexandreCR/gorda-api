@@ -13,7 +13,7 @@ export class ChoosingPlace extends ResponseContract {
       const places = this.getPlaceFromLocation(message)
       return  this.sendMessage(client, message.from, Messages.requestingService(places[0].name)).then(async () => {
         await session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
-        await session.setPlace(places[0].key)
+        await session.setPlace(places[0])
       })
     }
     const placeId = this.validateOption(session, message)
@@ -28,7 +28,7 @@ export class ChoosingPlace extends ResponseContract {
       if (place) {
         await this.sendMessage(client, message.from, Messages.requestingService(place.name)).then(async () => {
           await session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
-          await session.setPlace(place.key)
+          await session.setPlace(place)
         })
       } else {
         await this.sendMessage(client, message.from, Messages.ERROR_CREATING_SERVICE)

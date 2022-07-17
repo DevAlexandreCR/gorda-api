@@ -15,7 +15,7 @@ export class AskingForComment extends ResponseContract {
       comment = message.body
     }
     
-    const place = this.store.findPlaceById(session.place_id)
+    const place = session.place
     
     if (place) await this.createService(client, message, place, session,comment)
     else {
