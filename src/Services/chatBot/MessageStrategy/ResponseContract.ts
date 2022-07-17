@@ -46,12 +46,13 @@ export abstract class ResponseContract {
     return client != undefined
   }
   
-  async createService(client: Client, message: Message, place: Place, session: Session): Promise<void> {
+  async createService(client: Client, message: Message, place: Place, session: Session, comment: string|null = null): Promise<void> {
     const service = new Service()
     service.client_id = session.chat_id
     service.start_loc = place
     service.phone = this.currentClient.phone
     service.name = this.currentClient.name
+    if (comment) service.comment = comment
     const dbService = await ServiceRepository.create(service)
     session.service_id = dbService.id
     await SessionRepository.update(session)

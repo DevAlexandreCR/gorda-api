@@ -10,6 +10,7 @@ class PlaceRepository {
       const place = snapshot.val() as PlaceInterface
       const placeTmp = new Place
       Object.assign(placeTmp, place)
+      placeTmp.key = snapshot.key?? ''
       listener(placeTmp)
     })
   }

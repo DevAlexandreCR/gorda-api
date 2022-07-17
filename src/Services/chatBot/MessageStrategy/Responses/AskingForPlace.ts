@@ -5,14 +5,11 @@ import * as Messages from '../../Messages'
 import Place from '../../../../Models/Place'
 import {PlaceOption} from '../../../../Interfaces/PlaceOption'
 import {sendPlaceOptions} from '../../Messages'
-import SessionRepository from '../../../../Repositories/SessionRepository'
 
 export class AskingForPlace extends ResponseContract{
   
-  
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     let places: Array<Place> = []
-    this.setCurrentClient(message)
     if (this.isChat(message)) {
       places = this.getPlaceFromMessage(message)
     } else {
@@ -24,7 +21,8 @@ export class AskingForPlace extends ResponseContract{
       })
     } else if (places.length == 1) {
       await this.sendMessage(client, message.from, Messages.requestingService(places[0].name)).then(async () => {
-        await this.createService(client, message, places[0], session)
+        await session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
+        await session.setPlace(places[0].key)
       })
     } else {
       await session.setStatus(Session.STATUS_CHOOSING_PLACE)
@@ -32,11 +30,10 @@ export class AskingForPlace extends ResponseContract{
       places.forEach((place, index) => {
         options.push({
           option: index + 1,
-          placeName: place.name
+          placeId: place.key
         })
       })
-      session.placeOptions = options
-      await SessionRepository.update(session)
+      await session.setPlaceOptions(options)
       await this.sendMessage(client, message.from, sendPlaceOptions(options))
     }
   }

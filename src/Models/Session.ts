@@ -10,6 +10,7 @@ export default class Session implements SessionInterface {
   public service_id: string | null
   public created_at: number
   public updated_at: number | null
+  public place_id: string
   
   static readonly STATUS_CREATED = 'CREATED'
   static readonly STATUS_ASKING_FOR_PLACE = 'ASKING_FOR_PLACE'
@@ -33,6 +34,16 @@ export default class Session implements SessionInterface {
   
   async setStatus(status: string): Promise<void> {
     this.status = status
+    await SessionRepository.update(this)
+  }
+  
+  async setPlace(placeId: string): Promise<void> {
+    this.place_id = placeId
+    await SessionRepository.update(this)
+  }
+  
+  async setPlaceOptions(placeOptions: Array<PlaceOption>): Promise<void> {
+    this.placeOptions = placeOptions
     await SessionRepository.update(this)
   }
 }

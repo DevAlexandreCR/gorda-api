@@ -8,6 +8,7 @@ import {ServiceInProgress} from './Responses/ServiceInProgress'
 import {Created} from './Responses/Created'
 import * as Messages from '../Messages'
 import {ChoosingPlace} from './Responses/ChoosingPlace'
+import {AskingForComment} from './Responses/AskingForComment'
 
 export class ResponseContext {
   
@@ -16,6 +17,7 @@ export class ResponseContext {
     [Session.STATUS_ASKING_FOR_NAME]: new AskingForName(),
     [Session.STATUS_ASKING_FOR_PLACE]: new AskingForPlace(),
     [Session.STATUS_CHOOSING_PLACE]: new ChoosingPlace(),
+    [Session.STATUS_ASKING_FOR_COMMENT]: new AskingForComment(),
     [Session.STATUS_REQUESTING_SERVICE]: new RequestingService(),
     [Session.STATUS_SERVICE_IN_PROGRESS]: new ServiceInProgress(),
   }

@@ -4,7 +4,6 @@ import PlaceRepository from '../../Repositories/PlaceRepository'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
-import MessageHelper from '../../Helpers/MessageHelper'
 
 export class Store {
   
@@ -54,10 +53,10 @@ export class Store {
     return  clientsArray.find(dri => dri.id === clientId)
   }
   
-  findPlaceByName(placeName: string): Place|undefined {
+  findPlaceById(placeId: string): Place|undefined {
     const placesArray = Array.from(this.places)
     return placesArray.find(pla => {
-      return MessageHelper.normalice(pla.name) === MessageHelper.normalice(placeName)
+      return pla.key === placeId
     })
   }
 }

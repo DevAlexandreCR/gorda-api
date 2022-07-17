@@ -3,8 +3,10 @@ import Vehicle from '../../Models/Vehicle'
 import MessageHelper from '../../Helpers/MessageHelper'
 import {Locale} from '../../Helpers/Locale'
 import {PlaceOption} from '../../Interfaces/PlaceOption'
+import {Store} from '../store/Store'
 
 const locale = Locale.getInstance()
+const store = Store.getInstance()
 
 export const requestingService = (placeName: string): string => {
   return  'Lugar: *' + placeName + REQUESTING_SERVICE
@@ -15,7 +17,8 @@ export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = 
   const message = 'envía el número de la opción correcta o puedes enviar tu ubicación actual: \n'
   let optionsMessage = ''
   options.forEach((opt) => {
-    optionsMessage += `*${opt.option}* ${opt.placeName} \n`
+    const place = store.findPlaceById(opt.placeId)
+    optionsMessage += `*${opt.option}* ${place?.name} \n`
   })
   optionsMessage += `*${options.length + 1}* ${NONE_OF_THE_ABOVE}`
   if (resend) return error + message + optionsMessage
@@ -40,7 +43,8 @@ export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
   '- *CC* Hotel San Martin \n' +
   '- *Urbanización* La Villa \n' +
   'O también puedes enviar tu ubicación 📍'
-export const REQUESTING_SERVICE = '* Creando servicio...'
+export const REQUESTING_SERVICE = '* Creando servicio...\n' +
+  'Para agregar un comentario como *Sin acompañante, Con mascota o Bodega amplia* por favor escríbelo abajo, de lo contrario envía *NO*'
 export const WELCOME = '¿Para dónde vamos hoy? ' + ASK_FOR_NEIGHBORHOOD
 export const CANCELED = 'Tu servicio ha sido cancelado correctamente, gracias por usar nuestros servicios.'
 
