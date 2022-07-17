@@ -1,10 +1,12 @@
 import {SessionInterface} from '../Interfaces/SessionInterface'
 import SessionRepository from '../Repositories/SessionRepository'
+import {PlaceOption} from '../Interfaces/PlaceOption'
 
 export default class Session implements SessionInterface {
   public id: string
   public status: string
   public chat_id: string
+  public placeOptions?: Array<PlaceOption>
   public service_id: string | null
   public created_at: number
   public updated_at: number | null

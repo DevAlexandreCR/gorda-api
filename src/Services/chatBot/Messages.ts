@@ -2,11 +2,24 @@ import config from '../../../config'
 import Vehicle from '../../Models/Vehicle'
 import MessageHelper from '../../Helpers/MessageHelper'
 import {Locale} from '../../Helpers/Locale'
+import {PlaceOption} from '../../Interfaces/PlaceOption'
 
 const locale = Locale.getInstance()
 
 export const requestingService = (placeName: string): string => {
   return  'Lugar: *' + placeName + REQUESTING_SERVICE
+}
+export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): string => {
+  const error = 'No reconocimos ninguna opción válida, '
+  const found = 'Encontramos éstas coincidencias, '
+  const message = 'envía el número de la opción correcta o puedes enviar tu ubicación actual: \n'
+  let optionsMessage = ''
+  options.forEach((opt) => {
+    optionsMessage += `*${opt.option}* ${opt.placeName} \n`
+  })
+  optionsMessage += `*${options.length + 1}* ${NONE_OF_THE_ABOVE}`
+  if (resend) return error + message + optionsMessage
+  return found + message + optionsMessage
 }
 export const serviceAssigned = (vehicle: Vehicle): string => {
   return `El Móvil 🚘  ${MessageHelper.truncatePlate(vehicle.plate)} 🚗 ${vehicle.brand} color ${locale.__('colors.' + vehicle.color.name)} ${SERVICE_ASSIGNED}`
@@ -17,6 +30,7 @@ export const welcome = (name: string): string => {
 export const welcomeNews = (name: string): string => {
   return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨* ${WELCOME}`
 }
+export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
 export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
   ' encuentras para asignarte un vehículo en el menor tiempo posible, ejemplo: \n' +
   '- *Barrio* Centro \n' +

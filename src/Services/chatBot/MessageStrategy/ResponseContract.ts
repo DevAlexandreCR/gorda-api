@@ -2,6 +2,12 @@ import Session from '../../../Models/Session'
 import {Client, Message, MessageContent, MessageTypes} from 'whatsapp-web.js'
 import {Store} from '../../store/Store'
 import CurrentClient from '../../../Models/Client'
+import Place from '../../../Models/Place'
+import Service from '../../../Models/Service'
+import ServiceRepository from '../../../Repositories/ServiceRepository'
+import SessionRepository from '../../../Repositories/SessionRepository'
+import * as Messages from '../Messages'
+import MessageHelper from '../../../Helpers/MessageHelper'
 
 export abstract class ResponseContract {
   
@@ -38,5 +44,55 @@ export abstract class ResponseContract {
     const client = this.store.findClientById(message.from)
     if (client) this.currentClient = client
     return client != undefined
+  }
+  
+  async createService(client: Client, message: Message, place: Place, session: Session): Promise<void> {
+    const service = new Service()
+    service.client_id = session.chat_id
+    service.start_loc = place
+    service.phone = this.currentClient.phone
+    service.name = this.currentClient.name
+    const dbService = await ServiceRepository.create(service)
+    session.service_id = dbService.id
+    await SessionRepository.update(session)
+      .then(async () => {
+        await this.sendMessage(client, message.from, Messages.ASK_FOR_DRIVER).then(async () => {
+          await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
+        })
+      })
+      .catch(async (e) => {
+        console.error(e.message)
+        await this.sendMessage(client, message.from, Messages.ERROR_CREATING_SERVICE)
+        await session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+      })
+  }
+  
+  
+  getPlaceFromLocation(message: Message): Array<Place> {
+    const locationMessage = message.location
+    const place = new Place()
+    if (locationMessage.description && locationMessage.description.length > 2) {
+      place.name = locationMessage.description
+    } else {
+      place.name = MessageHelper.USER_LOCATION
+    }
+    place.lat = parseFloat(locationMessage.latitude)
+    place.lng = parseFloat(locationMessage.longitude)
+    
+    return [place]
+  }
+  
+  getPlaceFromMessage(message: Message): Array<Place> {
+    const findPlace = MessageHelper.hasPlace(message.body)
+    const foundPlaces: Array<Place> = []
+    if (findPlace)
+      Array.from(this.store.places).forEach(place => {
+        const placeName = MessageHelper.normalice(place.name)
+        if (placeName.includes(findPlace)) {
+          foundPlaces.push(place)
+        }
+      })
+    
+    return foundPlaces
   }
 }
