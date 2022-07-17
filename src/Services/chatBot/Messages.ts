@@ -55,7 +55,7 @@ export const ASK_FOR_DRIVER = 'El servicio se creó correctamente, en cuanto un 
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te '+
   'informaremos. Por favor espera unos segundos. si deseas cancelar el servicio envía *CANCELAR*'
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta ms tarde. lamentamos las molestias'
-export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER
+export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER + '\n'
 export const SERVICE_ASSIGNED = 'en un momento se comunica contigo. Recuerda verificar tus pertenencias antes de bajarte del vehículo\n'
 export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
 export const SERVICE_COMPLETED = `Esperamos hayas disfrutado tu viaje, si tienes alguna sugerencia por favor escribe al ${config.PQR_NUMBER}\n` +
@@ -64,3 +64,5 @@ export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLAN
   '*Pepito Perez*\n' +
   '*Maria Paz*'
 export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
+export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino'+
+  'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'
