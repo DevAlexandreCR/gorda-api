@@ -108,6 +108,8 @@ export default class WhatsAppClient {
     const service = new Service()
     Object.assign(service, snapshot.val() as ServiceInterface)
     const session = new Session(service.client_id)
+    session.service_id = service.id
+    session.status = Session.STATUS_REQUESTING_SERVICE
     let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
     if (!sessionDB) {
       sessionDB = await SessionRepository.create(session)
