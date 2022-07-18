@@ -1,7 +1,11 @@
+import {PlaceOption} from './PlaceOption'
+import Place from '../Models/Place'
+
 export interface SessionInterface {
   id: string
   status: string
-  last_message_id?: string
+  placeOptions?: Array<PlaceOption>
+  place: Place | null
   chat_id: string
   service_id: string | null
   created_at: number

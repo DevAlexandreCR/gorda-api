@@ -52,4 +52,11 @@ export class Store {
     const clientsArray = Array.from(this.clients)
     return  clientsArray.find(dri => dri.id === clientId)
   }
+  
+  findPlaceById(placeId: string): Place|undefined {
+    const placesArray = Array.from(this.places)
+    return placesArray.find(pla => {
+      return pla.key === placeId
+    })
+  }
 }

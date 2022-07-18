@@ -1,6 +1,7 @@
 import Database from '../Services/firebase/Database'
 import {SessionInterface} from '../Interfaces/SessionInterface'
 import {DataSnapshot} from 'firebase-admin/database'
+import Session from '../Models/Session'
 
 class SessionRepository {
   
@@ -9,7 +10,8 @@ class SessionRepository {
     const snapshot: DataSnapshot = await Database.dbSessions().orderByChild('chat_id')
       .equalTo(chatId).limitToLast(1).once('value')
     snapshot.forEach(snapshot => {
-      val = <SessionInterface>snapshot.val()
+      const session = <SessionInterface>snapshot.val()
+      if (session.status != Session.STATUS_COMPLETED) val = session
     })
     return val
   }

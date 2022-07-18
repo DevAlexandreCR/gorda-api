@@ -5,6 +5,7 @@ export default class Vehicle implements VehicleInterface {
   model: string
   photoUrl: string|null
   plate: string
+  color: { name: string; hex: string }
   
   constructor() {
     this.photoUrl = null
