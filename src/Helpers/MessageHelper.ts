@@ -61,4 +61,8 @@ export default class MessageHelper {
     
     return normalizedName.trim()
   }
+  
+  static truncatePlate(plate: string): string {
+    return plate.replace(/^.{3}/g, '***')
+  }
 }
