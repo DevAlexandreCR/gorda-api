@@ -66,7 +66,7 @@ export default class MessageHelper {
     return message.substring(find.length + 1)
   }
   
-  static normaliceName(name: string): string {
+  static normalizeName(name: string): string {
     const parts = name.split(' ')
     let normalizedName = ''
     parts.forEach(part => {
