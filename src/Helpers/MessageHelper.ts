@@ -9,42 +9,56 @@ export default class MessageHelper {
   static CONDOMINIUM = 'condominio'
   static USER_LOCATION = 'Ubicación del usuario'
   static CANCEL = 'cancelar'
-  public static normalice(str: string) {
+  static KEY = 'servicio'
+  public static normalize(str: string) {
     return str.normalize("NFD")
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-zA-Z0-9 ]/g, '')
+      .replace(/(servicio)/, '')
+      .replace('servicio para', '')
+      .replace('servicio para las', '')
+      .replace('servicio para la', '')
+      .replace('servicio para el', '')
+      .replace('servicio para los', '')
+      .replace('servicio en ', '')
+      .replace('servicio a ', '')
       .toLowerCase().trim()
   }
+
+  public static hasKey(message: string): boolean {
+    return message.includes(this.KEY)
+  }
   
-  public static hasPlace(message: string): string|false {
-    message = MessageHelper.normalice(message)
+  public static hasPlace(message: string): string {
+    message = MessageHelper.normalize(message)
+    console.log(message)
     let findPlace = ''
     switch (true) {
       case message.includes(MessageHelper.NEIGHBOR):
         findPlace = MessageHelper.getPlace(MessageHelper.NEIGHBOR, message)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.CC):
         findPlace = message.substring(3)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.MOL):
         findPlace = MessageHelper.getPlace(MessageHelper.MOL, message)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.URBANIZATION):
         findPlace = MessageHelper.getPlace(MessageHelper.URBANIZATION, message)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.RESIDENTIAL_GATED):
         findPlace = MessageHelper.getPlace(MessageHelper.RESIDENTIAL_GATED, message)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.RESIDENTIAL):
         findPlace = MessageHelper.getPlace(MessageHelper.RESIDENTIAL, message)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.UNIT):
         findPlace = MessageHelper.getPlace(MessageHelper.UNIT, message)
-        return MessageHelper.normalice(findPlace)
+        return MessageHelper.normalize(findPlace)
       case message.includes(MessageHelper.CONDOMINIUM):
         findPlace = MessageHelper.getPlace(MessageHelper.CONDOMINIUM, message)
-        return MessageHelper.normalice(findPlace)
-      default: return false
+        return MessageHelper.normalize(findPlace)
+      default: return message
     }
   }
   

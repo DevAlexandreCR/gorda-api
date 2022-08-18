@@ -61,7 +61,6 @@ export default class WhatsAppClient {
   }
   
   onMessageReceived = (msg: Message): void => {
-    console.log(process.env)
     this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
   }
   

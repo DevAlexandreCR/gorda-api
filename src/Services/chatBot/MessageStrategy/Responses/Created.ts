@@ -18,7 +18,7 @@ export class Created extends ResponseContract {
   }
   
   async validateKey(client: Client, session: Session, message: Message): Promise<void> {
-    if (this.isLocation(message) || MessageHelper.hasPlace(message.body)) {
+    if (this.isLocation(message) || MessageHelper.hasKey(message.body)) {
       const response = new AskingForPlace()
       await response.processMessage(client, session, message)
     } else {

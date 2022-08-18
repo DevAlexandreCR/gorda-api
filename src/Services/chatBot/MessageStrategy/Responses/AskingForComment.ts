@@ -25,7 +25,7 @@ export class AskingForComment extends ResponseContract {
   }
   
   hasComment(message: Message): boolean {
-    const msg = MessageHelper.normalice(message.body)
+    const msg = MessageHelper.normalize(message.body)
     return msg.length > 3
   }
 }
