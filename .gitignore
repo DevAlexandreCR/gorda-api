@@ -3,4 +3,5 @@ node_modules
 .idea/
 /storage/sessions
 .env
+.env.testing
 firebase.config.js

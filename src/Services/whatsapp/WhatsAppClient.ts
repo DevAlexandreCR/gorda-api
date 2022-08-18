@@ -9,6 +9,7 @@ import SessionRepository from '../../Repositories/SessionRepository'
 import Session from '../../Models/Session'
 import * as Messages from '../chatBot/Messages'
 import {Store} from '../store/Store'
+import config from '../../../config';
 
 export default class WhatsAppClient {
   
@@ -23,6 +24,7 @@ export default class WhatsAppClient {
       restartOnAuthFail: true,
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
       puppeteer: {
+        executablePath: config.CHROMIUM_PATH,
         headless: true,
         args: [
           '--disable-gpu',
@@ -59,6 +61,7 @@ export default class WhatsAppClient {
   }
   
   onMessageReceived = (msg: Message): void => {
+    console.log(process.env)
     this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
   }
   
