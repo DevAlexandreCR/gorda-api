@@ -39,9 +39,6 @@ export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
   '- *Barrio* Centro \n' +
   '- *Conjunto* Torres del bosque \n' +
   '- *CC* Campanario \n' +
-  '- *CC* Hospital San Jose \n' +
-  '- *CC* Hotel San Martin \n' +
-  '- *Urbanización* La Villa \n' +
   'O también puedes enviar tu ubicación 📍'
 export const REQUESTING_SERVICE = '* Creando servicio...\n' +
   'Para agregar un comentario tipo: \n*Sin acompañante* \n*Con mascota* o \n*Bodega amplia* \nPor favor escríbelo abajo, de lo contrario envía *NO*'

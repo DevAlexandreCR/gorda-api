@@ -17,7 +17,7 @@ export default class Admin {
     this.db = getDatabase(this.app)
     this.auth = getAuth(this.app)
     if (config.NODE_ENV == 'local') {
-      this.db.useEmulator('localhost', 9000)
+      this.db.useEmulator(config.DATABASE_EMULATOR_HOST, config.DATABASE_EMULATOR_PORT as number)
     }
   }
   

@@ -86,15 +86,14 @@ export abstract class ResponseContract {
   }
   
   getPlaceFromMessage(message: Message): Array<Place> {
-    const findPlace = MessageHelper.hasPlace(message.body)
+    const findPlace = MessageHelper.getPlace(message.body)
     const foundPlaces: Array<Place> = []
-    if (findPlace)
-      Array.from(this.store.places).forEach(place => {
-        const placeName = MessageHelper.normalice(place.name)
-        if (placeName.includes(findPlace)) {
-          foundPlaces.push(place)
-        }
-      })
+    Array.from(this.store.places).forEach(place => {
+      const placeName = MessageHelper.normalize(place.name)
+      if (placeName.includes(findPlace)) {
+        foundPlaces.push(place)
+      }
+    })
     
     return foundPlaces
   }

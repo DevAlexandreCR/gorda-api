@@ -21,7 +21,7 @@ export class AskingForName extends ResponseContract{
   
   private async createClient(message: Message): Promise<void> {
     const contact = await this.getContact(message)
-    contact.name = MessageHelper.normaliceName(message.body)
+    contact.name = MessageHelper.normalizeName(message.body)
     this.currentClient = await ClientRepository.create(contact)
   }
   
