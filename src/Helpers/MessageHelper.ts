@@ -19,8 +19,10 @@ export default class MessageHelper {
     const keyRemoved = message.replace(
         /(.?)+(servicio)+([para, el, la, los, el, las, a, en]*)/,
         '').trim()
-    return keyRemoved.replace(new RegExp('(barrio|centro comercial|cc |hospital|urbanizacion' +
+    const place =  keyRemoved.replace(new RegExp('(barrio|centro comercial|cc |hospital|urbanizacion' +
         'condominio|unidad|conjunto|conjunto residencial|restaurante|colegio|)'), '').trim()
+
+    return place.replace(new RegExp('(por favor|gracias|si es tan amable|muchas gracias|porfa)'), '').trim()
   }
 
   static normalizeName(name: string): string {
