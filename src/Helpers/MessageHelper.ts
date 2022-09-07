@@ -36,6 +36,6 @@ export default class MessageHelper {
   }
 
   static truncatePlate(plate: string): string {
-    return plate.replace(/^.{3}/g, '***')
+    return plate.replace(/^.{3}/g, '')
   }
 }
