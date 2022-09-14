@@ -7,7 +7,7 @@ function isSessionAbandoned(session: SessionInterface): boolean {
   const sessionDate = session.created_at
   const now = dayjs().unix() * 1000
   const rate = now - sessionDate
-  return rate > 3000000
+  return rate > 900000
 }
 
 export async function updateSessionAbandoned(): Promise<void> {
