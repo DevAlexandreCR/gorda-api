@@ -1,7 +1,7 @@
 export default class MessageHelper {
   static USER_LOCATION = 'Ubicación del usuario'
   static CANCEL = 'cancelar'
-  static KEY = 'servicio'
+  static KEYS = ['servicio', 'movil']
 
   public static normalize(str: string) {
     return str.normalize("NFD")
@@ -11,13 +11,13 @@ export default class MessageHelper {
   }
 
   public static hasKey(message: string): boolean {
-    return message.includes(this.KEY)
+    return message.includes(this.KEYS[0]) || message.includes(this.KEYS[1])
   }
 
   public static getPlace(message: string): string {
     message = MessageHelper.normalize(message)
     const keyRemoved = message.replace(
-        /(.?)+(servicio)+([para, el, la, los, el, las, a, en]*)/,
+        /(.?)+(servicio|movil)+([para, el, la, los, el, las, a, en]*)/,
         '').trim()
     const place =  keyRemoved.replace(new RegExp('(barrio|centro comercial|cc |hospital|urbanizacion' +
         'condominio|unidad|conjunto|conjunto residencial|restaurante|colegio|)'), '').trim()

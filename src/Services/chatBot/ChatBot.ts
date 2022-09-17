@@ -23,6 +23,7 @@ export default class ChatBot {
       Object.assign(session, sessionDB)
     } else {
       session = await this.createSession(session)
+      
     }
     const status = session.status as keyof typeof ResponseContext.RESPONSES
     const handler = ResponseContext.RESPONSES[status]
@@ -41,6 +42,10 @@ export default class ChatBot {
   async isSessionActive(session: SessionInterface|null): Promise<boolean> {
     return session !== null && session.status !== Session.STATUS_COMPLETED
   }
+
+  // async isAgreement(message: Message): Promise<boolean> {
+  //   message.body
+  // }
   
   async createSession(session: Session): Promise<Session> {
     const sessionDB = await SessionRepository.create(session)
