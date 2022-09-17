@@ -25,6 +25,21 @@ export default class MessageHelper {
     return place.replace(new RegExp('(por favor|gracias|si es tan amable|muchas gracias|porfa)'), '').trim()
   }
 
+  public static getPlaceFromAgreement(message: string): string {
+    message = MessageHelper.normalize(message)
+    const placeReg = message.match(/(?<=convenio).*/)
+
+    return placeReg? placeReg[0] : ''
+  }
+
+  public static getCommentFromAgreement(message: string): string {
+    message = MessageHelper.normalize(message)
+    const commentReg = message.match(/(?<=movil )(.*)(?= convenio )/)
+    let comment = 'convenio '
+
+    return commentReg? comment += commentReg[0] : comment
+  }
+
   static normalizeName(name: string): string {
     const parts = name.split(' ')
     let normalizedName = ''
