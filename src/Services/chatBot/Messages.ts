@@ -11,6 +11,10 @@ const store = Store.getInstance()
 export const requestingService = (placeName: string): string => {
   return  'Lugar: *' + placeName + REQUESTING_SERVICE
 }
+export const cancelService = (serviceID: string): string => {
+  return 'Si deseas cancelar reenvíanos éste mensaje \n' +
+  `Cancelar servicio convenio id=${serviceID}`
+}
 export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): string => {
   const error = 'No reconocimos ninguna opción válida, '
   const found = 'Encontramos éstas coincidencias, '
@@ -30,10 +34,17 @@ export const serviceAssigned = (vehicle: Vehicle): string => {
 export const welcome = (name: string): string => {
   return `Hola 🙋🏻‍♀ *${name}*  ${WELCOME}`
 }
+export const BAD_AGREEMENT = 
+  'No logramos reconocer el lugar del convenio, por favor verifica que esté bien escrito, ejemplo:\n \n' +
+  'Movil convenio Campanario \n' +
+  'Movil con bodega amplia convenio Monte Luna \n \n' +
+  `o escríbenos al ${config.PQR_NUMBER} para agregarlo.`
+
 export const welcomeNews = (name: string): string => {
   return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨* ${WELCOME}`
 }
 export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
+export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
 export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
   ' encuentras para asignarte un vehículo en el menor tiempo posible, ejemplo: \n' +
   '- _Centro_ \n' +

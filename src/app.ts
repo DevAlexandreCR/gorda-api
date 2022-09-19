@@ -7,6 +7,7 @@ import {Store} from './Services/store/Store'
 import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
 import {Locale} from './Helpers/Locale'
+import Schedule from './Jobs/Schedule'
 
 Locale.getInstance()
 
@@ -28,6 +29,7 @@ server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
   wpService = new WhatsAppClient()
   wpService.initClient()
+  Schedule.execute()
 })
 
 Store.getInstance()

@@ -1,13 +1,19 @@
 import Database from '../Services/firebase/Database'
 import {ServiceInterface} from '../Interfaces/ServiceInterface'
-import {database} from 'firebase-admin'
 import {DataSnapshot} from 'firebase-admin/database'
 
 class ServiceRepository {
   
   public async findServiceById(serviceId: string): Promise<ServiceInterface> {
-    const snapshot: database.DataSnapshot = await Database.dbServices().child(serviceId).once('value')
-    return <ServiceInterface>snapshot.val()
+    return new Promise((resolve, reject) => {
+    Database.dbServices().child(serviceId).orderByKey()
+      .once('value', (snapshot) => {
+        if (snapshot.exists()) resolve(<ServiceInterface>snapshot.val())
+        else reject(new Error('not exist'))
+      }, (e) => {
+        reject(e)
+      })
+    })
   }
   
   public async update(service: ServiceInterface): Promise<ServiceInterface> {

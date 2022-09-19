@@ -1,6 +1,7 @@
 node_modules
 /build/
 .idea/
+.vscode/
 /storage/sessions
 .env
 .env.testing
