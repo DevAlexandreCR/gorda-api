@@ -13,7 +13,7 @@ export const requestingService = (placeName: string): string => {
 }
 export const cancelService = (serviceID: string): string => {
   return 'Si deseas cancelar reenvíanos éste mensaje \n' +
-  `Cancelar servicio id=${serviceID}`
+  `Cancelar servicio convenio id=${serviceID}`
 }
 export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): string => {
   const error = 'No reconocimos ninguna opción válida, '
@@ -36,16 +36,15 @@ export const welcome = (name: string): string => {
 }
 export const BAD_AGREEMENT = 
   'No logramos reconocer el lugar del convenio, por favor verifica que esté bien escrito, ejemplo:\n \n' +
-  'Movil convenio Campanario \n'
-  'Movil con bodega amplia convenio Monte Luna \n'
-  'Movil con mascota convenio Torres del río \n'
-  'Movil sin acompañante convenio Morinda \n \n'
-  'o escríbenos al ${config.PQR_NUMBER} para agregarlo.'
+  'Movil convenio Campanario \n' +
+  'Movil con bodega amplia convenio Monte Luna \n \n' +
+  `o escríbenos al ${config.PQR_NUMBER} para agregarlo.`
 
 export const welcomeNews = (name: string): string => {
   return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨* ${WELCOME}`
 }
 export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
+export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
 export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
   ' encuentras para asignarte un vehículo en el menor tiempo posible, ejemplo: \n' +
   '- _Centro_ \n' +

@@ -4,6 +4,8 @@ import Session from '../../../../Models/Session'
 import * as Messages from '../../Messages'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import Place from '../../../../Models/Place'
+import ServiceRepository from '../../../../Repositories/ServiceRepository'
+import Service from '../../../../Models/Service'
 
 export class Agreement extends ResponseContract {
   
@@ -12,8 +14,8 @@ export class Agreement extends ResponseContract {
   
   public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
     if (this.clientExists(message)) {
-      await this.validateKey(client, session, message)
       await session.setStatus(Session.STATUS_COMPLETED)
+      await this.validateKey(client, session, message)
     } else {
       await session.setStatus(Session.STATUS_ASKING_FOR_NAME)
       await this.sendMessage(client, message.from, Messages.ASK_FOR_NAME)
@@ -21,9 +23,11 @@ export class Agreement extends ResponseContract {
   }
   
   async validateKey(client: Client, session: Session, message: Message): Promise<void> {
+    if (MessageHelper.isCancel(message.body)) {
+      return this.cancelService(message, client)
+    }
     const place = this.getPlace(message)
     const comment = MessageHelper.getCommentFromAgreement(message.body)
-    
     if (place) {
         await session.setPlace(place)
         await this.createService(client, message, place, session, comment).then((serviceId: string) => {
@@ -49,4 +53,17 @@ export class Agreement extends ResponseContract {
     return foundPlace
   }
 
+  async cancelService(message: Message, client: Client): Promise<void> {
+    const serviceId = MessageHelper.getServiceIdFromCancel(message.body)
+    console.log(serviceId);
+    
+    await ServiceRepository.findServiceById(serviceId).then(serviceDB => {
+      const service = new Service()
+      Object.assign(service, serviceDB)
+      service.cancel()
+    }).catch(e => {
+      console.log(e.message);
+      this.sendMessage(client, message.from, Messages.SERVICE_NOT_FOUND)
+    })
+  }
 }

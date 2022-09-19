@@ -14,6 +14,10 @@ export default class MessageHelper {
     return message.includes(this.KEYS[0]) || message.includes(this.KEYS[1])
   }
 
+  public static isCancel(message: string): boolean {
+    return this.normalize(message).includes(this.CANCEL)
+  }
+
   public static getPlace(message: string): string {
     message = MessageHelper.normalize(message)
     const keyRemoved = message.replace(
@@ -23,6 +27,12 @@ export default class MessageHelper {
         'condominio|unidad|conjunto|conjunto residencial|restaurante|colegio|)'), '').trim()
 
     return place.replace(new RegExp('(por favor|gracias|si es tan amable|muchas gracias|porfa)'), '').trim()
+  }
+
+  public static getServiceIdFromCancel(message: string): string {
+    const idReg = message.match(/(?<=id=).*/)
+
+    return idReg ? idReg[0] : ''
   }
 
   public static getPlaceFromAgreement(message: string): string {
