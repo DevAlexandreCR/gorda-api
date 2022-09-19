@@ -48,7 +48,7 @@ export abstract class ResponseContract {
     return client != undefined
   }
   
-  async createService(client: Client, message: Message, place: Place, session: Session, comment: string|null = null): Promise<void> {
+  async createService(client: Client, message: Message, place: Place, session: Session, comment: string|null = null): Promise<string> {
     const service = new Service()
     service.client_id = session.chat_id
     service.start_loc = place
@@ -68,6 +68,8 @@ export abstract class ResponseContract {
         await this.sendMessage(client, message.from, Messages.ERROR_CREATING_SERVICE)
         await session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
       })
+
+    return Promise.resolve(service.id)
   }
   
   

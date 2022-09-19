@@ -9,10 +9,12 @@ import {Created} from './Responses/Created'
 import * as Messages from '../Messages'
 import {ChoosingPlace} from './Responses/ChoosingPlace'
 import {AskingForComment} from './Responses/AskingForComment'
+import { Agreement } from './Responses/Agreement'
 
 export class ResponseContext {
   
   static RESPONSES = {
+    [Session.STATUS_AGREEMENT]: new Agreement(),
     [Session.STATUS_CREATED]: new Created(),
     [Session.STATUS_ASKING_FOR_NAME]: new AskingForName(),
     [Session.STATUS_ASKING_FOR_PLACE]: new AskingForPlace(),

@@ -26,6 +26,24 @@ class SessionRepository {
     session.id = res.key!
     return this.update(session)
   }
+
+  public async getAbandonedSessions(): Promise<Array<SessionInterface>> {
+    const res = await Database.dbSessions().orderByChild('status').equalTo(Session.STATUS_ASKING_FOR_PLACE).get()
+    const sessions = Array<SessionInterface>()
+    res.forEach(snapshot => {
+      const session = <SessionInterface>snapshot.val()
+      sessions.push(session)
+    })
+    return sessions
+  }
+
+  public async closeAbandoned(sessions: Array<SessionInterface>): Promise<void> {
+    const sessionsObject: Record<string, any> = {}
+    sessions.forEach((session) => {
+      sessionsObject[session.id + '/status'] = Session.STATUS_COMPLETED
+    })
+    await Database.dbSessions().update(sessionsObject)
+  }
 }
 
 export default new SessionRepository()

@@ -1,0 +1,25 @@
+import SessionRepository from '../Repositories/SessionRepository'
+import {SessionInterface} from '../Interfaces/SessionInterface'
+import dayjs from 'dayjs'
+import Session from '../Models/Session'
+
+function isSessionAbandoned(session: SessionInterface): boolean {
+  const sessionDate = session.created_at
+  const now = dayjs().unix() * 1000
+  const rate = now - sessionDate
+  return rate > 900000
+}
+
+export async function updateSessionAbandoned(): Promise<void> {
+  const sessions = await SessionRepository.getAbandonedSessions()
+  const sessionsAbandoned = Array<SessionInterface>()
+  sessions.forEach(session => {
+    if (isSessionAbandoned(session)) {
+      session.status = Session.STATUS_COMPLETED
+      sessionsAbandoned.push(session)
+    }
+  })
+  SessionRepository.closeAbandoned(sessionsAbandoned).catch(e => {
+    console.log(e.message)
+  })
+}

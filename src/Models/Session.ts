@@ -13,6 +13,7 @@ export default class Session implements SessionInterface {
   public updated_at: number | null
   public place: Place | null = null
   
+  static readonly STATUS_AGREEMENT = 'AGREEMENT'
   static readonly STATUS_CREATED = 'CREATED'
   static readonly STATUS_ASKING_FOR_PLACE = 'ASKING_FOR_PLACE'
   static readonly STATUS_CHOOSING_PLACE = 'CHOOSING_PLACE'
