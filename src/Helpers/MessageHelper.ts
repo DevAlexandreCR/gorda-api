@@ -44,7 +44,7 @@ export default class MessageHelper {
 
   public static getCommentFromAgreement(message: string): string {
     message = MessageHelper.normalize(message)
-    const commentReg = message.match(/(?<=movil )(.*)(?= convenio )/)
+    const commentReg = message.match(/(?<=movil|servicio )(.*)(?= convenio )/)
     let comment = 'convenio '
 
     return commentReg? comment += commentReg[0] : comment
