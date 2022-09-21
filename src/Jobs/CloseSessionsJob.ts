@@ -7,12 +7,14 @@ function isSessionAbandoned(session: SessionInterface): boolean {
   const sessionDate = session.created_at
   const now = dayjs().unix() * 1000
   const rate = now - sessionDate
+
   return rate > 900000
 }
 
 export async function updateSessionAbandoned(): Promise<void> {
   const sessions = await SessionRepository.getAbandonedSessions()
   const sessionsAbandoned = Array<SessionInterface>()
+  console.log('updating abandonned sessions...')
   sessions.forEach(session => {
     if (isSessionAbandoned(session)) {
       session.status = Session.STATUS_COMPLETED
