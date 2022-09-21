@@ -7,18 +7,14 @@ import { Agreement } from './MessageStrategy/Responses/Agreement'
 
 export default class ChatBot {
   private readonly wpClient: Client
-  private messageFrom: string
-  private message: Message
   
   constructor(client: Client) {
     this.wpClient = client
   }
   
   async processMessage(message: Message): Promise<void> {
-    this.setMessage(message)
-    this.setMessageFrom(message)
     let session = new Session(message.from)
-    let sessionDB = await SessionRepository.findSessionByChatId(this.message.from)
+    let sessionDB = await SessionRepository.findSessionByChatId(message.from)
     const active = await this.isSessionActive(sessionDB)
     if (active) {
       Object.assign(session, sessionDB)
@@ -32,14 +28,6 @@ export default class ChatBot {
     const handler = ResponseContext.RESPONSES[status]
     const response = new ResponseContext(handler)
     await response.processMessage(session, message, this.wpClient)
-  }
-  
-  setMessage(message: Message): void {
-    this.message = message
-  }
-  
-  setMessageFrom(message: Message): void {
-    this.messageFrom = message.from
   }
   
   async isSessionActive(session: SessionInterface|null): Promise<boolean> {
