@@ -122,10 +122,10 @@ export default class WhatsAppClient {
         const driver = this.store.findDriverById(service.driver_id!!)
         if (service.metadata && service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
           await this.client.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
-        } else if (!service.metadata) {
+        } else if (session.assigned_at === 0) {
           await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-          await this.client.sendMessage(service.client_id,
-            Messages.serviceAssigned(driver.vehicle))
+          await this.client.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle))
+          await session.setAssigned()
         }
         break
       case Service.STATUS_TERMINATED:
@@ -135,6 +135,9 @@ export default class WhatsAppClient {
       case Service.STATUS_CANCELED:
         await session.setStatus(Session.STATUS_COMPLETED)
         await this.client.sendMessage(service.client_id, Messages.CANCELED)
+        break
+      case Service.STATUS_PENDING:
+        if (session.assigned_at > 0) await session.setAssigned(false)
         break
       default:
         console.log('new service', service)

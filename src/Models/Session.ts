@@ -8,6 +8,7 @@ export default class Session implements SessionInterface {
   public status: string
   public chat_id: string
   public placeOptions?: Array<PlaceOption>
+  public assigned_at: number = 0
   public service_id: string | null
   public created_at: number
   public updated_at: number | null
@@ -32,6 +33,11 @@ export default class Session implements SessionInterface {
   
   isCompleted(): boolean {
     return this.status === Session.STATUS_COMPLETED
+  }
+
+  async setAssigned(assigned: boolean = true): Promise<void> {
+    this.assigned_at = assigned ? new Date().getTime() : 0
+    await SessionRepository.update(this)
   }
   
   async setStatus(status: string): Promise<void> {
