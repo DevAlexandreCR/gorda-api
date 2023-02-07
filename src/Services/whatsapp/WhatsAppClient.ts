@@ -21,7 +21,6 @@ export default class WhatsAppClient {
   
   initClient(): void {
     this.client = new Client({
-      restartOnAuthFail: true,
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
@@ -36,7 +35,7 @@ export default class WhatsAppClient {
       }
     })
     
-    this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
+    // this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
     this.client.on(Events.AUTHENTICATED, this.onAuth)
@@ -107,37 +106,24 @@ export default class WhatsAppClient {
   }
   
   serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
+    console.log(snapshot.val())
     const service = new Service()
     Object.assign(service, snapshot.val() as ServiceInterface)
-    const session = new Session(service.client_id)
-    session.service_id = service.id
-    session.status = Session.STATUS_REQUESTING_SERVICE
-    let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
-    if (!sessionDB) {
-      sessionDB = await SessionRepository.create(session)
-    }
-    Object.assign(session, sessionDB)
+
     switch (service.status) {
       case Service.STATUS_IN_PROGRESS:
         const driver = this.store.findDriverById(service.driver_id!!)
         if (service.metadata && service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
           await this.client.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
-        } else if (session.assigned_at === 0) {
-          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+        } else {
           await this.client.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle))
-          await session.setAssigned()
         }
         break
       case Service.STATUS_TERMINATED:
-        await session.setStatus(Session.STATUS_COMPLETED)
         await this.client.sendMessage(service.client_id, Messages.SERVICE_COMPLETED)
         break
       case Service.STATUS_CANCELED:
-        await session.setStatus(Session.STATUS_COMPLETED)
         await this.client.sendMessage(service.client_id, Messages.CANCELED)
-        break
-      case Service.STATUS_PENDING:
-        if (session.assigned_at > 0) await session.setAssigned(false)
         break
       default:
         console.log('new service', service)
