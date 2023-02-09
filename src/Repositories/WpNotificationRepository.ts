@@ -1,7 +1,5 @@
 import Database from '../Services/firebase/Database'
-import {ServiceInterface} from '../Interfaces/ServiceInterface'
 import {DataSnapshot} from 'firebase-admin/database'
-import Service from '../Models/Service'
 
 class WpNotificationRepository {
 	
