@@ -121,7 +121,6 @@ export default class WhatsAppClient {
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-		// Object.assign(notification, snapshot.val() as ServiceInterface)
     this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
 		})
