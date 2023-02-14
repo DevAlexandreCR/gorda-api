@@ -28,7 +28,7 @@ class WpNotificationRepository {
 
   public async onServiceTerminated(onTerminated: (data: DataSnapshot) => void): Promise<void> {
     await Database.dbWpNotifications()
-    .child('completed')
+    .child('terminated')
     .orderByKey()
     .limitToLast(1)
     .on('child_added', onTerminated)
