@@ -1,6 +1,6 @@
 {
   "name": "gorda-api",
-  "version": "1.0.2",
+  "version": "1.0.8",
   "description": "WhatsApp chatbot to gorda admin",
   "main": "src/app.ts",
   "scripts": {
