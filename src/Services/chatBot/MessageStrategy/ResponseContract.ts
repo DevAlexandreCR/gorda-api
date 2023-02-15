@@ -8,6 +8,7 @@ import ServiceRepository from '../../../Repositories/ServiceRepository'
 import SessionRepository from '../../../Repositories/SessionRepository'
 import * as Messages from '../Messages'
 import MessageHelper from '../../../Helpers/MessageHelper'
+import * as Sentry from '@sentry/node'
 
 export abstract class ResponseContract {
   
@@ -27,7 +28,7 @@ export abstract class ResponseContract {
   }
   
   async sendMessage(client: Client, chatId: string, content: MessageContent): Promise<void> {
-    await client.sendMessage(chatId, content).catch(e => console.log(e))
+    await client.sendMessage(chatId, content).catch(e => Sentry.captureException(e))
   }
   
   setCurrentClient(message: Message): void {

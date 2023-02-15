@@ -1,4 +1,5 @@
-import {Client, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
+import {Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
+import * as Sentry from '@sentry/node'
 import {Socket} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
 import {DataSnapshot} from 'firebase-admin/lib/database'
@@ -41,7 +42,7 @@ export default class WhatsAppClient {
     
     this.init()
       .then(() => console.log('authenticated after init server'))
-      .catch(e => console.log(e))
+      .catch(e => Sentry.captureException(e))
   }
   
   setSocket(socket: Socket): void {
@@ -50,10 +51,10 @@ export default class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
-    WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => console.log(e.message))
-		WpNotificationRepository.onServiceTerminated(this.serviceTerminated).catch(e => console.log(e.message))
-		WpNotificationRepository.onServiceCanceled(this.serviceCanceled).catch(e => console.log(e.message))
-		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => console.log(e.message))
+    WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onServiceTerminated(this.serviceTerminated).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onServiceCanceled(this.serviceCanceled).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
@@ -138,6 +139,6 @@ export default class WhatsAppClient {
       .then(() => {
         if (this.socket) this.socket.emit('destroy')
       })
-      .catch(e => console.log(e.message))
+      .catch(e => Sentry.captureException(e))
   }
 }
