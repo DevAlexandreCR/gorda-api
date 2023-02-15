@@ -1,6 +1,5 @@
 import Database from '../Services/firebase/Database'
 import {ServiceInterface} from '../Interfaces/ServiceInterface'
-import {DataSnapshot} from 'firebase-admin/database'
 
 class ServiceRepository {
   
@@ -25,10 +24,6 @@ class ServiceRepository {
     const res = await Database.dbServices().push(service)
     service.id = res.key!
     return this.update(service)
-  }
-  
-  public async onServiceChanged(onChanged: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbServices().orderByChild('status').limitToLast(1000).on('child_changed', onChanged)
   }
 }
 

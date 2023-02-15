@@ -4,6 +4,7 @@ import {ClientInterface} from '../Interfaces/ClientInterface'
 import Database from '../Services/firebase/Database'
 import {Contact} from 'whatsapp-web.js'
 import config from '../../config'
+import * as Sentry from '@sentry/node'
 
 class ClientRepository {
   
@@ -24,7 +25,7 @@ class ClientRepository {
     newClient.phone = `+${contact.number}`
     newClient.photoUrl = await contact.getProfilePicUrl()
     if (!newClient.photoUrl) newClient.photoUrl = config.DEFAULT_CLIENT_PHOTO_URL
-    await Database.dbClients().child(contact.number).set(newClient).catch(e => console.log(e))
+    await Database.dbClients().child(contact.number).set(newClient).catch(e => Sentry.captureException(e))
     return newClient
   }
 }

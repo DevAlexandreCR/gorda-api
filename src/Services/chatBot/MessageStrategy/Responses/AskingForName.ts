@@ -4,6 +4,7 @@ import {ResponseContract} from '../ResponseContract'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import ClientRepository from '../../../../Repositories/ClientRepository'
 import * as Messages from '../../Messages'
+import * as Sentry from '@sentry/node'
 
 export class AskingForName extends ResponseContract{
   
@@ -31,9 +32,7 @@ export class AskingForName extends ResponseContract{
         .then(contact => {
           resolve(contact)
         })
-        .catch(e => {
-          console.log(e)
-        })
+        .catch(e => Sentry.captureException(e))
     })
   }
 }

@@ -7,7 +7,6 @@ import {Store} from './Services/store/Store'
 import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
 import {Locale} from './Helpers/Locale'
-import Schedule from './Jobs/Schedule'
 
 Locale.getInstance()
 
@@ -21,15 +20,15 @@ Sentry.init({
     new Sentry.Integrations.Http({tracing: true}),
     new Tracing.Integrations.Express({app})],
   
-  tracesSampleRate: 1.0
+  tracesSampleRate: 0.8
 })
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
+app.use(Sentry.Handlers.errorHandler());
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
   wpService = new WhatsAppClient()
   wpService.initClient()
-  Schedule.execute()
 })
 
 Store.getInstance()

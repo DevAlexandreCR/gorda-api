@@ -6,6 +6,7 @@ import MessageHelper from '../../../../Helpers/MessageHelper'
 import Place from '../../../../Models/Place'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import Service from '../../../../Models/Service'
+import * as Sentry from '@sentry/node'
 
 export class Agreement extends ResponseContract {
   
@@ -62,7 +63,7 @@ export class Agreement extends ResponseContract {
       Object.assign(service, serviceDB)
       service.cancel()
     }).catch(e => {
-      console.log(e.message);
+			Sentry.captureException(e)
       this.sendMessage(client, message.from, Messages.SERVICE_NOT_FOUND)
     })
   }

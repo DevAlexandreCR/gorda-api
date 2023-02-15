@@ -2,6 +2,7 @@ import SessionRepository from '../Repositories/SessionRepository'
 import {SessionInterface} from '../Interfaces/SessionInterface'
 import dayjs from 'dayjs'
 import Session from '../Models/Session'
+import * as Sentry from '@sentry/node'
 
 function isSessionAbandoned(session: SessionInterface): boolean {
   const sessionDate = session.created_at
@@ -22,6 +23,6 @@ export async function updateSessionAbandoned(): Promise<void> {
     }
   })
   SessionRepository.closeAbandoned(sessionsAbandoned).catch(e => {
-    console.log(e.message)
+		Sentry.captureException(e)
   })
 }

@@ -1,15 +1,13 @@
-import {Client, LocalAuth, WAState, Events, Message} from 'whatsapp-web.js'
+import {Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
+import * as Sentry from '@sentry/node'
 import {Socket} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
 import {DataSnapshot} from 'firebase-admin/lib/database'
-import ServiceRepository from '../../Repositories/ServiceRepository'
-import Service from '../../Models/Service'
-import {ServiceInterface} from '../../Interfaces/ServiceInterface'
-import SessionRepository from '../../Repositories/SessionRepository'
-import Session from '../../Models/Session'
 import * as Messages from '../chatBot/Messages'
 import {Store} from '../store/Store'
 import config from '../../../config';
+import {WpNotificationType} from '../../Interfaces/WpNotificationType'
+import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
 
 export default class WhatsAppClient {
   
@@ -21,7 +19,6 @@ export default class WhatsAppClient {
   
   initClient(): void {
     this.client = new Client({
-      restartOnAuthFail: true,
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
@@ -36,7 +33,6 @@ export default class WhatsAppClient {
       }
     })
     
-    this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
     this.client.on('qr', this.onQR)
     this.client.on(Events.READY, this.onReady)
     this.client.on(Events.AUTHENTICATED, this.onAuth)
@@ -46,7 +42,7 @@ export default class WhatsAppClient {
     
     this.init()
       .then(() => console.log('authenticated after init server'))
-      .catch(e => console.log(e))
+      .catch(e => Sentry.captureException(e))
   }
   
   setSocket(socket: Socket): void {
@@ -55,15 +51,14 @@ export default class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
-    ServiceRepository.onServiceChanged(this.serviceChanged).catch(e => console.log(e.message))
+    WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onServiceTerminated(this.serviceTerminated).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onServiceCanceled(this.serviceCanceled).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
-  
-  onMessageReceived = (msg: Message): void => {
-    this.chatBot.processMessage(msg).then(() => console.log('message processed: ', msg.id))
-  }
-  
+
   onQR = (qr: string): void => {
     if (this.socket) this.socket.emit(Events.QR_RECEIVED, qr)
     console.log('sending qr code..', qr)
@@ -106,42 +101,37 @@ export default class WhatsAppClient {
     })
   }
   
-  serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
-    const service = new Service()
-    Object.assign(service, snapshot.val() as ServiceInterface)
-    const session = new Session(service.client_id)
-    session.service_id = service.id
-    session.status = Session.STATUS_REQUESTING_SERVICE
-    let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
-    if (!sessionDB) {
-      sessionDB = await SessionRepository.create(session)
+  serviceAssigned = async (snapshot: DataSnapshot): Promise<void> => {
+    const notification: WpNotificationType = snapshot.val()
+    if (notification.driver_id != null) {
+      const driver = this.store.findDriverById(notification.driver_id)
+      this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
+				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
+			}).catch(e => Sentry.captureException(e))
+    } else {
+      console.error('can not send message cause driver id is not set')
     }
-    Object.assign(session, sessionDB)
-    switch (service.status) {
-      case Service.STATUS_IN_PROGRESS:
-        const driver = this.store.findDriverById(service.driver_id!!)
-        if (service.metadata && service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
-          await this.client.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
-        } else if (session.assigned_at === 0) {
-          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-          await this.client.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle))
-          await session.setAssigned()
-        }
-        break
-      case Service.STATUS_TERMINATED:
-        await session.setStatus(Session.STATUS_COMPLETED)
-        await this.client.sendMessage(service.client_id, Messages.SERVICE_COMPLETED)
-        break
-      case Service.STATUS_CANCELED:
-        await session.setStatus(Session.STATUS_COMPLETED)
-        await this.client.sendMessage(service.client_id, Messages.CANCELED)
-        break
-      case Service.STATUS_PENDING:
-        if (session.assigned_at > 0) await session.setAssigned(false)
-        break
-      default:
-        console.log('new service', service)
-    }
+  }
+
+  driverArrived = async (snapshot: DataSnapshot): Promise<void> => {
+    const notification: WpNotificationType = snapshot.val()
+    this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
+			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
+		}).catch(e => Sentry.captureException(e))
+  }
+
+  serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
+    const notification: WpNotificationType = snapshot.val()
+    this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
+			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
+		}).catch(e => Sentry.captureException(e))
+  }
+
+  serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
+    const notification: WpNotificationType = snapshot.val()
+    this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
+			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
+		}).catch(e => Sentry.captureException(e))
   }
   
   logout = (): void => {
@@ -149,6 +139,6 @@ export default class WhatsAppClient {
       .then(() => {
         if (this.socket) this.socket.emit('destroy')
       })
-      .catch(e => console.log(e.message))
+      .catch(e => Sentry.captureException(e))
   }
 }
