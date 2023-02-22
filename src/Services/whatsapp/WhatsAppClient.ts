@@ -105,9 +105,9 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     if (notification.driver_id != null) {
       const driver = this.store.findDriverById(notification.driver_id)
-      this.client.sendMessage('573116699636@c.us', Messages.serviceAssigned(driver.vehicle)).then(() => {
+      this.client.sendMessage('573103794656@c.us', Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
-			}).catch(e => Sentry.captureException(e))
+			}).catch(e => console.log('serviceAssigned', e))
     } else {
       console.error('can not send message cause driver id is not set')
     }
@@ -115,23 +115,23 @@ export default class WhatsAppClient {
 
   driverArrived = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage('573116699636@c.us', Messages.DRIVER_ARRIVED).then(() => {
+    this.client.sendMessage('573103794656@c.us', Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
-		}).catch(e => Sentry.captureException(e))
+		}).catch(e => console.log('driverArrived', e))
   }
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage('573116699636@c.us', Messages.CANCELED).then(() => {
+    this.client.sendMessage('573103794656@c.us', Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
-		}).catch(e => Sentry.captureException(e))
+		}).catch(e => console.log('serviceCanceled', e))
   }
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage('573116699636@c.us', Messages.SERVICE_COMPLETED).then(() => {
+    this.client.sendMessage('573103794656@c.us', Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
-		}).catch(e => Sentry.captureException(e))
+		}).catch(e => console.log('serviceTerminated', e))
   }
   
   logout = (): void => {
@@ -139,6 +139,6 @@ export default class WhatsAppClient {
       .then(() => {
         if (this.socket) this.socket.emit('destroy')
       })
-      .catch(e => Sentry.captureException(e))
+      .catch(e => console.log(e))
   }
 }
