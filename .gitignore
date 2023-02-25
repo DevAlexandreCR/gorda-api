@@ -6,4 +6,3 @@ node_modules
 .env
 .env.testing
 firebase.config.js
-/src/.well-known/acme-challenge/**
