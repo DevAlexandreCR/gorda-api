@@ -1,5 +1,6 @@
 import express from 'express'
-import {createServer} from 'http'
+import http from 'http'
+import https from 'https'
 import {Server, Socket} from 'socket.io'
 import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
@@ -7,11 +8,11 @@ import {Store} from './Services/store/Store'
 import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
 import {Locale} from './Helpers/Locale'
+import SSL from './Helpers/SSL'
 
 Locale.getInstance()
 
 const app: express.Application = express()
-const server = createServer(app)
 let wpService: WhatsAppClient
 
 Sentry.init({
@@ -25,15 +26,29 @@ Sentry.init({
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler());
-server.listen(config.PORT, async () => {
-  console.log('listen: ', config.PORT)
-  wpService = new WhatsAppClient()
-  wpService.initClient()
-})
+app.use(express.static(__dirname, { dotfiles: 'allow' } ));
+
+let io: Server
+
+if (config.NODE_ENV == 'production') {
+	const serverSSL = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
+	serverSSL.listen(config.PORT, async () => {
+		console.log('listen: ', config.PORT)
+		wpService = new WhatsAppClient()
+		wpService.initClient()
+	})
+	io = new Server(serverSSL, {cors: {origin: true}})
+} else {
+	const server = http.createServer(app)
+	server.listen(config.PORT, async () => {
+		console.log('listen: ', config.PORT)
+		wpService = new WhatsAppClient()
+		wpService.initClient()
+	})
+	io = new Server(server, {cors: {origin: true}})
+}
 
 Store.getInstance()
-
-const io = new Server(server, {cors: {origin: true}})
 
 io.on('connection', (socket: Socket) => {
   wpService.setSocket(socket)
@@ -45,6 +60,7 @@ io.on('connection', (socket: Socket) => {
     wpService.init().then(() => {
       console.log('whatsapp client initialized !!!!')
     }).catch(async e => {
+			Sentry.captureException(e)
       console.log('error while authentication', e)
     })
   })
