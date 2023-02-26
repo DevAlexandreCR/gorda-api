@@ -1,7 +1,7 @@
-import express from 'express'
-import http from 'http'
-import https from 'https'
-import {Server, Socket} from 'socket.io'
+import express, { Application } from 'express'
+import http, { Server as HTTPServer } from 'http'
+import https, { Server as HTTPSServer } from 'https'
+import socketio, {Server as SocketIOServer, Socket} from 'socket.io'
 import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
 import {Store} from './Services/store/Store'
@@ -12,7 +12,7 @@ import SSL from './Helpers/SSL'
 
 Locale.getInstance()
 
-const app: express.Application = express()
+const app: Application = express()
 let wpService: WhatsAppClient
 
 Sentry.init({
@@ -28,25 +28,22 @@ app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler());
 app.use(express.static(__dirname, { dotfiles: 'allow' } ));
 
-let io: Server
+const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
+const server: HTTPServer = http.createServer(app)
 
-if (config.NODE_ENV == 'production') {
-	const serverSSL = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
-	serverSSL.listen(config.PORT, async () => {
-		console.log('listen: ', config.PORT)
-		wpService = new WhatsAppClient()
-		wpService.initClient()
-	})
-	io = new Server(serverSSL, {cors: {origin: true}})
-} else {
-	const server = http.createServer(app)
-	server.listen(config.PORT, async () => {
-		console.log('listen: ', config.PORT)
-		wpService = new WhatsAppClient()
-		wpService.initClient()
-	})
-	io = new Server(server, {cors: {origin: true}})
-}
+const io: SocketIOServer = new SocketIOServer()
+io.attach(server, {cors: {origin: true}})
+io.attach(serverSSL, {cors: {origin: true}})
+server.listen(config.PORT, async () => {
+	console.log('listen: ', config.PORT)
+	wpService = new WhatsAppClient()
+	wpService.initClient()
+})
+serverSSL.listen(443, async () => {
+	console.log('listen: ', 443)
+	wpService = new WhatsAppClient()
+	wpService.initClient()
+})
 
 Store.getInstance()
 
