@@ -41,8 +41,6 @@ server.listen(config.PORT, async () => {
 })
 serverSSL.listen(443, async () => {
 	console.log('listen: ', 443)
-	wpService = new WhatsAppClient()
-	wpService.initClient()
 })
 
 Store.getInstance()
