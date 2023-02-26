@@ -107,7 +107,11 @@ export default class WhatsAppClient {
       const driver = this.store.findDriverById(notification.driver_id)
       this.client.sendMessage('573103794656@c.us', Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
-			}).catch(e => console.log('serviceAssigned', e))
+			}).catch(e => {
+				console.log('serviceAssigned', e)
+				Sentry.captureException(e)
+				throw e
+			})
     } else {
       console.error('can not send message cause driver id is not set')
     }
@@ -117,21 +121,33 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage('573103794656@c.us', Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
-		}).catch(e => console.log('driverArrived', e))
+		}).catch(e => {
+			console.log('driverArrived', e)
+			Sentry.captureException(e)
+			throw e
+		})
   }
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage('573103794656@c.us', Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
-		}).catch(e => console.log('serviceCanceled', e))
+		}).catch(e => {
+			console.log('serviceCanceled', e)
+			Sentry.captureException(e)
+			throw e
+		})
   }
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage('573103794656@c.us', Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
-		}).catch(e => console.log('serviceTerminated', e))
+		}).catch(e => {
+			console.log('serviceTerminated', e)
+			Sentry.captureException(e)
+			throw e
+		})
   }
   
   logout = (): void => {

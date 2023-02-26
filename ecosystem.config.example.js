@@ -9,7 +9,7 @@ module.exports = {
     env: {
       "NODE_ENV": "local",
       "PORT": 80,
-      "DOMAIN": "localhost",
+      "APP_DOMAIN": "localhost",
       "BASE_URL": "http://localhost",
       "FIREBASE_AUTHDOMAIN": "gorda-driver",
       "FIREBASE_PROJECT_ID": "gorda-driver",
