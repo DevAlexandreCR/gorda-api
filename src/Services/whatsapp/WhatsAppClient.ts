@@ -30,9 +30,7 @@ export default class WhatsAppClient {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--unhandled-rejections=strict',
-					'--single-process',
-					'--no-zygote'
+          '--unhandled-rejections=strict'
         ]
       }
     })
@@ -62,6 +60,10 @@ export default class WhatsAppClient {
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
 		setInterval(this.keepSessionAlive, 300000)
+		this.client.pupPage?.on('close', async () => {
+			this.client.pupBrowser?.close()
+			await this.client.initialize()
+		})
   }
 
   onQR = (qr: string): void => {
