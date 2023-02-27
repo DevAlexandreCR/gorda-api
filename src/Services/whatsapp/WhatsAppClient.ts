@@ -30,7 +30,9 @@ export default class WhatsAppClient {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--unhandled-rejections=strict'
+          '--unhandled-rejections=strict',
+					'--single-process',
+					'--no-zygote'
         ]
       }
     })
