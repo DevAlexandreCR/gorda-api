@@ -98,6 +98,8 @@ export default class WhatsAppClient {
     }).catch(e => {
       console.log('getState:: ', e.message)
       if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
+			Sentry.captureException(e)
+			throw e
     })
   }
   
