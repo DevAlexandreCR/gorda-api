@@ -76,5 +76,6 @@ export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLAN
   '*Pepito Perez*\n' +
   '*Maria Paz*'
 export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
+export const PING = 'WP running!'
 export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino '+
   'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'

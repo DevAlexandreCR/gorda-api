@@ -20,6 +20,8 @@ export default class WhatsAppClient {
   initClient(): void {
     this.client = new Client({
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
+			qrMaxRetries: 2,
+			takeoverOnConflict: true,
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
         headless: true,
@@ -28,7 +30,9 @@ export default class WhatsAppClient {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--unhandled-rejections=strict'
+          '--unhandled-rejections=strict',
+					'--single-process',
+					'--no-zygote'
         ]
       }
     })
@@ -57,6 +61,7 @@ export default class WhatsAppClient {
 		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
+		setInterval(this.keepSessionAlive, 600000)
   }
 
   onQR = (qr: string): void => {
@@ -159,4 +164,12 @@ export default class WhatsAppClient {
       })
       .catch(e => console.log(e))
   }
+	
+	keepSessionAlive = (): void => {
+		this.client.sendMessage('573116699636@c.us', Messages.PING).catch(e => {
+			console.log('Ping!', e)
+			Sentry.captureException(e)
+			throw e
+		})
+	}
 }
