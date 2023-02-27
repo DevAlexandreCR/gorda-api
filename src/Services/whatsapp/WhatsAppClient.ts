@@ -61,7 +61,7 @@ export default class WhatsAppClient {
 		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
-		setInterval(this.keepSessionAlive, 600000)
+		setInterval(this.keepSessionAlive, 300000)
   }
 
   onQR = (qr: string): void => {
@@ -74,12 +74,13 @@ export default class WhatsAppClient {
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-    console.log('disconnected ', reason)
+    console.log('Client disconnected', reason)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
-    await this.client.destroy()
-      .catch(e => {
-        console.log('destroy ', e.message)
-      })
+    if (reason === 'NAVIGATION') await this.client.destroy().catch(e => {
+			console.log('destroy ', e.message)
+			Sentry.captureException(e)
+			throw e
+		})
   }
   
   onAuthFailure = (message: string): void => {
@@ -166,7 +167,7 @@ export default class WhatsAppClient {
   }
 	
 	keepSessionAlive = (): void => {
-		this.client.sendMessage('573116699636@c.us', Messages.PING).catch(e => {
+		if (!this.client.pupPage?.isClosed()) this.client.sendMessage('573116699636@c.us', Messages.PING).catch(e => {
 			console.log('Ping!', e)
 			Sentry.captureException(e)
 			throw e
