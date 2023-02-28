@@ -173,7 +173,11 @@ export default class WhatsAppClient {
       .then(() => {
         if (this.socket) this.socket.emit('destroy')
       })
-      .catch(e => Sentry.captureException(e))
+      .catch(e => {
+				console.log('logout: ', e)
+				Sentry.captureException(e)
+				exit(1)
+			})
   }
 	
 	keepSessionAlive = (): void => {
