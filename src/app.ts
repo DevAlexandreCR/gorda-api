@@ -1,17 +1,18 @@
-import express from 'express'
-import {createServer} from 'http'
-import {Server, Socket} from 'socket.io'
+import express, {Application} from 'express'
+import http, {Server as HTTPServer} from 'http'
+import https, {Server as HTTPSServer} from 'https'
+import {Server as SocketIOServer, Socket} from 'socket.io'
 import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
 import {Store} from './Services/store/Store'
 import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
 import {Locale} from './Helpers/Locale'
+import SSL from './Helpers/SSL'
 
 Locale.getInstance()
 
-const app: express.Application = express()
-const server = createServer(app)
+const app: Application = express()
 let wpService: WhatsAppClient
 
 Sentry.init({
@@ -22,18 +23,28 @@ Sentry.init({
   
   tracesSampleRate: 0.8
 })
+
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler());
+app.use(express.static(__dirname, { dotfiles: 'allow' } ));
+
+const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
+const server: HTTPServer = http.createServer(app)
+
+const io: SocketIOServer = new SocketIOServer()
+io.attach(server, {cors: {origin: true}})
+io.attach(serverSSL, {cors: {origin: true}})
 server.listen(config.PORT, async () => {
-  console.log('listen: ', config.PORT)
-  wpService = new WhatsAppClient()
-  wpService.initClient()
+	console.log('listen: ', config.PORT)
+	wpService = new WhatsAppClient()
+	wpService.initClient()
+})
+serverSSL.listen(443, async () => {
+	console.log('listen: ', 443)
 })
 
 Store.getInstance()
-
-const io = new Server(server, {cors: {origin: true}})
 
 io.on('connection', (socket: Socket) => {
   wpService.setSocket(socket)
@@ -45,6 +56,7 @@ io.on('connection', (socket: Socket) => {
     wpService.init().then(() => {
       console.log('whatsapp client initialized !!!!')
     }).catch(async e => {
+			Sentry.captureException(e)
       console.log('error while authentication', e)
     })
   })

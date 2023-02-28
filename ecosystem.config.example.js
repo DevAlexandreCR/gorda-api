@@ -1,0 +1,28 @@
+module.exports = {
+  apps : [{
+    name: 'wp-api',
+    script: '/path/to/wp-api/build/src/app.js',
+    watch: false,
+    instances: 1,
+    cron_restart: '0 6 * * *',
+    wait_ready: true,
+    env: {
+      "NODE_ENV": "local",
+      "PORT": 80,
+      "APP_DOMAIN": "localhost",
+      "BASE_URL": "http://localhost",
+      "FIREBASE_AUTHDOMAIN": "gorda-driver",
+      "FIREBASE_PROJECT_ID": "gorda-driver",
+      "FIREBASE_DATABASE_URL": "http://gorda-driver-default-rtdb.appspot.com:9199",
+      "FIREBASE_STORAGE_BUCKET": "gorda-driver",
+      "FIREBASE_MESSAGING_ID": "123456789098",
+      "FIREBASE_APP_ID": "1:120116404187:web:a70c38fabcd123456",
+      "FIREBASE_MEASUREMENT_ID": "G-1234567890",
+      "FIREBASE_API_KEY": "AIzaSyBglx4HYweEXGAasflknlkfnankda",
+      "DEFAULT_CLIENT_PHOTO_URL": "https://firebasestorage.googleapis.com/v0/b/gorda-driver.appspot.com/o/assets%2Fdefault_user.png?alt=media&token=89da7515-68d7-4d49-92ec-d88ce73514e6",
+      "PQR_NUMBER": "3225351906",
+      "SENTRY_DSN": "https://11f18cf765d54e30ace09a32259f4b48@o1307123.ingest.sentry.io/1234567",
+      "CHROMIUM_PATH": "/usr/bin/chromium-browser",
+    }
+  }]
+}

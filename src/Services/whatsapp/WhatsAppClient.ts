@@ -20,6 +20,8 @@ export default class WhatsAppClient {
   initClient(): void {
     this.client = new Client({
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
+			qrMaxRetries: 2,
+			takeoverOnConflict: true,
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
         headless: true,
@@ -28,7 +30,9 @@ export default class WhatsAppClient {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--unhandled-rejections=strict'
+          '--unhandled-rejections=strict',
+					'--single-process',
+					'--no-zygote'
         ]
       }
     })
@@ -57,6 +61,11 @@ export default class WhatsAppClient {
 		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
+		setInterval(this.keepSessionAlive, 300000)
+		this.client.pupPage?.on('close', async () => {
+			this.client.pupBrowser?.close()
+			await this.client.initialize()
+		})
   }
 
   onQR = (qr: string): void => {
@@ -69,12 +78,13 @@ export default class WhatsAppClient {
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-    console.log('disconnected ', reason)
+    console.log('Client disconnected', reason)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
-    await this.client.destroy()
-      .catch(e => {
-        console.log('destroy ', e.message)
-      })
+    if (reason === 'NAVIGATION') await this.client.destroy().catch(e => {
+			console.log('destroy ', e.message)
+			Sentry.captureException(e)
+			throw e
+		})
   }
   
   onAuthFailure = (message: string): void => {
@@ -98,6 +108,8 @@ export default class WhatsAppClient {
     }).catch(e => {
       console.log('getState:: ', e.message)
       if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
+			Sentry.captureException(e)
+			throw e
     })
   }
   
@@ -107,7 +119,11 @@ export default class WhatsAppClient {
       const driver = this.store.findDriverById(notification.driver_id)
       this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
-			}).catch(e => Sentry.captureException(e))
+			}).catch(e => {
+				console.log('serviceAssigned', e)
+				Sentry.captureException(e)
+				throw e
+			})
     } else {
       console.error('can not send message cause driver id is not set')
     }
@@ -117,21 +133,33 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
-		}).catch(e => Sentry.captureException(e))
+		}).catch(e => {
+			console.log('driverArrived', e)
+			Sentry.captureException(e)
+			throw e
+		})
   }
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
-		}).catch(e => Sentry.captureException(e))
+		}).catch(e => {
+			console.log('serviceCanceled', e)
+			Sentry.captureException(e)
+			throw e
+		})
   }
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
-		}).catch(e => Sentry.captureException(e))
+		}).catch(e => {
+			console.log('serviceTerminated', e)
+			Sentry.captureException(e)
+			throw e
+		})
   }
   
   logout = (): void => {
@@ -141,4 +169,12 @@ export default class WhatsAppClient {
       })
       .catch(e => Sentry.captureException(e))
   }
+	
+	keepSessionAlive = (): void => {
+		if (!this.client.pupPage?.isClosed()) this.client.sendMessage('573103794656@c.us', Messages.PING).catch(e => {
+			console.log('Ping!', e)
+			Sentry.captureException(e)
+			throw e
+		})
+	}
 }
