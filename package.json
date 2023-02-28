@@ -1,10 +1,10 @@
 {
   "name": "gorda-api",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "WhatsApp chatbot to gorda admin",
   "main": "src/app.ts",
   "scripts": {
-    "build": "tsc -p .",
+    "build": "tsc -p . && cp -r src/.well-known build/src/.well-known",
     "serve": "tsc && node build/src/app.js",
     "watch": "nodemon src/app.ts --ignore 'storage/'"
   },

@@ -1,9 +1,11 @@
-require('dotenv').config();
+const path = require("path");
+require('dotenv').config({path: path.join(__dirname, '.env')});
 
 module.exports = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   HOST: process.env.HOST || 'localhost',
   PORT: process.env.PORT || 3000,
+  APP_DOMAIN: process.env.APP_DOMAIN || 'localhost',
   FIREBASE_DATABASE_URL: process.env.FIREBASE_DATABASE_URL || 'http://localhost:9000',
   AUTHENTICATION_EMULATOR_HOST: process.env.AUTHENTICATION_EMULATOR_HOST || 'http://localhost:9099',
   DATABASE_EMULATOR_HOST: process.env.DATABASE_EMULATOR_HOST || 'localhost',
