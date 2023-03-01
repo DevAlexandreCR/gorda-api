@@ -47,7 +47,10 @@ export default class WhatsAppClient {
     
     this.init()
       .then(() => console.log('authenticated after init server'))
-      .catch(e => Sentry.captureException(e))
+      .catch(e => {
+				Sentry.captureException(e)
+				exit(1)
+			})
   }
   
   setSocket(socket: Socket): void {
@@ -80,7 +83,8 @@ export default class WhatsAppClient {
   }
   
   onAuth = (): void => {
-    console.log('authentication successfully!')
+		const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
+		console.log('authentication successfully!', dateString)
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
