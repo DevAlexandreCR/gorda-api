@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# Release Notes for 1.1.x
+
+## [1.1.1 (2023-02-28)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.0.7...v1.1.1)
+
+### Changed
+- Add exit after crash. [#33](https://github.com/DevAlexandreCR/gorda-api/pull/33)
+
 # Release Notes for 1.0.x
 
 ## [1.0.7 (2023-01-08)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.0.6...v1.0.7)

@@ -14,7 +14,7 @@ class WpNotificationRepository {
     await Database.dbWpNotifications()
     .child('assigned')
     .orderByKey()
-    .limitToLast(1)
+    .limitToLast(3)
     .on('child_added', onAssigned)
   }
 
@@ -22,7 +22,7 @@ class WpNotificationRepository {
     await Database.dbWpNotifications()
     .child('canceled')
     .orderByKey()
-    .limitToLast(1)
+    .limitToLast(3)
     .on('child_added', onCanceled)
   }
 
@@ -30,7 +30,7 @@ class WpNotificationRepository {
     await Database.dbWpNotifications()
     .child('terminated')
     .orderByKey()
-    .limitToLast(1)
+    .limitToLast(3)
     .on('child_added', onTerminated)
   }
 
@@ -38,7 +38,7 @@ class WpNotificationRepository {
     await Database.dbWpNotifications()
     .child('arrived')
     .orderByKey()
-    .limitToLast(1)
+    .limitToLast(3)
     .on('child_added', onArrived)
   }
 }

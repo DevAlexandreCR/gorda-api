@@ -8,6 +8,7 @@ import {Store} from '../store/Store'
 import config from '../../../config';
 import {WpNotificationType} from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
+import {exit} from 'process'
 
 export default class WhatsAppClient {
   
@@ -46,7 +47,10 @@ export default class WhatsAppClient {
     
     this.init()
       .then(() => console.log('authenticated after init server'))
-      .catch(e => Sentry.captureException(e))
+      .catch(e => {
+				Sentry.captureException(e)
+				exit(1)
+			})
   }
   
   setSocket(socket: Socket): void {
@@ -63,8 +67,8 @@ export default class WhatsAppClient {
     console.table(this.client.pupBrowser?._targets)
 		setInterval(this.keepSessionAlive, 300000)
 		this.client.pupPage?.on('close', async () => {
-			this.client.pupBrowser?.close()
-			await this.client.initialize()
+			const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
+			console.log('Page Closed', dateString)
 		})
   }
 
@@ -74,7 +78,8 @@ export default class WhatsAppClient {
   }
   
   onAuth = (): void => {
-    console.log('authentication successfully!')
+		const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
+		console.log('authentication successfully!', dateString)
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
@@ -83,7 +88,7 @@ export default class WhatsAppClient {
     if (reason === 'NAVIGATION') await this.client.destroy().catch(e => {
 			console.log('destroy ', e.message)
 			Sentry.captureException(e)
-			throw e
+			exit(1)
 		})
   }
   
@@ -109,7 +114,7 @@ export default class WhatsAppClient {
       console.log('getState:: ', e.message)
       if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
 			Sentry.captureException(e)
-			throw e
+			exit(1)
     })
   }
   
@@ -122,7 +127,7 @@ export default class WhatsAppClient {
 			}).catch(e => {
 				console.log('serviceAssigned', e)
 				Sentry.captureException(e)
-				throw e
+				exit(1)
 			})
     } else {
       console.error('can not send message cause driver id is not set')
@@ -136,7 +141,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('driverArrived', e)
 			Sentry.captureException(e)
-			throw e
+			exit(1)
 		})
   }
 
@@ -147,7 +152,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('serviceCanceled', e)
 			Sentry.captureException(e)
-			throw e
+			exit(1)
 		})
   }
 
@@ -158,7 +163,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('serviceTerminated', e)
 			Sentry.captureException(e)
-			throw e
+			exit(1)
 		})
   }
   
@@ -167,14 +172,18 @@ export default class WhatsAppClient {
       .then(() => {
         if (this.socket) this.socket.emit('destroy')
       })
-      .catch(e => Sentry.captureException(e))
+      .catch(e => {
+				console.log('logout: ', e)
+				Sentry.captureException(e)
+				exit(1)
+			})
   }
 	
 	keepSessionAlive = (): void => {
 		if (!this.client.pupPage?.isClosed()) this.client.sendMessage('573103794656@c.us', Messages.PING).catch(e => {
 			console.log('Ping!', e)
 			Sentry.captureException(e)
-			throw e
+			exit(1)
 		})
 	}
 }
