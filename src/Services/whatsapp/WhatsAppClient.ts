@@ -69,11 +69,6 @@ export default class WhatsAppClient {
 		this.client.pupPage?.on('close', async () => {
 			const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
 			console.log('Page Closed', dateString)
-			await this.client.initialize().catch(e => {
-				console.log('Restarting after page close ', e.message)
-				Sentry.captureException(e)
-				exit(1)
-			})
 		})
   }
 
