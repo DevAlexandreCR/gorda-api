@@ -22,7 +22,7 @@ export default class WhatsAppClient {
     this.client = new Client({
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
 			qrMaxRetries: 2,
-			takeoverOnConflict: true,
+			takeoverOnConflict: false,
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
         headless: true,
@@ -60,8 +60,6 @@ export default class WhatsAppClient {
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
     WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
-		WpNotificationRepository.onServiceTerminated(this.serviceTerminated).catch(e => Sentry.captureException(e))
-		WpNotificationRepository.onServiceCanceled(this.serviceCanceled).catch(e => Sentry.captureException(e))
 		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
@@ -113,8 +111,6 @@ export default class WhatsAppClient {
     }).catch(e => {
       console.log('getState:: ', e.message)
       if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
-			Sentry.captureException(e)
-			exit(1)
     })
   }
   
