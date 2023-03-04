@@ -47,8 +47,10 @@ serverSSL.listen(443, async () => {
 Store.getInstance()
 
 io.on('connection', (socket: Socket) => {
-  wpService.setSocket(socket)
-
+	console.log('connected', socket.id)
+	
+	if (!wpService.thereIsSocket()) wpService.setSocket(io)
+	
   socket.emit('client', wpService.client.info)
 
   socket.on('auth', async () => {
