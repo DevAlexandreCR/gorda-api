@@ -104,7 +104,7 @@ export default class WhatsAppClient {
   
   onStateChanged = (waState: WAState): void => {
     if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
-		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 10000)
+		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
 		else clearInterval(this.intervalKeepAlive?.ref())
     console.log('change_state ', waState)
   }
