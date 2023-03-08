@@ -87,7 +87,7 @@ export default class WhatsAppClient {
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-		clearInterval(this.intervalKeepAlive.ref())
+		clearInterval(this.intervalKeepAlive?.ref())
     console.log('Client disconnected '  + DateHelper.dateString(), reason)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
     if (reason === 'NAVIGATION') await this.client.destroy().catch(e => {
@@ -104,8 +104,8 @@ export default class WhatsAppClient {
   
   onStateChanged = (waState: WAState): void => {
     if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
-		if (waState == 'CONNECTED') this.intervalKeepAlive = setInterval(this.keepSessionAlive, 10000)
-		else clearInterval(this.intervalKeepAlive.ref())
+		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 10000)
+		else clearInterval(this.intervalKeepAlive?.ref())
     console.log('change_state ', waState)
   }
   
