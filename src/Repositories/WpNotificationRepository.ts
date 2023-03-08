@@ -33,6 +33,14 @@ class WpNotificationRepository {
     .limitToLast(3)
     .on('child_added', onTerminated)
   }
+	
+	public async onNewService(onNew: (data: DataSnapshot) => void): Promise<void> {
+		await Database.dbWpNotifications()
+			.child('new')
+			.orderByKey()
+			.limitToLast(3)
+			.on('child_added', onNew)
+	}
 
   public async onDriverArrived(onArrived: (data: DataSnapshot) => void): Promise<void> {
     await Database.dbWpNotifications()

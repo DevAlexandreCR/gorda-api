@@ -8,6 +8,7 @@ import {Store} from '../store/Store'
 import config from '../../../config';
 import {WpNotificationType} from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
+import DateHelper from '../../Helpers/DateHelper'
 import {exit} from 'process'
 
 export default class WhatsAppClient {
@@ -17,6 +18,8 @@ export default class WhatsAppClient {
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
+	
+	private intervalKeepAlive: NodeJS.Timeout
   
   initClient(): void {
     this.client = new Client({
@@ -32,7 +35,6 @@ export default class WhatsAppClient {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--unhandled-rejections=strict',
-					'--single-process',
 					'--no-zygote'
         ]
       }
@@ -65,12 +67,12 @@ export default class WhatsAppClient {
     this.chatBot = new ChatBot(this.client)
     WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
 		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
+		WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
-		setInterval(this.keepSessionAlive, 300000)
+		this.intervalKeepAlive = setInterval(this.keepSessionAlive, 10000)
 		this.client.pupPage?.on('close', async () => {
-			const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
-			console.log('Page Closed', dateString)
+			console.log('Page Closed', DateHelper.dateString())
 		})
   }
 
@@ -85,7 +87,8 @@ export default class WhatsAppClient {
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-    console.log('Client disconnected', reason)
+		clearInterval(this.intervalKeepAlive?.ref())
+    console.log('Client disconnected '  + DateHelper.dateString(), reason)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
     if (reason === 'NAVIGATION') await this.client.destroy().catch(e => {
 			console.log('destroy ', e.message)
@@ -101,11 +104,13 @@ export default class WhatsAppClient {
   
   onStateChanged = (waState: WAState): void => {
     if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
+		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 10000)
+		else clearInterval(this.intervalKeepAlive?.ref())
     console.log('change_state ', waState)
   }
   
   init = async (web = true): Promise<void> => {
-    console.log('initializing whatsapp client...')
+    console.log('initializing whatsapp client...', DateHelper.dateString())
 		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e))
     return this.client.initialize()
   }
@@ -167,6 +172,17 @@ export default class WhatsAppClient {
 			exit(1)
 		})
   }
+	
+	onNewService = async (snapshot: DataSnapshot): Promise<void> => {
+		const notification: WpNotificationType = snapshot.val()
+		this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
+			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
+		}).catch(e => {
+			console.log('onNewService', e)
+			Sentry.captureException(e)
+			exit(1)
+		})
+	}
   
   logout = (): void => {
     this.client.logout()

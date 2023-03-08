@@ -78,6 +78,5 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('disconnect', reason => {
     console.log('disconnecting ...', reason)
-    socket.disconnect(true)
   })
 })

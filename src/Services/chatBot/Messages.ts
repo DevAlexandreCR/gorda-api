@@ -69,6 +69,8 @@ export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶
   '_Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +
 	'_Ten en cuenta nuestras tarifas cambiaron, ahora la mínima 5.000 en el día y 5.500 en la noche_ 💕 \n \n' +
   '*GRACIAS POR CONFIAR EN RED BLANCA POPAYÁN❣️✨*'
+export const NEW_SERVICE = 'Con gusto!☺️ en un momento el móvil se comunica contigo \n \n' +
+	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
 export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
 export const SERVICE_COMPLETED = 'Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n \nSi quieres presentar una solicitud queja o reclamo! ' +
   `Escribe al ${config.PQR_NUMBER}\n` +
