@@ -70,7 +70,7 @@ export default class WhatsAppClient {
 		WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
-		this.intervalKeepAlive = setInterval(this.keepSessionAlive, 10000)
+		this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
 		this.client.pupPage?.on('close', async () => {
 			console.log('Page Closed', DateHelper.dateString())
 		})
