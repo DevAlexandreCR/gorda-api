@@ -1,6 +1,6 @@
 import {Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
 import * as Sentry from '@sentry/node'
-import {Socket} from 'socket.io'
+import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
 import {DataSnapshot} from 'firebase-admin/lib/database'
 import * as Messages from '../chatBot/Messages'
@@ -14,7 +14,7 @@ import {exit} from 'process'
 export default class WhatsAppClient {
   
   public client: Client
-  private socket: Socket | null
+  private socket: SocketIOServer | null = null
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
@@ -23,7 +23,7 @@ export default class WhatsAppClient {
     this.client = new Client({
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
 			qrMaxRetries: 2,
-			takeoverOnConflict: true,
+			takeoverOnConflict: false,
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
         headless: true,
@@ -45,7 +45,7 @@ export default class WhatsAppClient {
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
     
-    this.init()
+    this.init(false)
       .then(() => console.log('authenticated after init server'))
       .catch(e => {
 				Sentry.captureException(e)
@@ -53,15 +53,17 @@ export default class WhatsAppClient {
 			})
   }
   
-  setSocket(socket: Socket): void {
+  setSocket(socket: SocketIOServer): void {
     this.socket = socket
   }
+	
+	thereIsSocket(): boolean {
+		return this.socket !== null
+	}
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
     WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
-		WpNotificationRepository.onServiceTerminated(this.serviceTerminated).catch(e => Sentry.captureException(e))
-		WpNotificationRepository.onServiceCanceled(this.serviceCanceled).catch(e => Sentry.captureException(e))
 		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
 		WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
@@ -78,7 +80,8 @@ export default class WhatsAppClient {
   }
   
   onAuth = (): void => {
-		console.log('authentication successfully!', DateHelper.dateString())
+		const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
+		console.log('authentication successfully!', dateString)
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
@@ -101,8 +104,9 @@ export default class WhatsAppClient {
     console.log('change_state ', waState)
   }
   
-  init = (): Promise<void> => {
+  init = async (web = true): Promise<void> => {
     console.log('initializing whatsapp client...', DateHelper.dateString())
+		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e))
     return this.client.initialize()
   }
   
@@ -112,8 +116,6 @@ export default class WhatsAppClient {
     }).catch(e => {
       console.log('getState:: ', e.message)
       if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
-			Sentry.captureException(e)
-			exit(1)
     })
   }
   
