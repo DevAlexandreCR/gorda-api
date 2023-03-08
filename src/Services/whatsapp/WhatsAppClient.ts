@@ -197,7 +197,7 @@ export default class WhatsAppClient {
   }
 	
 	keepSessionAlive = (): void => {
-		this.client.sendMessage('573103794656@c.us', Messages.PING).catch(e => {
+		if (!this.client.pupPage?.isClosed()) this.client.sendMessage('573103794656@c.us', Messages.PING).catch(e => {
 			console.log('Ping!', e)
 			Sentry.captureException(e)
 			exit(1)
