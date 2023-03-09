@@ -106,7 +106,7 @@ export default class WhatsAppClient {
     if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
 		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
 		else clearInterval(this.intervalKeepAlive?.ref())
-    console.log('change_state ', waState)
+    console.log('change_state ', waState, DateHelper.dateString())
   }
   
   init = async (web = true): Promise<void> => {
