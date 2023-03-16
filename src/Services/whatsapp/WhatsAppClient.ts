@@ -1,4 +1,4 @@
-import {Call, Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
+import {Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
 import * as Sentry from '@sentry/node'
 import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
