@@ -8,8 +8,9 @@ import {Store} from '../store/Store'
 import config from '../../../config';
 import {WpNotificationType} from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
-import DateHelper from '../../Helpers/DateHelper'
 import {exit} from 'process'
+import {EmitEvents} from './EmitEvents'
+import {LoadingType} from '../../Interfaces/LoadingType'
 
 export default class WhatsAppClient {
   
@@ -46,8 +47,9 @@ export default class WhatsAppClient {
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
-    
-    this.init(false)
+		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
+	
+		this.init(false)
       .then(() => console.log('authenticated after init server'))
       .catch(e => {
 				Sentry.captureException(e)
@@ -71,9 +73,6 @@ export default class WhatsAppClient {
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
 		this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
-		this.client.pupPage?.on('close', async () => {
-			console.log('Page Closed', DateHelper.dateString())
-		})
   }
 
   onQR = (qr: string): void => {
@@ -82,16 +81,16 @@ export default class WhatsAppClient {
   }
   
   onAuth = (): void => {
-		const dateString = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
-		console.log('authentication successfully!', dateString)
+		console.log('authentication successfully!')
   }
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
 		clearInterval(this.intervalKeepAlive?.ref())
-    console.log('Client disconnected '  + DateHelper.dateString(), reason)
+    console.log('Client disconnected ', reason)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
-    if (reason === 'NAVIGATION') await this.client.destroy().catch(e => {
+    if (reason === EmitEvents.NAVIGATION) await this.client.destroy().catch(e => {
 			console.log('destroy ', e.message)
+			this.socket?.emit(EmitEvents.FAILURE, e.message)
 			Sentry.captureException(e)
 			exit(1)
 		})
@@ -101,26 +100,35 @@ export default class WhatsAppClient {
     if (this.socket) this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
     console.log(Events.AUTHENTICATION_FAILURE, message)
   }
-  
+	
+	onLoadingScreen = (percent: string, message: string): void => {
+		const loading: LoadingType = {
+			percent: percent,
+			message: message
+		}
+		if (this.socket) this.socket.emit(Events.LOADING_SCREEN, loading)
+		console.log(Events.LOADING_SCREEN, percent, message)
+	}
+	
   onStateChanged = (waState: WAState): void => {
     if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
 		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
 		else clearInterval(this.intervalKeepAlive?.ref())
-    console.log('change_state ', waState, DateHelper.dateString())
+    console.log(Events.STATE_CHANGED, waState)
   }
   
   init = async (web = true): Promise<void> => {
-    console.log('initializing whatsapp client...', DateHelper.dateString())
+    console.log('initializing whatsapp client...')
 		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e))
     return this.client.initialize()
   }
   
   getState = (): void => {
     this.client.getState().then(state => {
-      if (this.socket) this.socket.emit('get-state', state)
+      if (this.socket) this.socket.emit(EmitEvents.GET_STATE, state)
     }).catch(e => {
-      console.log('getState:: ', e.message)
-      if (this.socket) this.socket.emit('get-state', WAState.UNPAIRED)
+      console.log(EmitEvents.GET_STATE, e.message)
+      if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.UNPAIRED)
     })
   }
   
@@ -191,6 +199,7 @@ export default class WhatsAppClient {
       })
       .catch(e => {
 				console.log('logout: ', e)
+				if (this.socket) this.socket.emit(EmitEvents.FAILURE, e.message)
 				Sentry.captureException(e)
 				exit(1)
 			})
