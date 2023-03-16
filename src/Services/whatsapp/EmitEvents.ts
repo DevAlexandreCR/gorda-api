@@ -9,3 +9,10 @@ export function onAuth(session: ClientSession) {
     }
   })
 }
+
+export enum EmitEvents {
+	FAILURE = 'failure',
+	NAVIGATION = 'NAVIGATION',
+	
+	GET_STATE = 'get-state'
+}
