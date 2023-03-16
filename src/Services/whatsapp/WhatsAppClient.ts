@@ -1,4 +1,4 @@
-import {Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
+import {Call, Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
 import * as Sentry from '@sentry/node'
 import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
@@ -10,6 +10,7 @@ import {WpNotificationType} from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
 import {exit} from 'process'
 import {EmitEvents} from './EmitEvents'
+import {LoadingType} from '../../Interfaces/LoadingType'
 
 export default class WhatsAppClient {
   
@@ -46,8 +47,10 @@ export default class WhatsAppClient {
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
-    
-    this.init(false)
+		this.client.on(Events.CALL, this.onCall)
+		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
+	
+		this.init(false)
       .then(() => console.log('authenticated after init server'))
       .catch(e => {
 				Sentry.captureException(e)
@@ -98,7 +101,21 @@ export default class WhatsAppClient {
     if (this.socket) this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
     console.log(Events.AUTHENTICATION_FAILURE, message)
   }
-  
+	
+	onCall = (call: Call): void => {
+		if (this.socket) this.socket.emit(Events.CALL, JSON.stringify(call))
+		console.log(Events.CALL, JSON.stringify(call))
+	}
+	
+	onLoadingScreen = (percent: string, message: string): void => {
+		const loading: LoadingType = {
+			percent: percent,
+			message: message
+		}
+		if (this.socket) this.socket.emit(Events.LOADING_SCREEN, loading)
+		console.log(Events.LOADING_SCREEN, percent, message)
+	}
+	
   onStateChanged = (waState: WAState): void => {
     if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
 		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
