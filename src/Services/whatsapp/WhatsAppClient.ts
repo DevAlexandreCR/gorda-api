@@ -47,7 +47,6 @@ export default class WhatsAppClient {
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
-		this.client.on(Events.CALL, this.onCall)
 		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
 	
 		this.init(false)
@@ -101,11 +100,6 @@ export default class WhatsAppClient {
     if (this.socket) this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
     console.log(Events.AUTHENTICATION_FAILURE, message)
   }
-	
-	onCall = (call: Call): void => {
-		if (this.socket) this.socket.emit(Events.CALL, JSON.stringify(call))
-		console.log(Events.CALL, JSON.stringify(call))
-	}
 	
 	onLoadingScreen = (percent: string, message: string): void => {
 		const loading: LoadingType = {
