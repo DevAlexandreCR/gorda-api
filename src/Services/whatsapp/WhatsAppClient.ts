@@ -11,6 +11,7 @@ import WpNotificationRepository from '../../Repositories/WpNotificationRepositor
 import {exit} from 'process'
 import {EmitEvents} from './EmitEvents'
 import {LoadingType} from '../../Interfaces/LoadingType'
+import SettingsRepository from '../../Repositories/SettingsRepository'
 
 export default class WhatsAppClient {
   
@@ -41,7 +42,7 @@ export default class WhatsAppClient {
       }
     })
     
-    this.client.on('qr', this.onQR)
+    this.client.on(Events.QR_RECEIVED, this.onQR)
     this.client.on(Events.READY, this.onReady)
     this.client.on(Events.AUTHENTICATED, this.onAuth)
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
@@ -87,6 +88,7 @@ export default class WhatsAppClient {
   onDisconnected = async (reason: string | WAState): Promise<void> => {
 		clearInterval(this.intervalKeepAlive?.ref())
     console.log('Client disconnected ', reason)
+		await SettingsRepository.enableWpNotifications(false)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
     if (reason === EmitEvents.NAVIGATION) await this.client.destroy().catch(e => {
 			console.log('destroy ', e.message)
@@ -111,7 +113,7 @@ export default class WhatsAppClient {
 	}
 	
   onStateChanged = (waState: WAState): void => {
-    if (this.socket) this.socket.emit(Events.STATE_CHANGED, waState)
+    if (this.socket) this.socket.emit(EmitEvents.GET_STATE, waState)
 		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
 		else clearInterval(this.intervalKeepAlive?.ref())
     console.log(Events.STATE_CHANGED, waState)
@@ -119,6 +121,7 @@ export default class WhatsAppClient {
   
   init = async (web = true): Promise<void> => {
     console.log('initializing whatsapp client...')
+		if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e))
     return this.client.initialize()
   }
@@ -141,6 +144,7 @@ export default class WhatsAppClient {
 			}).catch(e => {
 				console.log('serviceAssigned', e)
 				Sentry.captureException(e)
+				if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 				exit(1)
 			})
     } else {
@@ -155,6 +159,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('driverArrived', e)
 			Sentry.captureException(e)
+			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
   }
@@ -166,6 +171,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('serviceCanceled', e)
 			Sentry.captureException(e)
+			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
   }
@@ -177,6 +183,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('serviceTerminated', e)
 			Sentry.captureException(e)
+			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
   }
@@ -188,6 +195,7 @@ export default class WhatsAppClient {
 		}).catch(e => {
 			console.log('onNewService', e)
 			Sentry.captureException(e)
+			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
 	}
@@ -209,6 +217,7 @@ export default class WhatsAppClient {
 		if (!this.client.pupPage?.isClosed()) this.client.sendMessage('573103794656@c.us', Messages.PING).catch(e => {
 			console.log('Ping!', e)
 			Sentry.captureException(e)
+			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
 	}
