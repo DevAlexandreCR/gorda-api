@@ -19,6 +19,10 @@ class DatabaseService {
   public dbWpNotifications(): Reference {
     return this.db.ref('wp_notifications/')
   }
+	
+	public dbSettings(): Reference {
+		return this.db.ref('settings/')
+	}
   
   public dbDrivers(): Reference {
     return this.db.ref('drivers/')

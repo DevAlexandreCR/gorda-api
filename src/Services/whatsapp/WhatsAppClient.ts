@@ -11,6 +11,7 @@ import WpNotificationRepository from '../../Repositories/WpNotificationRepositor
 import {exit} from 'process'
 import {EmitEvents} from './EmitEvents'
 import {LoadingType} from '../../Interfaces/LoadingType'
+import SettingsRepository from '../../Repositories/SettingsRepository'
 
 export default class WhatsAppClient {
   
@@ -87,6 +88,7 @@ export default class WhatsAppClient {
   onDisconnected = async (reason: string | WAState): Promise<void> => {
 		clearInterval(this.intervalKeepAlive?.ref())
     console.log('Client disconnected ', reason)
+		await SettingsRepository.enableWpNotifications(false)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
     if (reason === EmitEvents.NAVIGATION) await this.client.destroy().catch(e => {
 			console.log('destroy ', e.message)
