@@ -1,4 +1,4 @@
-import {Client, Events, LocalAuth, WAState} from 'whatsapp-web.js'
+import {Client, Events, LocalAuth, Message, WAState} from 'whatsapp-web.js'
 import * as Sentry from '@sentry/node'
 import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
@@ -12,6 +12,7 @@ import {exit} from 'process'
 import {EmitEvents} from './EmitEvents'
 import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
+import SessionRepository from '../../Repositories/SessionRepository'
 
 export default class WhatsAppClient {
   
@@ -49,6 +50,7 @@ export default class WhatsAppClient {
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
 		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
+		this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
 	
 		this.init(false)
       .then(() => console.log('authenticated after init server'))
@@ -84,6 +86,12 @@ export default class WhatsAppClient {
   onAuth = (): void => {
 		console.log('authentication successfully!')
   }
+	
+	onMessageReceived = (msg: Message): void => {
+		SessionRepository.addChat(msg).catch((e) => {
+			console.warn('error saving message', e.message)
+		})
+	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
 		clearInterval(this.intervalKeepAlive?.ref())
