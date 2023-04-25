@@ -21,10 +21,7 @@ export default class WhatsAppClient {
   static SESSION_PATH = 'storage/sessions'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
-	
-	private intervalKeepAlive: NodeJS.Timeout
-  
-  initClient(): void {
+	initClient(): void {
     this.client = new Client({
       authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
 			qrMaxRetries: 2,
@@ -75,7 +72,6 @@ export default class WhatsAppClient {
 		WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
-		this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
   }
 
   onQR = (qr: string): void => {
@@ -94,7 +90,6 @@ export default class WhatsAppClient {
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-		clearInterval(this.intervalKeepAlive?.ref())
     console.log('Client disconnected ', reason)
 		await SettingsRepository.enableWpNotifications(false)
     if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
@@ -122,8 +117,6 @@ export default class WhatsAppClient {
 	
   onStateChanged = (waState: WAState): void => {
     if (this.socket) this.socket.emit(EmitEvents.GET_STATE, waState)
-		if (waState == WAState.CONNECTED) this.intervalKeepAlive = setInterval(this.keepSessionAlive, 300000)
-		else clearInterval(this.intervalKeepAlive?.ref())
     console.log(Events.STATE_CHANGED, waState)
   }
   
@@ -220,13 +213,4 @@ export default class WhatsAppClient {
 				exit(1)
 			})
   }
-	
-	keepSessionAlive = (): void => {
-		if (!this.client.pupPage?.isClosed()) this.client.sendMessage('573103794656@c.us', Messages.PING).catch(e => {
-			console.log('Ping!', e)
-			Sentry.captureException(e)
-			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
-			exit(1)
-		})
-	}
 }

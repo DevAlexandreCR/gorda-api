@@ -47,7 +47,7 @@ class SessionRepository {
   }
 	
 	public async addChat(msg: Message) : Promise<void> {
-		await Database.db.ref('chats').child(msg.from.replace(/[^\d]/g, '')).push(msg.body)
+		await Database.db.ref('chats').child(msg.from.replace(/\D/g, '')).push(msg.body)
 	}
 }
 
