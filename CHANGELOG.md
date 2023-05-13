@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.1.x
 
-## [1.1.12 (2023-05-13)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.12...v1.1.11)
+## [1.1.13 (2023-05-13)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.13...v1.1.12)
 
 ### Changed
 - Remove prices from messages. 
