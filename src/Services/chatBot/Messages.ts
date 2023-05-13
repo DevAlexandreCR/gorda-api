@@ -67,7 +67,6 @@ export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor i
 export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER + '\n'
 export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶🏻\n \n' +
   '_Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +
-	'_Ten en cuenta nuestras tarifas cambiaron, ahora la mínima 5.000 en el día y 5.500 en la noche_ 💕 \n \n' +
   '*GRACIAS POR CONFIAR EN RED BLANCA POPAYÁN❣️✨*'
 export const NEW_SERVICE = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicara el móvil contigo 🚗 \n \n' +
 	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
