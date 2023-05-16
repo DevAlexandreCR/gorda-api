@@ -15,7 +15,7 @@ import SettingsRepository from '../../Repositories/SettingsRepository'
 import SessionRepository from '../../Repositories/SessionRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
-import {ASK_FOR_CANCEL, SERVICE_COMPLETED} from '../chatBot/Messages'
+import {ASK_FOR_CANCEL} from '../chatBot/Messages'
 
 export default class WhatsAppClient {
   
