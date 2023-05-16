@@ -13,6 +13,9 @@ import {EmitEvents} from './EmitEvents'
 import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import SessionRepository from '../../Repositories/SessionRepository'
+import ServiceRepository from '../../Repositories/ServiceRepository'
+import Service from '../../Models/Service'
+import {ASK_FOR_CANCEL, SERVICE_COMPLETED} from '../chatBot/Messages'
 
 export default class WhatsAppClient {
   
@@ -199,6 +202,21 @@ export default class WhatsAppClient {
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
+	}
+	
+	cancelTimeout = (serviceId: string): void => {
+		setTimeout(() => {
+			ServiceRepository.findServiceById(serviceId).then((service) => {
+				if (service.status !== Service.STATUS_PENDING) {
+					this.client.sendMessage(service.client_id, ASK_FOR_CANCEL).catch(e => {
+						console.log('cancelTimeout', e)
+						Sentry.captureException(e)
+						if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+						exit(1)
+					})
+				}
+			})
+		}, 1000)
 	}
   
   logout = (): void => {
