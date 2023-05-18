@@ -82,4 +82,5 @@ export const PING = 'WP running!'
 export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino '+
   'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'
 
-export const ASK_FOR_CANCEL = "Aún no se reporta ningún conductor cerca a tí, si deseas cancelar el servicio envía *CANCELAR*"
+export const ASK_FOR_CANCEL = 'Que pena contigo 🥺 por el momento no tengo móvil disponible. \n \n' +
+	'*¿Desea que siga insistiendo?*'
