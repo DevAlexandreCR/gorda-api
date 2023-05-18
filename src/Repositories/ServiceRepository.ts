@@ -14,6 +14,18 @@ class ServiceRepository {
       })
     })
   }
+	
+	public async findServiceStatusById(serviceId: string): Promise<string> {
+		return new Promise((resolve, reject) => {
+			Database.dbServices().child(serviceId).child('status')
+				.once('value', (snapshot) => {
+					if (snapshot.exists()) resolve(<string>snapshot.val())
+					else reject(new Error('not exist'))
+				}, (e) => {
+					reject(e)
+				})
+		})
+	}
   
   public async update(service: ServiceInterface): Promise<ServiceInterface> {
     await Database.dbServices().child(service.id!).set(service)

@@ -13,6 +13,9 @@ import {EmitEvents} from './EmitEvents'
 import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import SessionRepository from '../../Repositories/SessionRepository'
+import ServiceRepository from '../../Repositories/ServiceRepository'
+import Service from '../../Models/Service'
+import {ASK_FOR_CANCEL} from '../chatBot/Messages'
 
 export default class WhatsAppClient {
   
@@ -191,6 +194,7 @@ export default class WhatsAppClient {
 	
 	onNewService = async (snapshot: DataSnapshot): Promise<void> => {
 		const notification: WpNotificationType = snapshot.val()
+		this.cancelTimeout(snapshot.key!!, notification.client_id)
 		this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 		}).catch(e => {
@@ -199,6 +203,21 @@ export default class WhatsAppClient {
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
+	}
+	
+	cancelTimeout = (serviceId: string, clientId: string): void => {
+		setTimeout(() => {
+			ServiceRepository.findServiceStatusById(serviceId).then((status) => {
+				if (status === Service.STATUS_PENDING) {
+					this.client.sendMessage(clientId, ASK_FOR_CANCEL).catch(e => {
+						console.log('cancelTimeout', e)
+						Sentry.captureException(e)
+						if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+						exit(1)
+					})
+				}
+			})
+		}, 420000)
 	}
   
   logout = (): void => {
