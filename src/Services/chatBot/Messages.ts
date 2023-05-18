@@ -63,13 +63,12 @@ export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fu
   '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te '+
   'informaremos. Esto tardara algunos minutos!⏳ .\nSi deseas cancelar el servicio envía *CANCELAR*'
-export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta ms tarde. lamentamos las molestias'
+export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta más tarde. lamentamos las molestias'
 export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER + '\n'
 export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶🏻\n \n' +
   '_Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +
-	'_Ten en cuenta nuestras tarifas cambiaron, ahora la mínima 5.000 en el día y 5.500 en la noche_ 💕 \n \n' +
   '*GRACIAS POR CONFIAR EN RED BLANCA POPAYÁN❣️✨*'
-export const NEW_SERVICE = 'Con gusto!☺️ en un momento el móvil se comunica contigo \n \n' +
+export const NEW_SERVICE = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicara el móvil contigo 🚗 \n \n' +
 	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
 export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
 export const SERVICE_COMPLETED = 'Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n \nSi quieres presentar una solicitud queja o reclamo! ' +
@@ -82,3 +81,6 @@ export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
 export const PING = 'WP running!'
 export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino '+
   'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'
+
+export const ASK_FOR_CANCEL = 'Que pena contigo 🥺 por el momento no tengo móvil disponible. \n \n' +
+	'*¿Desea que siga insistiendo?*'
