@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.1.x
 
+## [1.1.14 (2023-05-20)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.14...v1.1.13)
+
+### Changed
+- Update wp web. [#50](https://github.com/DevAlexandreCR/gorda-api/pull/50)
+
 ## [1.1.13 (2023-05-13)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.13...v1.1.12)
 
 ### Changed

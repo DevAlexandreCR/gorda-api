@@ -1,4 +1,4 @@
-import {Client, Events, LocalAuth, Message, WAState} from 'whatsapp-web.js'
+import {Client, Events, LocalAuth, Message, MessageTypes, WAState} from 'whatsapp-web.js'
 import * as Sentry from '@sentry/node'
 import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
@@ -87,6 +87,7 @@ export default class WhatsAppClient {
   }
 	
 	onMessageReceived = (msg: Message): void => {
+		if (msg.type === MessageTypes.TEXT)
 		SessionRepository.addChat(msg).catch((e) => {
 			console.warn('error saving message', e.message)
 		})
