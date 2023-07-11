@@ -14,5 +14,6 @@ module.exports = {
   DEFAULT_CLIENT_PHOTO_URL: process.env.DEFAULT_CLIENT_PHOTO_URL || 'http://localhost',
   PQR_NUMBER: process.env.PQR_NUMBER || '+573000000000',
   SENTRY_DSN: process.env.SENTRY_DSN || 'https://12f48cf123d54e30ace09a12359f4b48@o13012345.ingest.sentry.io/123456',
-  CHROMIUM_PATH: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser'
+  CHROMIUM_PATH: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser',
+  CANCEL_TIMEOUT: process.env.CANCEL_TIMEOUT || 480000
 }
