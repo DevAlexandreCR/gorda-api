@@ -9,6 +9,13 @@ import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
 import {Locale} from './Helpers/Locale'
 import SSL from './Helpers/SSL'
+import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import {RemoveConnectedDrivers} from './Jobs/RemoveConnectedDrivers'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 Locale.getInstance()
 
@@ -39,6 +46,8 @@ server.listen(config.PORT, async () => {
 	console.log('listen: ', config.PORT)
 	wpService = new WhatsAppClient()
 	wpService.initClient()
+	const removeDrivers = new RemoveConnectedDrivers()
+	removeDrivers.execute()
 })
 serverSSL.listen(443, async () => {
 	console.log('listen: ', 443)

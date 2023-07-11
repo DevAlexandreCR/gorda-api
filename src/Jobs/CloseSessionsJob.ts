@@ -15,7 +15,7 @@ function isSessionAbandoned(session: SessionInterface): boolean {
 export async function updateSessionAbandoned(): Promise<void> {
   const sessions = await SessionRepository.getAbandonedSessions()
   const sessionsAbandoned = Array<SessionInterface>()
-  console.log('updating abandonned sessions...')
+  console.log('updating abandoned sessions...')
   sessions.forEach(session => {
     if (isSessionAbandoned(session)) {
       session.status = Session.STATUS_COMPLETED

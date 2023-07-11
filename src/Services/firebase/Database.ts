@@ -27,6 +27,10 @@ class DatabaseService {
   public dbDrivers(): Reference {
     return this.db.ref('drivers/')
   }
+	
+	public dbConnectedDrivers(): Reference {
+		return this.db.ref('online_drivers/')
+	}
   
   public dbPlaces(): Reference {
     return this.db.ref('places/')
