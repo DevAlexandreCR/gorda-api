@@ -45,7 +45,7 @@ io.attach(serverSSL, {cors: {origin: true}})
 server.listen(config.PORT, async () => {
 	console.log('listen: ', config.PORT)
 	wpService = new WhatsAppClient()
-	// wpService.initClient()
+	wpService.initClient()
 	const removeDrivers = new RemoveConnectedDrivers()
 	removeDrivers.execute()
 })

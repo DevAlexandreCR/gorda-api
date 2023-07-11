@@ -2,7 +2,7 @@ import Database from '../Services/firebase/Database'
 import {SessionInterface} from '../Interfaces/SessionInterface'
 import {DataSnapshot} from 'firebase-admin/database'
 import Session from '../Models/Session'
-import {Message} from 'whatsapp-web.js'
+import {Message, MessageTypes} from 'whatsapp-web.js'
 
 class SessionRepository {
   
@@ -47,7 +47,9 @@ class SessionRepository {
   }
 	
 	public async addChat(msg: Message) : Promise<void> {
-		await Database.db.ref('chats').child(msg.from.replace(/\D/g, '')).push(msg.body)
+		if (msg.type === MessageTypes.TEXT) {
+			await Database.db.ref('chats').child(msg.from.replace(/\D/g, '')).push(msg.body)
+		}
 	}
 }
 
