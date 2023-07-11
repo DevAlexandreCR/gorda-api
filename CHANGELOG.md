@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.1.x
 
+## [1.1.15 (2023-07-10)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.15...v1.1.14)
+
+### Changed
+- Add cron to remove inactive drivers. [#52](https://github.com/DevAlexandreCR/gorda-api/pull/52)
+
 ## [1.1.14 (2023-05-20)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.14...v1.1.13)
 
 ### Changed
