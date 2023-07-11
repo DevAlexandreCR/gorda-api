@@ -207,6 +207,7 @@ export default class WhatsAppClient {
 	}
 	
 	cancelTimeout = (serviceId: string, clientId: string): void => {
+		const timeout = config.CANCEL_TIMEOUT as number
 		setTimeout(() => {
 			ServiceRepository.findServiceStatusById(serviceId).then((status) => {
 				if (status === Service.STATUS_PENDING) {
@@ -218,7 +219,7 @@ export default class WhatsAppClient {
 					})
 				}
 			})
-		}, 420000)
+		}, timeout)
 	}
   
   logout = (): void => {
