@@ -89,6 +89,7 @@ export default class WhatsAppClient {
 	onMessageReceived = (msg: Message): void => {
 		if (msg.type === MessageTypes.TEXT)
 		SessionRepository.addChat(msg).catch((e) => {
+			console.warn('msg message', msg.type, msg.from)
 			console.warn('error saving message', e.message)
 		})
 	}
