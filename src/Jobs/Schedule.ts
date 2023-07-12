@@ -1,9 +1,9 @@
 import cron from 'node-cron'
-import {updateSessionAbandoned} from './CloseSessionsJob'
+import {populateMetrics} from './PopulateMetrics'
 
 class Schedule {
   execute(): void {
-    cron.schedule('*/5 * * * *', updateSessionAbandoned)
+		cron.schedule('10 0 * * *', populateMetrics)
   }
 }
 

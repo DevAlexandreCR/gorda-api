@@ -16,5 +16,6 @@ module.exports = {
   SENTRY_DSN: process.env.SENTRY_DSN || 'https://12f48cf123d54e30ace09a12359f4b48@o13012345.ingest.sentry.io/123456',
   CHROMIUM_PATH: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser',
   CANCEL_TIMEOUT: process.env.CANCEL_TIMEOUT || 480000,
-  DISCONNECT_TIMEOUT: process.env.DISCONNECT_TIMEOUT || 900000
+  DISCONNECT_TIMEOUT: process.env.DISCONNECT_TIMEOUT || 900000,
+  GORDA_API_FUNCTIONS: process.env.GORDA_API_FUNCTIONS || 'http://127.0.0.1:5001/gorda-driver/us-central1/api'
 }

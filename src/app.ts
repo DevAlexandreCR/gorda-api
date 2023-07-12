@@ -13,6 +13,7 @@ import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import {RemoveConnectedDrivers} from './Jobs/RemoveConnectedDrivers'
+import schedule from './Jobs/Schedule'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -48,6 +49,7 @@ server.listen(config.PORT, async () => {
 	wpService.initClient()
 	const removeDrivers = new RemoveConnectedDrivers()
 	removeDrivers.execute()
+	schedule.execute()
 })
 serverSSL.listen(443, async () => {
 	console.log('listen: ', 443)
