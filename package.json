@@ -19,6 +19,7 @@
   "dependencies": {
     "@sentry/node": "^7.5.0",
     "@sentry/tracing": "^7.5.0",
+    "axios": "^1.4.0",
     "dayjs": "^1.11.1",
     "dotenv": "^16.0.0",
     "express": "^4.17.3",
