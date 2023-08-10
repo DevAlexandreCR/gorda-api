@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.1.x
 
+## [1.1.17 (2023-08-09)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.17...v1.1.16)
+
+### Fixed
+- Upgrade version of wp-webjs. [#57](https://github.com/DevAlexandreCR/gorda-api/pull/57)
+
 ## [1.1.16 (2023-07-11)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.16...v1.1.15)
 
 ### Added
