@@ -38,7 +38,7 @@ export default class WhatsAppClient {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--unhandled-rejections=strict',
-					'--no-zygote'
+		  '--no-zygote'
         ]
       }
     })
@@ -49,15 +49,15 @@ export default class WhatsAppClient {
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
-		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
-		this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
-	
-		this.init(false)
-      .then(() => console.log('authenticated after init server'))
-      .catch(e => {
-				Sentry.captureException(e)
-				exit(1)
-			})
+	this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
+	this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
+
+	this.init(false)
+	  .then(() => console.log('authenticated after init server'))
+	  .catch(e => {
+		Sentry.captureException(e)
+		exit(1)
+	  })
   }
   
   setSocket(socket: SocketIOServer): void {
@@ -70,9 +70,9 @@ export default class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
-    WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
-		WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
-		WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
+	  WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
+	  WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
+	  WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
@@ -234,10 +234,10 @@ export default class WhatsAppClient {
         if (this.socket) this.socket.emit('destroy')
       })
       .catch(e => {
-				console.log('logout: ', e)
-				if (this.socket) this.socket.emit(EmitEvents.FAILURE, e.message)
-				Sentry.captureException(e)
-				exit(1)
-			})
+			console.log('logout: ', e)
+			if (this.socket) this.socket.emit(EmitEvents.FAILURE, e.message)
+			Sentry.captureException(e)
+			exit(1)
+		})
   }
 }
