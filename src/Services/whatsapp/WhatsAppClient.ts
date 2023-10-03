@@ -53,7 +53,10 @@ export default class WhatsAppClient {
 	this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
 
 	this.init(false)
-	  .then(() => console.log('authenticated after init server'))
+	  .then(async () => {
+		  console.log('authenticated after init server')
+		  await SettingsRepository.enableWpNotifications(true)
+	  })
 	  .catch(e => {
 		Sentry.captureException(e)
 		exit(1)
