@@ -147,9 +147,10 @@ export default class WhatsAppClient {
       const driver = this.store.findDriverById(notification.driver_id)
       this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
-			}).catch(e => {
+			}).catch(async e => {
 				console.log('serviceAssigned', e)
 				Sentry.captureException(e)
+		  		await SettingsRepository.enableWpNotifications(false)
 				if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 				exit(1)
 			})
@@ -162,9 +163,10 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
-		}).catch(e => {
+		}).catch(async e => {
 			console.log('driverArrived', e)
 			Sentry.captureException(e)
+			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -174,9 +176,10 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
-		}).catch(e => {
+		}).catch(async e => {
 			console.log('serviceCanceled', e)
 			Sentry.captureException(e)
+			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -186,9 +189,10 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
-		}).catch(e => {
+		}).catch(async e => {
 			console.log('serviceTerminated', e)
 			Sentry.captureException(e)
+			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -199,9 +203,10 @@ export default class WhatsAppClient {
 		this.cancelTimeout(snapshot.key!!, notification.client_id)
 		this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
-		}).catch(e => {
+		}).catch(async e => {
 			console.log('onNewService', e)
 			Sentry.captureException(e)
+			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})

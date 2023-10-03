@@ -77,8 +77,8 @@ export abstract class ResponseContract {
   getPlaceFromLocation(message: Message): Array<Place> {
     const locationMessage = message.location
     const place = new Place()
-    if (locationMessage.description && locationMessage.description.length > 2) {
-      place.name = locationMessage.description
+    if (locationMessage.options && locationMessage.options.name) {
+      place.name = locationMessage.options.name
     } else {
       place.name = MessageHelper.USER_LOCATION
     }
