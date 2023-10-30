@@ -16,6 +16,7 @@ import SessionRepository from '../../Repositories/SessionRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
 import {ASK_FOR_CANCEL} from '../chatBot/Messages'
+import { log } from 'console'
 
 export default class WhatsAppClient {
   
@@ -55,7 +56,7 @@ export default class WhatsAppClient {
 	this.init(false)
 	  .then(async () => {
 		  console.log('authenticated after init server')
-		  await SettingsRepository.enableWpNotifications(true)
+		  await SettingsRepository.enableWpNotifications(true).catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
 		Sentry.captureException(e)
@@ -90,11 +91,11 @@ export default class WhatsAppClient {
   }
 	
 	onMessageReceived = (msg: Message): void => {
-		if (msg.type === MessageTypes.TEXT)
-		SessionRepository.addChat(msg).catch((e) => {
-			console.log('msg message', msg.type, msg.from)
-			console.warn('error saving message', e.message)
-		})
+		if (this.isProcessableMsg(msg)) this.chatBot.processMessage(msg)
+	}
+
+	isProcessableMsg(msg: Message): boolean {
+		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-'))
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {

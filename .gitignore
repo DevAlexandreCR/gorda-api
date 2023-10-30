@@ -7,3 +7,4 @@ node_modules
 .env.testing
 firebase.config.js
 .wwebjs_cache/
+firebaseAccount.json
