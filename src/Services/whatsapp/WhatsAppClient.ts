@@ -156,7 +156,6 @@ export default class WhatsAppClient {
 			}).catch(async e => {
 				console.log('serviceAssigned', e)
 				Sentry.captureException(e)
-		  		await SettingsRepository.enableWpNotifications(false)
 				if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 				exit(1)
 			})
@@ -172,7 +171,6 @@ export default class WhatsAppClient {
 		}).catch(async e => {
 			console.log('driverArrived', e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -212,7 +210,6 @@ export default class WhatsAppClient {
 		}).catch(async e => {
 			console.log('onNewService', e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
