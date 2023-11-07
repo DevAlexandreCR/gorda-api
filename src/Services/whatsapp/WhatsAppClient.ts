@@ -12,22 +12,30 @@ import {exit} from 'process'
 import {EmitEvents} from './EmitEvents'
 import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
-import SessionRepository from '../../Repositories/SessionRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
 import {ASK_FOR_CANCEL} from '../chatBot/Messages'
-import { log } from 'console'
+import {WpClient} from "../../Interfaces/WpClient";
 
-export default class WhatsAppClient {
+export class WhatsAppClient {
   
   public client: Client
   private socket: SocketIOServer | null = null
-  static SESSION_PATH = 'storage/sessions'
+  static SESSION_PATH = 'storage/sessions/'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
+	private wpClient: WpClient
+
+	constructor(client: WpClient) {
+		this.wpClient = client
+	}
+
 	initClient(): void {
     this.client = new Client({
-      authStrategy: new LocalAuth({dataPath: WhatsAppClient.SESSION_PATH}),
+      authStrategy: new LocalAuth({
+				clientId: this.wpClient.id,
+				dataPath: WhatsAppClient.SESSION_PATH
+			}),
 			qrMaxRetries: 2,
 			takeoverOnConflict: false,
       puppeteer: {
@@ -39,7 +47,7 @@ export default class WhatsAppClient {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--unhandled-rejections=strict',
-		  '--no-zygote'
+		  		'--no-zygote'
         ]
       }
     })
@@ -50,13 +58,13 @@ export default class WhatsAppClient {
     this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
     this.client.on(Events.STATE_CHANGED, this.onStateChanged)
     this.client.on(Events.DISCONNECTED, this.onDisconnected)
-	this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
-	this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
+		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
+		this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
 
 	this.init(false)
 	  .then(async () => {
-		  console.log('authenticated after init server')
-		  await SettingsRepository.enableWpNotifications(true).catch(e => console.log(e.message))
+		  console.log('authenticated after init server', this.wpClient.alias)
+		  await SettingsRepository.enableWpNotifications(this.wpClient.id, true).catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
 		Sentry.captureException(e)
@@ -77,17 +85,17 @@ export default class WhatsAppClient {
 	  WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
-    if (this.socket) this.socket.emit(Events.READY)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
 
   onQR = (qr: string): void => {
-    if (this.socket) this.socket.emit(Events.QR_RECEIVED, qr)
-    console.log('sending qr code..', qr)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.QR_RECEIVED, qr)
+    console.log('sending qr code..', this.wpClient.alias, qr)
   }
   
   onAuth = (): void => {
-		console.log('authentication successfully!')
+		console.log('authentication successfully!', this.wpClient.alias)
   }
 	
 	onMessageReceived = (msg: Message): void => {
@@ -99,11 +107,11 @@ export default class WhatsAppClient {
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-    console.log('Client disconnected ', reason)
-		await SettingsRepository.enableWpNotifications(false)
-    if (this.socket) this.socket.emit(Events.DISCONNECTED, reason)
+    console.log('Client disconnected ', this.wpClient.alias, reason)
+		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.DISCONNECTED, reason)
     if (reason === EmitEvents.NAVIGATION) await this.client.destroy().catch(e => {
-			console.log('destroy ', e.message)
+			console.log('destroy ', this.wpClient.alias, e.message)
 			this.socket?.emit(EmitEvents.FAILURE, e.message)
 			Sentry.captureException(e)
 			exit(1)
@@ -111,8 +119,8 @@ export default class WhatsAppClient {
   }
   
   onAuthFailure = (message: string): void => {
-    if (this.socket) this.socket.emit(Events.AUTHENTICATION_FAILURE, message)
-    console.log(Events.AUTHENTICATION_FAILURE, message)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.AUTHENTICATION_FAILURE, message)
+    console.log(Events.AUTHENTICATION_FAILURE, this.wpClient.alias, message)
   }
 	
 	onLoadingScreen = (percent: string, message: string): void => {
@@ -120,28 +128,28 @@ export default class WhatsAppClient {
 			percent: percent,
 			message: message
 		}
-		if (this.socket) this.socket.emit(Events.LOADING_SCREEN, loading)
-		console.log(Events.LOADING_SCREEN, percent, message)
+		if (this.socket) this.socket.to(this.wpClient.id).emit(Events.LOADING_SCREEN, loading)
+		console.log(Events.LOADING_SCREEN, this.wpClient.alias, percent, message)
 	}
 	
   onStateChanged = (waState: WAState): void => {
-    if (this.socket) this.socket.emit(EmitEvents.GET_STATE, waState)
-    console.log(Events.STATE_CHANGED, waState)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, waState)
+    console.log(Events.STATE_CHANGED, this.wpClient.alias, waState)
   }
   
   init = async (web = true): Promise<void> => {
-    console.log('initializing whatsapp client...')
-		if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
-		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e))
+    console.log('initializing whatsapp client...', this.wpClient.alias)
+		if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
+		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e, this.wpClient.alias))
     return this.client.initialize()
   }
   
   getState = (): void => {
     this.client.getState().then(state => {
-      if (this.socket) this.socket.emit(EmitEvents.GET_STATE, state)
+      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, state)
     }).catch(e => {
-      console.log(EmitEvents.GET_STATE, e.message)
-      if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.UNPAIRED)
+      console.log(EmitEvents.GET_STATE, this.wpClient.alias, e.message)
+      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.UNPAIRED)
     })
   }
   
@@ -152,10 +160,10 @@ export default class WhatsAppClient {
       this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
 			}).catch(async e => {
-				console.log('serviceAssigned', e)
+				console.log('serviceAssigned', this.wpClient.alias, e)
 				Sentry.captureException(e)
-		  		await SettingsRepository.enableWpNotifications(false)
-				if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+		  		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+				if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 				exit(1)
 			})
     } else {
@@ -168,10 +176,10 @@ export default class WhatsAppClient {
     this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
 		}).catch(async e => {
-			console.log('driverArrived', e)
+			console.log('driverArrived', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
-			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
   }
@@ -181,10 +189,10 @@ export default class WhatsAppClient {
     this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
 		}).catch(async e => {
-			console.log('serviceCanceled', e)
+			console.log('serviceCanceled', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
-			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
   }
@@ -194,10 +202,10 @@ export default class WhatsAppClient {
     this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
 		}).catch(async e => {
-			console.log('serviceTerminated', e)
+			console.log('serviceTerminated', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
-			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
   }
@@ -208,10 +216,10 @@ export default class WhatsAppClient {
 		this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 		}).catch(async e => {
-			console.log('onNewService', e)
+			console.log('onNewService', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
-			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
 	}
@@ -222,9 +230,9 @@ export default class WhatsAppClient {
 			ServiceRepository.findServiceStatusById(serviceId).then((status) => {
 				if (status === Service.STATUS_PENDING) {
 					this.client.sendMessage(clientId, ASK_FOR_CANCEL).catch(e => {
-						console.log('cancelTimeout', e)
+						console.log('cancelTimeout', this.wpClient.alias, e)
 						Sentry.captureException(e)
-						if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
+						if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 						exit(1)
 					})
 				}
@@ -235,11 +243,11 @@ export default class WhatsAppClient {
   logout = (): void => {
     this.client.logout()
       .then(() => {
-        if (this.socket) this.socket.emit('destroy')
+        if (this.socket) this.socket.to(this.wpClient.id).emit('destroy')
       })
       .catch(e => {
-			console.log('logout: ', e)
-			if (this.socket) this.socket.emit(EmitEvents.FAILURE, e.message)
+			console.log('logout: ', this.wpClient.alias, e)
+			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.FAILURE, e.message)
 			Sentry.captureException(e)
 			exit(1)
 		})
