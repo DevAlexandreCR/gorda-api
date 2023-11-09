@@ -66,8 +66,8 @@ serverSSL.listen(443, async () => {
 Store.getInstance()
 
 io.on('connection', (socket: Socket) => {
-	console.log('connected', socket.id)
   const clientId = socket.handshake.query.clientId as string
+  console.log('connected', socket.id, clientId)
 	if (!wpServices[clientId].thereIsSocket()) wpServices[clientId].setSocket(io)
 
   socket.join(clientId)
