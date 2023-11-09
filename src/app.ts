@@ -17,6 +17,7 @@ import schedule from './Jobs/Schedule'
 import SettingsRepository from "./Repositories/SettingsRepository";
 import {WpClient} from "./Interfaces/WpClient";
 import {WhatsAppClientDictionary} from "./Interfaces/WhatsAppClientDiccionary";
+import {ClientDictionary} from "./Interfaces/ClientDiccionary";
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -48,11 +49,13 @@ io.attach(server, {cors: {origin: true}})
 io.attach(serverSSL, {cors: {origin: true}})
 server.listen(config.PORT, async () => {
 	console.log('listen: ', config.PORT)
-  await SettingsRepository.getWpClients().then(clients => {
+  await SettingsRepository.getWpClients((clients: ClientDictionary) => {
     Object.values(clients).forEach((client: WpClient) => {
-      const wpService = new WhatsAppClient(client)
-      wpService.initClient()
-      wpServices[client.id] = wpService
+      if (!wpServices[client.id]) {
+        const wpService = new WhatsAppClient(client)
+        wpService.initClient()
+        wpServices[client.id] = wpService
+      }
     })
   })
 	const removeDrivers = new RemoveConnectedDrivers()
@@ -65,14 +68,14 @@ serverSSL.listen(443, async () => {
 
 Store.getInstance()
 
-io.on('connection', (socket: Socket) => {
+io.on('connection', async (socket: Socket) => {
   const clientId = socket.handshake.query.clientId as string
   console.log('connected', socket.id, clientId)
 	if (!wpServices[clientId].thereIsSocket()) wpServices[clientId].setSocket(io)
 
-  socket.join(clientId)
+  await socket.join(clientId)
 
-  socket.to(clientId).emit('client', wpServices[clientId].client.info)
+  socket.emit('client', wpServices[clientId].client.info)
 
   socket.on('auth', async () => {
     console.log('auth from gorda web...')

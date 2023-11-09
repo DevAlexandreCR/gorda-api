@@ -10,14 +10,14 @@ class SettingsRepository {
 	}
 
 	/* istanbul ignore next */
-	async getWpClients(): Promise<ClientDictionary> {
-		const clients: ClientDictionary = {}
-		await Database.dbWpClients().get().then(snapshot => {
+	async getWpClients(listener: (clients: ClientDictionary) => void): Promise<void> {
+		await Database.dbWpClients().on('value', (snapshot) => {
+			const clients: ClientDictionary = {}
 			snapshot.forEach(data => {
 				if (data.key) clients[data.key] = <WpClient>data.val()
 			})
+			listener(clients)
 		})
-		return clients
 	}
 }
 export default new SettingsRepository()
