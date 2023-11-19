@@ -18,6 +18,7 @@ import SettingsRepository from "./Repositories/SettingsRepository";
 import {WpClient} from "./Interfaces/WpClient";
 import {WhatsAppClientDictionary} from "./Interfaces/WhatsAppClientDiccionary";
 import {ClientDictionary} from "./Interfaces/ClientDiccionary";
+import {requiredClientId} from "./Middlewares/HasData";
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -68,18 +69,22 @@ serverSSL.listen(443, async () => {
 
 Store.getInstance()
 
+io.use(requiredClientId)
+
 io.on('connection', async (socket: Socket) => {
   const clientId = socket.handshake.query.clientId as string
   console.log('connected', socket.id, clientId)
-	if (!wpServices[clientId].thereIsSocket()) wpServices[clientId].setSocket(io)
+	if (wpServices[clientId] && !wpServices[clientId].thereIsSocket()) {
+    wpServices[clientId].setSocket(io)
+  }
 
-  await socket.join(clientId)
+  if (clientId) await socket.join(clientId)
 
-  socket.emit('client', wpServices[clientId].client.info)
+  if (wpServices[clientId]) socket.emit('client', wpServices[clientId].client.info)
 
   socket.on('auth', async () => {
     console.log('auth from gorda web...')
-    wpServices[clientId].init().then(() => {
+    if (wpServices[clientId]) wpServices[clientId].init().then(() => {
       console.log('whatsapp client initialized !!!!')
     }).catch(async e => {
 			Sentry.captureException(e)
@@ -92,12 +97,16 @@ io.on('connection', async (socket: Socket) => {
   })
 
   socket.on('get-state', async () => {
-    wpServices[clientId].getState()
+    if (wpServices[clientId]) wpServices[clientId].getState()
   })
 
   socket.on('destroy', async () => {
     console.log('destroy ....')
-    wpServices[clientId].logout()
+    if (wpServices[clientId]) {
+      wpServices[clientId].deleting = true
+      wpServices[clientId].logout()
+    }
+    delete wpServices[clientId]
   })
 
   socket.on('disconnect', reason => {

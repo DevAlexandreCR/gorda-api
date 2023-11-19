@@ -25,6 +25,7 @@ export class WhatsAppClient {
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
 	private wpClient: WpClient
+	public deleting = false
 
 	constructor(client: WpClient) {
 		this.wpClient = client
@@ -64,7 +65,8 @@ export class WhatsAppClient {
 	this.init(false)
 	  .then(async () => {
 		  console.log('authenticated after init server', this.wpClient.alias)
-		  await SettingsRepository.enableWpNotifications(this.wpClient.id, true).catch(e => console.log(e.message))
+		  if (!this.deleting) await SettingsRepository.enableWpNotifications(this.wpClient.id, true)
+			.catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
 		Sentry.captureException(e)
@@ -107,6 +109,7 @@ export class WhatsAppClient {
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
+		if (typeof this.wpClient.id == undefined) return
     console.log('Client disconnected ', this.wpClient.alias, reason)
 		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.DISCONNECTED, reason)
@@ -241,7 +244,7 @@ export class WhatsAppClient {
 	}
   
   logout = (): void => {
-    this.client.logout()
+    this.client.destroy()
       .then(() => {
         if (this.socket) this.socket.to(this.wpClient.id).emit('destroy')
       })
