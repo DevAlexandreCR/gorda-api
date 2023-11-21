@@ -56,6 +56,8 @@ server.listen(config.PORT, async () => {
         const wpService = new WhatsAppClient(client)
         wpService.initClient()
         wpServices[client.id] = wpService
+      } else {
+        wpServices[client.id].setWpClient(client)
       }
     })
   })

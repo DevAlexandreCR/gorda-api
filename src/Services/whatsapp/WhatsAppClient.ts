@@ -84,9 +84,9 @@ export class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client)
-	  WpNotificationRepository.onServiceAssigned(this.serviceAssigned).catch(e => Sentry.captureException(e))
-	  WpNotificationRepository.onDriverArrived(this.driverArrived).catch(e => Sentry.captureException(e))
-	  WpNotificationRepository.onNewService(this.onNewService).catch(e => Sentry.captureException(e))
+	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned).catch(e => Sentry.captureException(e))
+	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived).catch(e => Sentry.captureException(e))
+	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService).catch(e => Sentry.captureException(e))
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
@@ -101,7 +101,9 @@ export class WhatsAppClient {
   }
 	
 	onMessageReceived = (msg: Message): void => {
-		if (this.isProcessableMsg(msg)) this.chatBot.processMessage(msg)
+		if (this.wpClient.chatBot) {
+			if (this.isProcessableMsg(msg)) this.chatBot.processMessage(msg)
+		}
 	}
 
 	isProcessableMsg(msg: Message): boolean {
@@ -109,7 +111,6 @@ export class WhatsAppClient {
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
-		if (typeof this.wpClient.id == undefined) return
     console.log('Client disconnected ', this.wpClient.alias, reason)
 		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.DISCONNECTED, reason)
@@ -158,7 +159,7 @@ export class WhatsAppClient {
   
   serviceAssigned = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    if (notification.driver_id != null) {
+    if (notification.driver_id != null && notification.wp_client_id == this.wpClient.id) {
       const driver = this.store.findDriverById(notification.driver_id)
       this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
@@ -255,4 +256,9 @@ export class WhatsAppClient {
 			exit(1)
 		})
   }
+
+	setWpClient(client: WpClient): void {
+		this.wpClient.wpNotifications = client.wpNotifications
+		this.wpClient.chatBot = client.chatBot
+	}
 }
