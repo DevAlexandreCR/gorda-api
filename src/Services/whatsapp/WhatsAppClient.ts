@@ -26,6 +26,7 @@ export class WhatsAppClient {
   private store: Store = Store.getInstance()
 	private wpClient: WpClient
 	public deleting = false
+	public starting = false
 
 	constructor(client: WpClient) {
 		this.wpClient = client
@@ -65,10 +66,12 @@ export class WhatsAppClient {
 	this.init(false)
 	  .then(async () => {
 		  console.log('authenticated after init server', this.wpClient.alias)
+			this.starting = false
 		  if (!this.deleting) await SettingsRepository.enableWpNotifications(this.wpClient.id, true)
 			.catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
+			this.starting = false
 		Sentry.captureException(e)
 		exit(1)
 	  })
@@ -142,6 +145,7 @@ export class WhatsAppClient {
   }
   
   init = async (web = true): Promise<void> => {
+		this.starting = true
     console.log('initializing whatsapp client...', this.wpClient.alias)
 		if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e, this.wpClient.alias))

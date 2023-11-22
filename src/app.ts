@@ -111,6 +111,12 @@ io.on('connection', async (socket: Socket) => {
     delete wpServices[clientId]
   })
 
+  socket.on('starting', async () =>{
+    if (wpServices[clientId]) {
+      socket.emit('starting', wpServices[clientId].starting)
+    }
+  })
+
   socket.on('disconnect', reason => {
     console.log('disconnecting ...', reason)
   })
