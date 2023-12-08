@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.20 (2023-12-08)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.20...v1.1.19)
 
 ### Changed
-- Change assigned message. [#63](https://github.com/DevAlexandreCR/gorda-api/pull/63)
+- Change assigned message. [#62](https://github.com/DevAlexandreCR/gorda-api/pull/62)
 
 ## [1.1.19 (2023-08-09)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.19...v1.1.18)
 
