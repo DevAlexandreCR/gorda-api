@@ -55,7 +55,7 @@ export default class WhatsAppClient {
 	this.init(false)
 	  .then(async () => {
 		  console.log('authenticated after init server')
-		  await SettingsRepository.enableWpNotifications(true)
+		  await SettingsRepository.enableWpNotifications(true).catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
 		Sentry.captureException(e)
@@ -90,11 +90,14 @@ export default class WhatsAppClient {
   }
 	
 	onMessageReceived = (msg: Message): void => {
-		if (msg.type === MessageTypes.TEXT)
-		SessionRepository.addChat(msg).catch((e) => {
+		if (this.isProcessableMsg(msg)) SessionRepository.addChat(msg).catch((e) => {
 			console.log('msg message', msg.type, msg.from)
 			console.warn('error saving message', e.message)
 		})
+	}
+
+	isProcessableMsg(msg: Message): boolean {
+		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-'))
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
@@ -148,12 +151,11 @@ export default class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     if (notification.driver_id != null) {
       const driver = this.store.findDriverById(notification.driver_id)
-      this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
+      await this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
 			}).catch(async e => {
 				console.log('serviceAssigned', e)
 				Sentry.captureException(e)
-		  		await SettingsRepository.enableWpNotifications(false)
 				if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 				exit(1)
 			})
@@ -164,12 +166,11 @@ export default class WhatsAppClient {
 
   driverArrived = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
+    await this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('driverArrived', e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -177,7 +178,7 @@ export default class WhatsAppClient {
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
+    await this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('serviceCanceled', e)
@@ -190,7 +191,7 @@ export default class WhatsAppClient {
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
+    await this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('serviceTerminated', e)
@@ -204,12 +205,11 @@ export default class WhatsAppClient {
 	onNewService = async (snapshot: DataSnapshot): Promise<void> => {
 		const notification: WpNotificationType = snapshot.val()
 		this.cancelTimeout(snapshot.key!!, notification.client_id)
-		this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
+		await this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('onNewService', e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(false)
 			if (this.socket) this.socket.emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
