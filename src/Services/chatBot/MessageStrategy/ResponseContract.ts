@@ -60,7 +60,7 @@ export abstract class ResponseContract {
     session.service_id = dbService.id
     await SessionRepository.update(session)
       .then(async () => {
-        await this.sendMessage(client, message.from, Messages.ASK_FOR_DRIVER).then(async () => {
+        await this.sendMessage(client, message.from, Messages.NEW_SERVICE).then(async () => {
           await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
         })
       })
@@ -72,7 +72,6 @@ export abstract class ResponseContract {
 
     return Promise.resolve(service.id)
   }
-  
   
   getPlaceFromLocation(message: Message): Array<Place> {
     const locationMessage = message.location

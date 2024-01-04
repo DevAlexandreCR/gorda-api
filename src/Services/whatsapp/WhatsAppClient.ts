@@ -4,6 +4,7 @@ import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
 import {DataSnapshot} from 'firebase-admin/lib/database'
 import * as Messages from '../chatBot/Messages'
+import {ASK_FOR_CANCEL} from '../chatBot/Messages'
 import {Store} from '../store/Store'
 import config from '../../../config';
 import {WpNotificationType} from '../../Interfaces/WpNotificationType'
@@ -14,8 +15,10 @@ import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
-import {ASK_FOR_CANCEL} from '../chatBot/Messages'
 import {WpClient} from "../../Interfaces/WpClient";
+import Session from "../../Models/Session";
+import SessionRepository from "../../Repositories/SessionRepository";
+import {ServiceInterface} from "../../Interfaces/ServiceInterface";
 
 export class WhatsAppClient {
   
@@ -90,6 +93,7 @@ export class WhatsAppClient {
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService).catch(e => Sentry.captureException(e))
+		ServiceRepository.onServiceChanged(this.serviceChanged).then(() => console.log('service changed'))
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
@@ -110,7 +114,7 @@ export class WhatsAppClient {
 	}
 
 	isProcessableMsg(msg: Message): boolean {
-		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-'))
+		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-')) || msg.type === MessageTypes.LOCATION
 	}
   
   onDisconnected = async (reason: string | WAState): Promise<void> => {
@@ -170,7 +174,6 @@ export class WhatsAppClient {
 			}).catch(async e => {
 				console.log('serviceAssigned', this.wpClient.alias, e)
 				Sentry.captureException(e)
-		  		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
 				if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 				exit(1)
 			})
@@ -186,7 +189,6 @@ export class WhatsAppClient {
 		}).catch(async e => {
 			console.log('driverArrived', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
 			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -199,7 +201,6 @@ export class WhatsAppClient {
 		}).catch(async e => {
 			console.log('serviceCanceled', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
 			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -212,7 +213,6 @@ export class WhatsAppClient {
 		}).catch(async e => {
 			console.log('serviceTerminated', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
 			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -226,7 +226,6 @@ export class WhatsAppClient {
 		}).catch(async e => {
 			console.log('onNewService', this.wpClient.alias, e)
 			Sentry.captureException(e)
-			await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
 			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
 			exit(1)
 		})
@@ -264,5 +263,41 @@ export class WhatsAppClient {
 	setWpClient(client: WpClient): void {
 		this.wpClient.wpNotifications = client.wpNotifications
 		this.wpClient.chatBot = client.chatBot
+	}
+
+	serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
+		if (!this.wpClient.chatBot) return
+		const service = new Service()
+		Object.assign(service, snapshot.val() as ServiceInterface)
+		const session = new Session(service.client_id)
+		session.service_id = service.id
+		session.status = Session.STATUS_REQUESTING_SERVICE
+		let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
+		if (!sessionDB) {
+			sessionDB = await SessionRepository.create(session)
+		}
+		Object.assign(session, sessionDB)
+		switch (service.status) {
+			case Service.STATUS_IN_PROGRESS:
+				const driver = this.store.findDriverById(service.driver_id!!)
+				if (service.metadata && service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
+					await this.client.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
+				} else if (!service.metadata) {
+					await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+					await this.client.sendMessage(service.client_id,
+						Messages.serviceAssigned(driver.vehicle))
+				}
+				break
+			case Service.STATUS_TERMINATED:
+				await session.setStatus(Session.STATUS_COMPLETED)
+				await this.client.sendMessage(service.client_id, Messages.SERVICE_COMPLETED)
+				break
+			case Service.STATUS_CANCELED:
+				await session.setStatus(Session.STATUS_COMPLETED)
+				await this.client.sendMessage(service.client_id, Messages.CANCELED)
+				break
+			default:
+				console.log('new service', service.id)
+		}
 	}
 }
