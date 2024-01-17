@@ -58,6 +58,7 @@ export default class WhatsAppClient {
 		  await SettingsRepository.enableWpNotifications(true).catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
+			console.log(e.message)
 		Sentry.captureException(e)
 		exit(1)
 	  })
