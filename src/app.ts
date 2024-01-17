@@ -49,7 +49,7 @@ server.listen(config.PORT, async () => {
 	wpService.initClient()
 	const removeDrivers = new RemoveConnectedDrivers()
 	removeDrivers.execute()
-	// schedule.execute()
+	schedule.execute()
 })
 serverSSL.listen(443, async () => {
 	console.log('listen: ', 443)
