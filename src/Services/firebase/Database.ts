@@ -20,8 +20,8 @@ class DatabaseService {
     return this.db.ref('wp_notifications/')
   }
 	
-	public dbSettings(): Reference {
-		return this.db.ref('settings/')
+	public dbWpClients(): Reference {
+		return this.db.ref('settings/wp_clients/')
 	}
   
   public dbDrivers(): Reference {
