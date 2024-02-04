@@ -2,7 +2,7 @@ import express, {Application} from 'express'
 import http, {Server as HTTPServer} from 'http'
 import https, {Server as HTTPSServer} from 'https'
 import {Server as SocketIOServer, Socket} from 'socket.io'
-import WhatsAppClient from './Services/whatsapp/WhatsAppClient'
+import {WhatsAppClient} from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
 import {Store} from './Services/store/Store'
 import * as Sentry from '@sentry/node'
@@ -14,6 +14,11 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import {RemoveConnectedDrivers} from './Jobs/RemoveConnectedDrivers'
 import schedule from './Jobs/Schedule'
+import SettingsRepository from "./Repositories/SettingsRepository";
+import {WpClient} from "./Interfaces/WpClient";
+import {WhatsAppClientDictionary} from "./Interfaces/WhatsAppClientDiccionary";
+import {ClientDictionary} from "./Interfaces/ClientDiccionary";
+import {requiredClientId} from "./Middlewares/HasData";
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -21,7 +26,7 @@ dayjs.extend(timezone)
 Locale.getInstance()
 
 const app: Application = express()
-let wpService: WhatsAppClient
+let wpServices: WhatsAppClientDictionary = {}
 
 Sentry.init({
   dsn: config.SENTRY_DSN,
@@ -45,8 +50,17 @@ io.attach(server, {cors: {origin: true}})
 io.attach(serverSSL, {cors: {origin: true}})
 server.listen(config.PORT, async () => {
 	console.log('listen: ', config.PORT)
-	wpService = new WhatsAppClient()
-	wpService.initClient()
+  await SettingsRepository.getWpClients((clients: ClientDictionary) => {
+    Object.values(clients).forEach((client: WpClient) => {
+      if (!wpServices[client.id]) {
+        const wpService = new WhatsAppClient(client)
+        wpService.initClient()
+        wpServices[client.id] = wpService
+      } else {
+        wpServices[client.id].setWpClient(client)
+      }
+    })
+  })
 	const removeDrivers = new RemoveConnectedDrivers()
 	removeDrivers.execute()
 	schedule.execute()
@@ -57,16 +71,22 @@ serverSSL.listen(443, async () => {
 
 Store.getInstance()
 
-io.on('connection', (socket: Socket) => {
-	console.log('connected', socket.id)
-	
-	if (!wpService.thereIsSocket()) wpService.setSocket(io)
-	
-  socket.emit('client', wpService.client.info)
+io.use(requiredClientId)
+
+io.on('connection', async (socket: Socket) => {
+  const clientId = socket.handshake.query.clientId as string
+  console.log('connected', socket.id, clientId)
+	if (wpServices[clientId] && !wpServices[clientId].thereIsSocket()) {
+    wpServices[clientId].setSocket(io)
+  }
+
+  if (clientId) await socket.join(clientId)
+
+  if (wpServices[clientId]) socket.emit('client', wpServices[clientId].client.info)
 
   socket.on('auth', async () => {
     console.log('auth from gorda web...')
-    wpService.init().then(() => {
+    if (wpServices[clientId]) wpServices[clientId].init().then(() => {
       console.log('whatsapp client initialized !!!!')
     }).catch(async e => {
 			Sentry.captureException(e)
@@ -79,12 +99,22 @@ io.on('connection', (socket: Socket) => {
   })
 
   socket.on('get-state', async () => {
-    wpService.getState()
+    if (wpServices[clientId]) wpServices[clientId].getState()
   })
 
   socket.on('destroy', async () => {
     console.log('destroy ....')
-    wpService.logout()
+    if (wpServices[clientId]) {
+      wpServices[clientId].deleting = true
+      wpServices[clientId].logout()
+    }
+    delete wpServices[clientId]
+  })
+
+  socket.on('starting', async () =>{
+    if (wpServices[clientId]) {
+      socket.emit('starting', wpServices[clientId].starting)
+    }
   })
 
   socket.on('disconnect', reason => {

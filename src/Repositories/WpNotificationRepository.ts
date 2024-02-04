@@ -9,43 +9,48 @@ class WpNotificationRepository {
 			.child(key)
 			.remove()
 	}
-	
-  public async onServiceAssigned(onAssigned: (data: DataSnapshot) => void): Promise<void> {
+
+  public async onServiceAssigned(wpClient: string, onAssigned: (data: DataSnapshot) => void): Promise<void> {
     await Database.dbWpNotifications()
     .child('assigned')
-    .orderByKey()
+    .orderByChild('wp_client_id')
+    .equalTo(wpClient)
     .limitToLast(3)
     .on('child_added', onAssigned)
   }
 
-  public async onServiceCanceled(onCanceled: (data: DataSnapshot) => void): Promise<void> {
+  public async onServiceCanceled(wpClient: string, onCanceled: (data: DataSnapshot) => void): Promise<void> {
     await Database.dbWpNotifications()
     .child('canceled')
-    .orderByKey()
+    .orderByChild('wp_client_id')
+    .equalTo(wpClient)
     .limitToLast(3)
     .on('child_added', onCanceled)
   }
 
-  public async onServiceTerminated(onTerminated: (data: DataSnapshot) => void): Promise<void> {
+  public async onServiceTerminated(wpClient: string, onTerminated: (data: DataSnapshot) => void): Promise<void> {
     await Database.dbWpNotifications()
     .child('terminated')
-    .orderByKey()
+    .orderByChild('wp_client_id')
+    .equalTo(wpClient)
     .limitToLast(3)
     .on('child_added', onTerminated)
   }
 	
-	public async onNewService(onNew: (data: DataSnapshot) => void): Promise<void> {
+	public async onNewService(wpClient: string, onNew: (data: DataSnapshot) => void): Promise<void> {
 		await Database.dbWpNotifications()
 			.child('new')
-			.orderByKey()
+      .orderByChild('wp_client_id')
+      .equalTo(wpClient)
 			.limitToLast(3)
 			.on('child_added', onNew)
 	}
 
-  public async onDriverArrived(onArrived: (data: DataSnapshot) => void): Promise<void> {
+  public async onDriverArrived(wpClient: string, onArrived: (data: DataSnapshot) => void): Promise<void> {
     await Database.dbWpNotifications()
     .child('arrived')
-    .orderByKey()
+    .orderByChild('wp_client_id')
+    .equalTo(wpClient)
     .limitToLast(3)
     .on('child_added', onArrived)
   }
