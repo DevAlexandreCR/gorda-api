@@ -115,7 +115,7 @@ export class WhatsAppClient {
 	isProcessableMsg(msg: Message): boolean {
 		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-')) || msg.type === MessageTypes.LOCATION
 	}
-  
+
   onDisconnected = async (reason: string | WAState): Promise<void> => {
     console.log('Client disconnected ', this.wpClient.alias, reason)
 		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
@@ -168,7 +168,7 @@ export class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     if (notification.driver_id != null && notification.wp_client_id == this.wpClient.id) {
       const driver = this.store.findDriverById(notification.driver_id)
-      this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
+      await this.client.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
 				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
 			}).catch(async e => {
 				console.log('serviceAssigned', this.wpClient.alias, e)
@@ -183,7 +183,7 @@ export class WhatsAppClient {
 
   driverArrived = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
+    await this.client.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
 			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('driverArrived', this.wpClient.alias, e)
@@ -195,7 +195,7 @@ export class WhatsAppClient {
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
+    await this.client.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
 			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('serviceCanceled', this.wpClient.alias, e)
@@ -207,7 +207,7 @@ export class WhatsAppClient {
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
+    await this.client.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
 			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('serviceTerminated', this.wpClient.alias, e)
@@ -220,7 +220,7 @@ export class WhatsAppClient {
 	onNewService = async (snapshot: DataSnapshot): Promise<void> => {
 		const notification: WpNotificationType = snapshot.val()
 		this.cancelTimeout(snapshot.key!!, notification.client_id)
-		this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
+		await this.client.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 		}).catch(async e => {
 			console.log('onNewService', this.wpClient.alias, e)
