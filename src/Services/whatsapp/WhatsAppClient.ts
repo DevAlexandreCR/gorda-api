@@ -109,7 +109,9 @@ export class WhatsAppClient {
 	
 	onMessageReceived = (msg: Message): void => {
 		if (this.wpClient.chatBot) {
-			if (this.isProcessableMsg(msg)) this.chatBot.processMessage(msg)
+			if (this.isProcessableMsg(msg)) SessionRepository.addChat(msg).catch((e) => {
+				console.warn('error saving message', e.message)
+			})
 		}
 	}
 
