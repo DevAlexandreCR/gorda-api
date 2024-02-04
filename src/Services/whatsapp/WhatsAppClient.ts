@@ -93,7 +93,6 @@ export class WhatsAppClient {
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService).catch(e => Sentry.captureException(e))
-		ServiceRepository.onServiceChanged(this.serviceChanged).then(() => console.log('service changed'))
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
@@ -108,11 +107,9 @@ export class WhatsAppClient {
   }
 	
 	onMessageReceived = (msg: Message): void => {
-		if (this.wpClient.chatBot) {
-			if (this.isProcessableMsg(msg)) SessionRepository.addChat(msg).catch((e) => {
-				console.warn('error saving message', e.message)
-			})
-		}
+		if (this.isProcessableMsg(msg)) SessionRepository.addChat(msg).catch((e) => {
+			console.warn('error saving message', e.message)
+		})
 	}
 
 	isProcessableMsg(msg: Message): boolean {

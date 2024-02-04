@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# Release Notes for 1.2.x
+
+## [1.2.0 (2024-02-03)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.2.0...v1.1.18)
+
+### Added
+- A Client can use mor than 1 wpClient. [#66](https://github.com/DevAlexandreCR/gorda-api/pull/66)
+
 # Release Notes for 1.1.x
 
 ## [1.1.18 (2023-08-09)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.1.18...v1.1.17)

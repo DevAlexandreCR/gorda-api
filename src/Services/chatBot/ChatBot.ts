@@ -25,7 +25,6 @@ export default class ChatBot {
       }
     }
     const status = session.status as keyof typeof ResponseContext.RESPONSES
-    console.log(status);
     
     const handler = ResponseContext.RESPONSES[status]
     const response = new ResponseContext(handler)
