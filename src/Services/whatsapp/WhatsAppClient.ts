@@ -75,8 +75,9 @@ export class WhatsAppClient {
 	  })
 	  .catch(e => {
 			this.starting = false
-		Sentry.captureException(e)
-		exit(1)
+			console.log(e.message)
+		  Sentry.captureException(e)
+		  exit(1)
 	  })
   }
   
