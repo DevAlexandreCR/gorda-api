@@ -16,14 +16,16 @@ export class RequestingService extends ResponseContract {
     await this.setService(session)
     const body = message.body.toLowerCase()
     if (body.includes(MessageHelper.CANCEL)) {
-      this.cancelService(session)
+      await this.cancelService()
+      await session.setStatus(Session.STATUS_COMPLETED)
+      await this.sendMessage(client, message.from, Messages.CANCELED)
     } else {
       await this.sendMessage(client, message.from, Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
     }
   }
-  
-  cancelService(session:Session): void {
-    this.service.cancel().then(async () => await session.setStatus(Session.STATUS_COMPLETED))
+
+  cancelService(): Promise<void> {
+    return this.service.cancel()
   }
   
   async setService(session: Session): Promise<void> {

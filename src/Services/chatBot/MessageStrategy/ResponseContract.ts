@@ -58,7 +58,7 @@ export abstract class ResponseContract {
     if (comment) service.comment = comment
     const dbService = await ServiceRepository.create(service)
     session.service_id = dbService.id
-    await SessionRepository.update(session)
+    if(session.service_id) await session.setService(session.service_id)
       .then(async () => {
         await this.sendMessage(client, message.from, Messages.NEW_SERVICE).then(async () => {
           await session.setStatus(Session.STATUS_REQUESTING_SERVICE)

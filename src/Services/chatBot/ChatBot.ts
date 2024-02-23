@@ -25,7 +25,7 @@ export default class ChatBot {
       }
     }
     const status = session.status as keyof typeof ResponseContext.RESPONSES
-    
+    await session.addMsg(message.body)
     const handler = ResponseContext.RESPONSES[status]
     const response = new ResponseContext(handler)
     await response.processMessage(session, message, this.wpClient)

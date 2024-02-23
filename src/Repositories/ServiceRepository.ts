@@ -39,8 +39,8 @@ class ServiceRepository {
     return this.update(service)
   }
 
-  public async onServiceChanged(onChanged: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbServices().orderByChild('status').limitToLast(100).on('child_changed', onChanged)
+  public onServiceChanged(onChanged: (data: DataSnapshot) => void): void {
+    Database.dbServices().orderByChild('status').limitToLast(100).on('child_changed', onChanged)
   }
 }
 

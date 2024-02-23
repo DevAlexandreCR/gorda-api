@@ -3,6 +3,7 @@ import {SessionInterface} from '../Interfaces/SessionInterface'
 import {DataSnapshot} from 'firebase-admin/database'
 import Session from '../Models/Session'
 import {Message, MessageTypes} from 'whatsapp-web.js'
+import {WpMessage} from '../Types/WpMessage'
 
 class SessionRepository {
   
@@ -19,6 +20,26 @@ class SessionRepository {
   
   public async update(session: SessionInterface): Promise<SessionInterface> {
     await Database.dbSessions().child(session.id).set(session)
+    return session
+  }
+
+  public async updateStatus(session: SessionInterface): Promise<SessionInterface> {
+    await Database.dbSessions().child(session.id).child('status').set(session.status)
+    return session
+  }
+
+  public async updateService(session: SessionInterface): Promise<SessionInterface> {
+    await Database.dbSessions().child(session.id).child('service_id').set(session.service_id)
+    return session
+  }
+
+  public async updatePlace(session: SessionInterface): Promise<SessionInterface> {
+    await Database.dbSessions().child(session.id).child('place').set(session.place)
+    return session
+  }
+
+  public async updatePlaceOptions(session: SessionInterface): Promise<SessionInterface> {
+    await Database.dbSessions().child(session.id).child('placeOptions').set(session.placeOptions)
     return session
   }
   
@@ -51,6 +72,29 @@ class SessionRepository {
 			await Database.db.ref('chats').child(msg.from.replace(/\D/g, '')).push(msg.body)
 		}
 	}
+
+  public async addMsg(sessionId: string, msg: WpMessage) : Promise<string> {
+    const ref = Database.dbSessions().child(sessionId).child('messages').push()
+    return await ref.set(msg).then(() => Promise.resolve(ref.key!!)).catch((e) => Promise.resolve(e))
+  }
+
+  public async setProcessedMsg(sessionId: string, msgKey: string) : Promise<void> {
+    await Database.dbSessions().child(sessionId).child('messages').child(msgKey).child('processed').set(true)
+  }
+
+  public async getUnprocessedMsgs(sessionId: string) : Promise<Map<string, WpMessage>> {
+    const messages = new Map<string, WpMessage>()
+    await Database.dbSessions().child(sessionId).child('messages')
+    .orderByChild('processed')
+    .equalTo(false)
+    .once('value', (dataSnapshot) =>{
+      dataSnapshot.forEach(snapshot => {
+        if(snapshot.key) messages.set(snapshot.key, snapshot.val())
+      })
+    })
+
+    return messages
+  }
 }
 
 export default new SessionRepository()

@@ -94,6 +94,7 @@ export class WhatsAppClient {
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService).catch(e => Sentry.captureException(e))
+		ServiceRepository.onServiceChanged(this.serviceChanged)
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
   }
@@ -107,13 +108,12 @@ export class WhatsAppClient {
 		console.log('authentication successfully!', this.wpClient.alias)
   }
 	
-	onMessageReceived = (msg: Message): void => {
-		if (this.isProcessableMsg(msg)) SessionRepository.addChat(msg).catch((e) => {
-			console.warn('error saving message', e.message)
-		})
+	onMessageReceived = async (msg: Message): Promise<void> => {
+		if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch(e => console.log(e.message))
 	}
 
 	isProcessableMsg(msg: Message): boolean {
+		if(!this.wpClient.chatBot) return false
 		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-')) || msg.type === MessageTypes.LOCATION
 	}
 
@@ -273,19 +273,22 @@ export class WhatsAppClient {
 		session.service_id = service.id
 		session.status = Session.STATUS_REQUESTING_SERVICE
 		let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
-		if (!sessionDB) {
-			sessionDB = await SessionRepository.create(session)
-		}
+
+		if (!sessionDB) return
+
 		Object.assign(session, sessionDB)
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
-				const driver = this.store.findDriverById(service.driver_id!!)
-				if (service.metadata && service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
-					await this.client.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
+				if (!this.wpClient.wpNotifications) {
+					const driver = this.store.findDriverById(service.driver_id!!)
+					if (!service.metadata) {
+						await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+						await this.client.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle))
+					} else if (service.metadata.arrived_at > 0 && service.metadata.start_trip_at == null) {
+						await this.client.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
+					}
 				} else if (!service.metadata) {
 					await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-					await this.client.sendMessage(service.client_id,
-						Messages.serviceAssigned(driver.vehicle))
 				}
 				break
 			case Service.STATUS_TERMINATED:
@@ -294,7 +297,9 @@ export class WhatsAppClient {
 				break
 			case Service.STATUS_CANCELED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				await this.client.sendMessage(service.client_id, Messages.CANCELED)
+				break
+			case Service.STATUS_PENDING:
+				await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
 				break
 			default:
 				console.log('new service', service.id)

@@ -2,6 +2,7 @@ import {SessionInterface} from '../Interfaces/SessionInterface'
 import SessionRepository from '../Repositories/SessionRepository'
 import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
+import {WpMessage} from '../Types/WpMessage'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -13,7 +14,8 @@ export default class Session implements SessionInterface {
   public created_at: number
   public updated_at: number | null
   public place: Place | null = null
-  
+  public messages = new Map<string, WpMessage>()
+
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
   static readonly STATUS_CREATED = 'CREATED'
   static readonly STATUS_ASKING_FOR_PLACE = 'ASKING_FOR_PLACE'
@@ -39,19 +41,37 @@ export default class Session implements SessionInterface {
     this.assigned_at = assigned ? new Date().getTime() : 0
     await SessionRepository.update(this)
   }
+
+  async addMsg(msg: string): Promise<void> {
+    const wpMessage: WpMessage = {
+      msg: msg,
+      processed: false
+    }
+
+    await SessionRepository.addMsg(this.id, wpMessage)
+    .then(key => {
+      this.messages.set(key, wpMessage)
+    })
+    .catch(e => console.log(e.message))
+  }
+
+  async setService(serviceID: string): Promise<void> {
+    this.service_id = serviceID
+    await SessionRepository.updateService(this)
+  }
   
   async setStatus(status: string): Promise<void> {
     this.status = status
-    await SessionRepository.update(this)
+    await SessionRepository.updateStatus(this)
   }
   
   async setPlace(place: Place): Promise<void> {
     this.place = place
-    await SessionRepository.update(this)
+    await SessionRepository.updatePlace(this)
   }
   
   async setPlaceOptions(placeOptions: Array<PlaceOption>): Promise<void> {
     this.placeOptions = placeOptions
-    await SessionRepository.update(this)
+    await SessionRepository.updatePlaceOptions(this)
   }
 }
