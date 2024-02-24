@@ -1,70 +1,89 @@
 import Database from '../Services/firebase/Database'
 import {SessionInterface} from '../Interfaces/SessionInterface'
-import {DataSnapshot} from 'firebase-admin/database'
 import Session from '../Models/Session'
 import {Message, MessageTypes} from 'whatsapp-web.js'
 import {WpMessage} from '../Types/WpMessage'
+import Firestore from '../Services/firebase/Firestore'
 
 class SessionRepository {
   
   public async findSessionByChatId(chatId: string): Promise<SessionInterface | null> {
     let val: SessionInterface | null = null
-    const snapshot: DataSnapshot = await Database.dbSessions().orderByChild('chat_id')
-      .equalTo(chatId).limitToLast(1).once('value')
+    const snapshot = await Firestore.dbSessions()
+    .where('chat_id', '==', chatId)
+    .where('status', 'not-in', [Session.STATUS_COMPLETED])
+    .orderBy('status')
+    .orderBy('chat_id')
+    .limit(1)
+    .get()
     snapshot.forEach(snapshot => {
-      const session = <SessionInterface>snapshot.val()
-      if (session.status != Session.STATUS_COMPLETED) val = session
+      val = <SessionInterface>snapshot.data()
     })
     return val
   }
   
-  public async update(session: SessionInterface): Promise<SessionInterface> {
-    await Database.dbSessions().child(session.id).set(session)
+  public async updateId(session: SessionInterface): Promise<SessionInterface> {
+    await Firestore.dbSessions().doc(session.id).set({
+      id: session.id
+    })
     return session
   }
 
   public async updateStatus(session: SessionInterface): Promise<SessionInterface> {
-    await Database.dbSessions().child(session.id).child('status').set(session.status)
+    await Firestore.dbSessions().doc(session.id).update({
+      status: session.status
+    })
     return session
   }
 
   public async updateService(session: SessionInterface): Promise<SessionInterface> {
-    await Database.dbSessions().child(session.id).child('service_id').set(session.service_id)
+    await Firestore.dbSessions().doc(session.id).update({
+      service_id: session.service_id
+    })
     return session
   }
 
   public async updatePlace(session: SessionInterface): Promise<SessionInterface> {
-    await Database.dbSessions().child(session.id).child('place').set(session.place)
+    await Firestore.dbSessions().doc(session.id).update({
+      place: session.place
+    })
     return session
   }
 
   public async updatePlaceOptions(session: SessionInterface): Promise<SessionInterface> {
-    await Database.dbSessions().child(session.id).child('placeOptions').set(session.placeOptions)
+    await Firestore.dbSessions().doc(session.id).update({
+      placeOptions: session.placeOptions
+    })
     return session
   }
   
   public async create(session: SessionInterface): Promise<SessionInterface> {
-    const res = await Database.dbSessions().push(session)
-    session.id = res.key!
-    return this.update(session)
+    const res = Firestore.dbSessions().doc()
+    session.id = res.id
+    await res.create({...session}).catch(e => console.log(e))
+
+    return session
   }
 
-  public async getAbandonedSessions(): Promise<Array<SessionInterface>> {
-    const res = await Database.dbSessions().orderByChild('status').equalTo(Session.STATUS_ASKING_FOR_PLACE).get()
+  public async getActiveSessions(): Promise<Array<SessionInterface>> {
+    const res = await Firestore.dbSessions()
+    .orderBy('status')
+    .where('status', 'not-in', [Session.STATUS_COMPLETED]).get()
     const sessions = Array<SessionInterface>()
     res.forEach(snapshot => {
-      const session = <SessionInterface>snapshot.val()
+      const session = <SessionInterface>snapshot.data()
       sessions.push(session)
     })
     return sessions
   }
 
   public async closeAbandoned(sessions: Array<SessionInterface>): Promise<void> {
-    const sessionsObject: Record<string, any> = {}
+    const batch = Firestore.fs.batch()
     sessions.forEach((session) => {
-      sessionsObject[session.id + '/status'] = Session.STATUS_COMPLETED
+      const sessionRef = Firestore.dbSessions().doc(session.id)
+      batch.update(sessionRef, {status: Session.STATUS_COMPLETED})
     })
-    await Database.dbSessions().update(sessionsObject)
+    await batch.commit()
   }
 	
 	public async addChat(msg: Message) : Promise<void> {
@@ -74,22 +93,33 @@ class SessionRepository {
 	}
 
   public async addMsg(sessionId: string, msg: WpMessage) : Promise<string> {
-    const ref = Database.dbSessions().child(sessionId).child('messages').push()
-    return await ref.set(msg).then(() => Promise.resolve(ref.key!!)).catch((e) => Promise.resolve(e))
+    const ref = Firestore.dbSessions()
+      .doc(sessionId)
+      .collection('messages')
+      .doc()
+    return await ref.create(msg).then(() => Promise.resolve(ref.id)).catch((e) => Promise.resolve(e))
   }
 
-  public async setProcessedMsg(sessionId: string, msgKey: string) : Promise<void> {
-    await Database.dbSessions().child(sessionId).child('messages').child(msgKey).child('processed').set(true)
+  public async setProcessedMsgs(sessionId: string, msgKeys: string[]) : Promise<void> {
+    const batch = Firestore.fs.batch()
+    msgKeys.forEach((msgID) => {
+      const msgRef = Firestore.dbSessions().doc(sessionId)
+      .collection('messages').doc(msgID)
+
+      batch.update(msgRef, {processed: true})
+    })
+    await batch.commit()
   }
 
   public async getUnprocessedMsgs(sessionId: string) : Promise<Map<string, WpMessage>> {
     const messages = new Map<string, WpMessage>()
-    await Database.dbSessions().child(sessionId).child('messages')
-    .orderByChild('processed')
-    .equalTo(false)
-    .once('value', (dataSnapshot) =>{
+    await Firestore.dbSessions().doc(sessionId).collection('messages')
+    .orderBy('processed')
+    .where('processed', '==', false)
+    .get()
+    .then( dataSnapshot =>{
       dataSnapshot.forEach(snapshot => {
-        if(snapshot.key) messages.set(snapshot.key, snapshot.val())
+        if(snapshot.id) messages.set(snapshot.id, snapshot.data() as WpMessage)
       })
     })
 

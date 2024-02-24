@@ -3,6 +3,7 @@ import SessionRepository from '../Repositories/SessionRepository'
 import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
 import {WpMessage} from '../Types/WpMessage'
+import {WpMessageMap} from '../Types/WpMessageMap'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -14,7 +15,7 @@ export default class Session implements SessionInterface {
   public created_at: number
   public updated_at: number | null
   public place: Place | null = null
-  public messages = new Map<string, WpMessage>()
+  public messages: WpMessageMap = {}
 
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
   static readonly STATUS_CREATED = 'CREATED'
@@ -39,7 +40,7 @@ export default class Session implements SessionInterface {
 
   async setAssigned(assigned: boolean = true): Promise<void> {
     this.assigned_at = assigned ? new Date().getTime() : 0
-    await SessionRepository.update(this)
+    await SessionRepository.updateId(this)
   }
 
   async addMsg(msg: string): Promise<void> {
@@ -50,7 +51,7 @@ export default class Session implements SessionInterface {
 
     await SessionRepository.addMsg(this.id, wpMessage)
     .then(key => {
-      this.messages.set(key, wpMessage)
+      this.messages[key] = wpMessage
     })
     .catch(e => console.log(e.message))
   }

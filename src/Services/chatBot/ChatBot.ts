@@ -13,6 +13,7 @@ export default class ChatBot {
   }
   
   async processMessage(message: Message): Promise<void> {
+    // TODO: save sessions localy (list of sessions), only get session from DB in the constructor
     let session = new Session(message.from)
     let sessionDB = await SessionRepository.findSessionByChatId(message.from)
     const active = await this.isSessionActive(sessionDB)

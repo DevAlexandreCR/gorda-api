@@ -13,7 +13,7 @@ function isSessionAbandoned(session: SessionInterface): boolean {
 }
 
 export async function updateSessionAbandoned(): Promise<void> {
-  const sessions = await SessionRepository.getAbandonedSessions()
+  const sessions = await SessionRepository.getActiveSessions()
   const sessionsAbandoned = Array<SessionInterface>()
   console.log('updating abandoned sessions...')
   sessions.forEach(session => {

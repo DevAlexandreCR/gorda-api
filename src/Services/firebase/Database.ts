@@ -8,10 +8,6 @@ class DatabaseService {
     this.db = Admin.getInstance().db
   }
   
-  public dbSessions(): Reference {
-    return this.db.ref('sessions/')
-  }
-  
   public dbServices(): Reference {
     return this.db.ref('services/')
   }

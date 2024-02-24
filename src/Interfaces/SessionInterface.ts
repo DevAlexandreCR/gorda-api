@@ -1,6 +1,6 @@
 import {PlaceOption} from './PlaceOption'
 import Place from '../Models/Place'
-import {WpMessage} from '../Types/WpMessage'
+import {WpMessageMap} from '../Types/WpMessageMap'
 
 export interface SessionInterface {
   id: string
@@ -11,5 +11,5 @@ export interface SessionInterface {
   service_id: string | null
   created_at: number
   updated_at: number | null
-  messages: Map<string, WpMessage>
+  messages: WpMessageMap
 }
