@@ -1,34 +1,36 @@
-import {Client, Contact, Message, MessageTypes} from 'whatsapp-web.js'
+import {Contact, MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import {ResponseContract} from '../ResponseContract'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import ClientRepository from '../../../../Repositories/ClientRepository'
 import * as Messages from '../../Messages'
 import * as Sentry from '@sentry/node'
+import {WpMessage} from '../../../../Types/WpMessage'
 
 export class AskingForName extends ResponseContract{
   
   public messageSupported: Array<string> = [MessageTypes.TEXT]
   
-  public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
+  public async processMessage(message: WpMessage): Promise<void> {
     if (this.isChat(message)) {
       await this.createClient(message)
-      await session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-      await this.sendMessage(client, message.from, Messages.welcomeNews(this.currentClient.name))
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+      await this.sendMessage(Messages.welcomeNews(this.currentClient.name))
     } else {
-      await this.sendMessage(client, message.from, Messages.MESSAGE_TYPE_NOT_SUPPORTED)
+      await this.sendMessage(Messages.MESSAGE_TYPE_NOT_SUPPORTED)
     }
   }
   
-  private async createClient(message: Message): Promise<void> {
+  private async createClient(message: WpMessage): Promise<void> {
     const contact = await this.getContact(message)
-    contact.name = MessageHelper.normalizeName(message.body)
+    contact.name = MessageHelper.normalizeName(message.msg)
     this.currentClient = await ClientRepository.create(contact)
   }
   
-  async getContact(message: Message): Promise<Contact> {
+  async getContact(message: WpMessage): Promise<Contact> {
+    const wpMessage = await this.session.wpClient.getMessageById(message.id)
     return new Promise((resolve) => {
-      message.getContact()
+      wpMessage.getContact()
         .then(contact => {
           resolve(contact)
         })

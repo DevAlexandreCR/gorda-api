@@ -7,41 +7,57 @@ import { Agreement } from './MessageStrategy/Responses/Agreement'
 
 export default class ChatBot {
   private readonly wpClient: Client
+  private sessions = new Set<Session>()
   
   constructor(client: Client) {
     this.wpClient = client
+    SessionRepository.getActiveSessions().then(sessions => {
+      sessions.forEach(session => {
+        const sessionObject = new Session(session.chat_id)
+        sessionObject.setClient(this.wpClient)
+        this.sessions.add(Object.assign(sessionObject, session))
+      })
+    })
   }
   
   async processMessage(message: Message): Promise<void> {
-    // TODO: save sessions localy (list of sessions), only get session from DB in the constructor
-    let session = new Session(message.from)
-    let sessionDB = await SessionRepository.findSessionByChatId(message.from)
-    const active = await this.isSessionActive(sessionDB)
-    if (active) {
-      Object.assign(session, sessionDB)
-    } else {
-      session = await this.createSession(session)
-      if (this.isAgreement(message)) {
-        session.status = Session.STATUS_AGREEMENT
-      }
-    }
-    const status = session.status as keyof typeof ResponseContext.RESPONSES
-    await session.addMsg(message.body)
-    const handler = ResponseContext.RESPONSES[status]
-    const response = new ResponseContext(handler)
-    await response.processMessage(session, message, this.wpClient)
-  }
-  
-  async isSessionActive(session: SessionInterface|null): Promise<boolean> {
-    return session !== null && session.status !== Session.STATUS_COMPLETED
+    await this.findOrCreateSession(message.from, message).then(async session => {
+      await session.addMsg(message)
+    })
   }
 
-  isAgreement(message: Message): boolean {
-    return message.body.includes(Agreement.AGREEMENT)
+  private async findOrCreateSession(chatId: string, message: Message): Promise<Session> {
+    let session = this.findSessionByChatId(chatId);
+    const active = session ? await this.isSessionActive(session) : false
+
+    if (!session || !active) {
+      session = await this.createSession(new Session(chatId))
+    } else if (this.isAgreement(message.body)) {
+      session.status = Session.STATUS_AGREEMENT
+    }
+    session.setClient(this.wpClient)
+    this.sessions.add(session)
+
+    return session
+  }
+  
+  async isSessionActive(session: SessionInterface): Promise<boolean> {
+    return session.status !== Session.STATUS_COMPLETED
+  }
+
+  isAgreement(message: string): boolean {
+    return message.includes(Agreement.AGREEMENT)
   }
   
   async createSession(session: Session): Promise<Session> {
     const sessionDB = await SessionRepository.create(session)
     return Object.assign(session, sessionDB)
+  }
+
+  findSessionByChatId(chatId: string): Session|null {
+    for (const session of this.sessions) {
+      if (session.chat_id === chatId) return session
+    }
+    return null
   }
 }

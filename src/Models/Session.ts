@@ -4,6 +4,8 @@ import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
 import {WpMessage} from '../Types/WpMessage'
 import {WpMessageMap} from '../Types/WpMessageMap'
+import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseContext'
+import {Client, Message} from 'whatsapp-web.js'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -16,6 +18,8 @@ export default class Session implements SessionInterface {
   public updated_at: number | null
   public place: Place | null = null
   public messages: WpMessageMap = {}
+  public wpClient: Client
+  private interval: NodeJS.Timer
 
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
   static readonly STATUS_CREATED = 'CREATED'
@@ -43,17 +47,56 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateId(this)
   }
 
-  async addMsg(msg: string): Promise<void> {
+  async addMsg(msg: Message): Promise<void> {
     const wpMessage: WpMessage = {
-      msg: msg,
+      id: msg.id.id,
+      type: msg.type,
+      msg: msg.body,
+      location: msg.location,
       processed: false
     }
 
     await SessionRepository.addMsg(this.id, wpMessage)
     .then(key => {
       this.messages[key] = wpMessage
+
+      const unprocessedMessages = this.getUnprocessedMessages()
+
+      if (unprocessedMessages.size == 1) {
+        this.interval = setTimeout(() => {
+          let text: string = ''
+          let wpMsg: WpMessage = wpMessage
+          const messages = this.getUnprocessedMessages()
+          messages.forEach((msg) => {
+            text += msg.msg + ' '
+            wpMsg = {
+              id: msg.id,
+              type: msg.type,
+              location: msg.location,
+              msg: text,
+              processed: false
+            }
+          })
+
+          this.processMessages(wpMsg)
+        }, 10000)
+      }
+
+
     })
     .catch(e => console.log(e.message))
+  }
+
+  private getUnprocessedMessages(): Map<string, WpMessage> {
+    const unprocessedMessages = new Map<string, WpMessage>()
+
+    Object.entries(this.messages).forEach(([key, message]) => {
+      if (!message.processed) {
+        unprocessedMessages.set(key, message)
+      }
+    })
+
+    return unprocessedMessages
   }
 
   async setService(serviceID: string): Promise<void> {
@@ -74,5 +117,16 @@ export default class Session implements SessionInterface {
   async setPlaceOptions(placeOptions: Array<PlaceOption>): Promise<void> {
     this.placeOptions = placeOptions
     await SessionRepository.updatePlaceOptions(this)
+  }
+
+  public setClient(client: Client): void {
+    this.wpClient = client
+  }
+
+  async processMessages(message: WpMessage): Promise<void> {
+    const status = this.status as keyof typeof ResponseContext.RESPONSES
+    const handler = new ResponseContext.RESPONSES[status](this)
+    const response = new ResponseContext(handler)
+    await response.processMessage(message)
   }
 }
