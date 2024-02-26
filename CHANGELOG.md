@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.2.x
 
+## [1.2.1 (2024-02-26)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.2.1...v1.2.0)
+
+### Added
+- Change messages new service. [#69](https://github.com/DevAlexandreCR/gorda-api/pull/69)
+
 ## [1.2.0 (2024-02-03)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.2.0...v1.1.18)
 
 ### Added
