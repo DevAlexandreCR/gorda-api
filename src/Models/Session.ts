@@ -4,7 +4,7 @@ import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
 import {WpMessage} from '../Types/WpMessage'
 import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseContext'
-import {Client, Location, Message, MessageTypes} from 'whatsapp-web.js'
+import {Client, Message} from 'whatsapp-web.js'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -65,6 +65,7 @@ export default class Session implements SessionInterface {
   }
 
   async processUnprocessedMessages(lastMessage?: WpMessage): Promise<void> {
+    // TODO: move this to another Object
     let unprocessedMessages = this.getUnprocessedMessages()
     if (unprocessedMessages.size === 1 || (unprocessedMessages.size > 1 && !this.processorTimeout)) {
       this.processorTimeout = setTimeout(() => {
