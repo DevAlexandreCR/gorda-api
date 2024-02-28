@@ -29,6 +29,21 @@ class SessionRepository {
     return session
   }
 
+  public async getMessages(sessionId: string): Promise<Map<string, WpMessage>> {
+    const messages: Map<string, WpMessage> = new Map()
+    await Firestore.dbSessions()
+      .doc(sessionId)
+      .collection('messages')
+      .orderBy('created_at')
+      .get().then(data => {
+      data.forEach(snapshot => {
+        messages.set(snapshot.id, <WpMessage>snapshot.data())
+      })
+    })
+
+    return messages
+  }
+
   public async updateStatus(session: SessionInterface): Promise<SessionInterface> {
     await Firestore.dbSessions().doc(session.id).update({
       status: session.status
@@ -45,7 +60,7 @@ class SessionRepository {
 
   public async updatePlace(session: SessionInterface): Promise<SessionInterface> {
     await Firestore.dbSessions().doc(session.id).update({
-      place: session.place
+      place: {...session.place}
     })
     return session
   }
@@ -60,7 +75,9 @@ class SessionRepository {
   public async create(session: SessionInterface): Promise<SessionInterface> {
     const res = Firestore.dbSessions().doc()
     session.id = res.id
-    await res.create({...session}).catch(e => console.log(e))
+    const sessionData = {...session}
+    delete sessionData.messages
+    await res.create({...sessionData}).catch(e => console.log(e))
 
     return session
   }
@@ -68,7 +85,8 @@ class SessionRepository {
   public async getActiveSessions(): Promise<Array<SessionInterface>> {
     const res = await Firestore.dbSessions()
     .orderBy('status')
-    .where('status', 'not-in', [Session.STATUS_COMPLETED]).get()
+    .where('status', 'not-in', [Session.STATUS_COMPLETED])
+    .get()
     const sessions = Array<SessionInterface>()
     res.forEach(snapshot => {
       const session = <SessionInterface>snapshot.data()
@@ -96,34 +114,19 @@ class SessionRepository {
     const ref = Firestore.dbSessions()
       .doc(sessionId)
       .collection('messages')
-      .doc()
+      .doc(msg.id)
     return await ref.create(msg).then(() => Promise.resolve(ref.id)).catch((e) => Promise.resolve(e))
   }
 
-  public async setProcessedMsgs(sessionId: string, msgKeys: string[]) : Promise<void> {
+  public async setProcessedMsgs(sessionId: string, msgs: WpMessage[]) : Promise<void> {
     const batch = Firestore.fs.batch()
-    msgKeys.forEach((msgID) => {
+    msgs.forEach((msg) => {
       const msgRef = Firestore.dbSessions().doc(sessionId)
-      .collection('messages').doc(msgID)
+      .collection('messages').doc(msg.id)
 
       batch.update(msgRef, {processed: true})
     })
     await batch.commit()
-  }
-
-  public async getUnprocessedMsgs(sessionId: string) : Promise<Map<string, WpMessage>> {
-    const messages = new Map<string, WpMessage>()
-    await Firestore.dbSessions().doc(sessionId).collection('messages')
-    .orderBy('processed')
-    .where('processed', '==', false)
-    .get()
-    .then( dataSnapshot =>{
-      dataSnapshot.forEach(snapshot => {
-        if(snapshot.id) messages.set(snapshot.id, snapshot.data() as WpMessage)
-      })
-    })
-
-    return messages
   }
 }
 

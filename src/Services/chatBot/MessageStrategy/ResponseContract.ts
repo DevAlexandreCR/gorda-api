@@ -39,6 +39,7 @@ export abstract class ResponseContract {
     const client = this.store.findClientById(chatId)
     if (client) this.currentClient = client
     else {
+
       // message.getContact().then(contact => {
       //   this.currentClient = new CurrentClient()
       //   this.currentClient.name = contact.name?? contact.number

@@ -1,9 +1,8 @@
 import {Client, Message} from 'whatsapp-web.js'
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
-import {ResponseContext} from './MessageStrategy/ResponseContext'
 import {SessionInterface} from '../../Interfaces/SessionInterface'
-import { Agreement } from './MessageStrategy/Responses/Agreement'
+import {Agreement} from './MessageStrategy/Responses/Agreement'
 
 export default class ChatBot {
   private readonly wpClient: Client
@@ -11,12 +10,14 @@ export default class ChatBot {
   
   constructor(client: Client) {
     this.wpClient = client
-    SessionRepository.getActiveSessions().then(sessions => {
-      sessions.forEach(session => {
+    SessionRepository.getActiveSessions().then(async sessions => {
+      for (const session of sessions) {
         const sessionObject = new Session(session.chat_id)
+        Object.assign(sessionObject, session)
         sessionObject.setClient(this.wpClient)
-        this.sessions.add(Object.assign(sessionObject, session))
-      })
+        await sessionObject.syncMessages()
+        this.sessions.add(sessionObject)
+      }
     })
   }
   
@@ -34,7 +35,11 @@ export default class ChatBot {
       session = await this.createSession(new Session(chatId))
     } else if (this.isAgreement(message.body)) {
       session.status = Session.STATUS_AGREEMENT
+      await session.syncMessages()
+    } else {
+      await session.syncMessages()
     }
+
     session.setClient(this.wpClient)
     this.sessions.add(session)
 

@@ -13,17 +13,6 @@ import {WpMessage} from '../../../Types/WpMessage'
 
 export class ResponseContext {
 
-  static RESPONSES = {
-    [Session.STATUS_AGREEMENT]: Agreement,
-    [Session.STATUS_CREATED]: Created,
-    [Session.STATUS_ASKING_FOR_NAME]: AskingForName,
-    [Session.STATUS_ASKING_FOR_PLACE]: AskingForPlace,
-    [Session.STATUS_CHOOSING_PLACE]: ChoosingPlace,
-    [Session.STATUS_ASKING_FOR_COMMENT]: AskingForComment,
-    [Session.STATUS_REQUESTING_SERVICE]: RequestingService,
-    [Session.STATUS_SERVICE_IN_PROGRESS]: ServiceInProgress,
-  }
-  
   private response: ResponseContract
   
   constructor(response: ResponseContract) {
@@ -32,6 +21,21 @@ export class ResponseContext {
   
   public setResponse(response: ResponseContract): void {
     this.response = response
+  }
+
+  public static getResponse(status: string, session: Session): ResponseContract {
+  const responses: {[key:string] : ResponseContract} = {
+      [Session.STATUS_AGREEMENT]: new Agreement(session),
+      [Session.STATUS_CREATED]: new Created(session),
+      [Session.STATUS_ASKING_FOR_NAME]: new AskingForName(session),
+      [Session.STATUS_ASKING_FOR_PLACE]: new AskingForPlace(session),
+      [Session.STATUS_CHOOSING_PLACE]: new ChoosingPlace(session),
+      [Session.STATUS_ASKING_FOR_COMMENT]: new AskingForComment(session),
+      [Session.STATUS_REQUESTING_SERVICE]: new RequestingService(session),
+      [Session.STATUS_SERVICE_IN_PROGRESS]: new ServiceInProgress(session),
+    }
+
+    return responses[status]
   }
   
   public async processMessage(message: WpMessage): Promise<void> {
