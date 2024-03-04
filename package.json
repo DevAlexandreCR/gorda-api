@@ -17,6 +17,7 @@
   "author": "devalexandrecr@gmail.com",
   "license": "ISC",
   "dependencies": {
+    "@huggingface/inference": "^2.6.4",
     "@sentry/node": "^7.5.0",
     "@sentry/tracing": "^7.5.0",
     "axios": "^1.4.0",

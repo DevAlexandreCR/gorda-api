@@ -1,11 +1,12 @@
 import {Contact, MessageTypes} from 'whatsapp-web.js'
-import Session from '../../../../Models/Session'
 import {ResponseContract} from '../ResponseContract'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import ClientRepository from '../../../../Repositories/ClientRepository'
 import * as Messages from '../../Messages'
 import * as Sentry from '@sentry/node'
 import {WpMessage} from '../../../../Types/WpMessage'
+import EntityExtractor from '../../ai/EntityExtractor'
+import Session from '../../../../Models/Session'
 
 export class AskingForName extends ResponseContract{
   
@@ -13,24 +14,29 @@ export class AskingForName extends ResponseContract{
   
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isChat(message)) {
-      await this.createClient(message)
-      await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-      await this.sendMessage(Messages.welcomeNews(this.currentClient.name))
+      const name = await EntityExtractor.extractName(message.msg)
+      if (name) {
+        await this.createClient(message.id, name)
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+        await this.sendMessage(Messages.welcomeNews(this.currentClient.name))
+      } else {
+        await this.sendMessage(Messages.ASK_FOR_NAME)
+      }
     } else {
       await this.sendMessage(Messages.MESSAGE_TYPE_NOT_SUPPORTED)
     }
   }
   
-  private async createClient(message: WpMessage): Promise<void> {
-    const contact = await this.getContact(message)
-    contact.name = MessageHelper.normalizeName(message.msg)
+  private async createClient(messageId: string, name: string): Promise<void> {
+    const contact = await this.getContact()
+    contact.name = MessageHelper.normalizeName(name)
     this.currentClient = await ClientRepository.create(contact)
   }
   
-  async getContact(message: WpMessage): Promise<Contact> {
-    const wpMessage = await this.session.wpClient.getMessageById(message.id)
+  async getContact(): Promise<Contact> {
+    const chat = await this.session.wpClient.getChatById(this.session.chat_id)
     return new Promise((resolve) => {
-      wpMessage.getContact()
+      chat.getContact()
         .then(contact => {
           resolve(contact)
         })
