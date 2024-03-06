@@ -13,6 +13,7 @@ export default class Service implements ServiceInterface {
   start_loc: PlaceInterface
   amount: number | null
   driver_id: string | null
+  wp_client_id: string
   client_id: string
   created_at: number
   comment: string | null

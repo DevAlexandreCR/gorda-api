@@ -35,20 +35,17 @@ export default class ChatBot {
   }
 
   private async findOrCreateSession(chatId: string, message: Message): Promise<Session> {
-    let session = this.findSessionByChatId(chatId);
+    let session = this.findSessionByChatId(chatId)
     const active = session ? await this.isSessionActive(session) : false
 
     if (!session || !active) {
       session = await this.createSession(new Session(chatId))
-    } else if (this.isAgreement(message.body)) {
-      session.status = Session.STATUS_AGREEMENT
-      await session.syncMessages()
-    } else {
-      await session.syncMessages()
+      session.setClient(this.wpClient)
+      if (this.isAgreement(message.body)) {
+        session.status = Session.STATUS_AGREEMENT
+      }
+      this.sessions.add(session)
     }
-
-    session.setClient(this.wpClient)
-    this.sessions.add(session)
 
     return session
   }

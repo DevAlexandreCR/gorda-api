@@ -34,6 +34,10 @@ export abstract class ResponseContract {
   async sendMessage(content: MessageContent): Promise<void> {
     await this.session.wpClient.sendMessage(this.session.chat_id, content).catch(e => Sentry.captureException(e))
   }
+
+  private getWpClientId(): string {
+    return this.session.wpClient.info.wid.user.slice(-10)
+  }
   
   setCurrentClient(chatId: string): void {
     const client = this.store.findClientById(chatId)
@@ -48,6 +52,7 @@ export abstract class ResponseContract {
   
   async createService(place: Place, comment: string|null = null): Promise<string> {
     const service = new Service()
+    service.wp_client_id = this.getWpClientId()
     service.client_id = this.session.chat_id
     service.start_loc = place
     service.phone = this.currentClient.phone

@@ -75,12 +75,12 @@ export default class Session implements SessionInterface {
     await SessionRepository.addMsg(this.id, wpMessage)
     .then(async key => {
       this.messages.set(key, wpMessage)
-      await this.processUnprocessedMessages(wpMessage)
+      await this.processUnprocessedMessages()
     })
     .catch(e => console.log(e.message))
   }
 
-  async processUnprocessedMessages(lastMessage?: WpMessage): Promise<void> {
+  async processUnprocessedMessages(): Promise<void> {
     // TODO: move this to another Object
     let unprocessedMessages = this.getUnprocessedMessages()
     if (unprocessedMessages.size === 1 || (unprocessedMessages.size > 1 && !this.processorTimeout)) {
@@ -135,7 +135,7 @@ export default class Session implements SessionInterface {
   
   async setStatus(status: string): Promise<void> {
     if (status === Session.STATUS_COMPLETED) {
-      this.onCanceled()
+      this.onCanceled
     }
     this.status = status
     await SessionRepository.updateStatus(this)

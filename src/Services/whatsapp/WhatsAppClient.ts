@@ -93,7 +93,9 @@ export class WhatsAppClient {
     this.chatBot = new ChatBot(this.client)
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned).catch(e => Sentry.captureException(e))
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived).catch(e => Sentry.captureException(e))
-	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService).catch(e => Sentry.captureException(e))
+	  // WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService).catch(e => Sentry.captureException(e))
+		// WpNotificationRepository.onServiceCanceled(this.wpClient.id, this.serviceCanceled).catch(e => Sentry.captureException(e))
+		// WpNotificationRepository.onServiceTerminated(this.wpClient.id, this.serviceTerminated).catch(e => Sentry.captureException(e))
 		ServiceRepository.onServiceChanged(this.serviceChanged)
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
@@ -269,14 +271,11 @@ export class WhatsAppClient {
 		if (!this.wpClient.chatBot) return
 		const service = new Service()
 		Object.assign(service, snapshot.val() as ServiceInterface)
-		const session = new Session(service.client_id)
-		session.service_id = service.id
-		session.status = Session.STATUS_REQUESTING_SERVICE
-		let sessionDB = await SessionRepository.findSessionByChatId(service.client_id)
 
-		if (!sessionDB) return
+		let session = this.chatBot.findSessionByChatId(service.client_id)
 
-		Object.assign(session, sessionDB)
+		if (!session) return
+
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
 				if (!this.wpClient.wpNotifications) {
@@ -297,6 +296,7 @@ export class WhatsAppClient {
 				break
 			case Service.STATUS_CANCELED:
 				await session.setStatus(Session.STATUS_COMPLETED)
+				await this.client.sendMessage(service.client_id, Messages.CANCELED)
 				break
 			case Service.STATUS_PENDING:
 				await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
