@@ -115,7 +115,7 @@ class SessionRepository {
       .doc(sessionId)
       .collection('messages')
       .doc(msg.id)
-    return await ref.create(msg).then(() => Promise.resolve(ref.id)).catch((e) => Promise.resolve(e))
+    return await ref.create({...msg}).then(() => Promise.resolve(ref.id)).catch((e) => Promise.resolve(e))
   }
 
   public async setProcessedMsgs(sessionId: string, msgs: WpMessage[]) : Promise<void> {

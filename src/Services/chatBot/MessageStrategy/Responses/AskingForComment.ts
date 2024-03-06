@@ -18,7 +18,7 @@ export class AskingForComment extends ResponseContract {
     
     const place = this.session.place
     
-    if (place) await this.createService(message, place, comment)
+    if (place) await this.createService(place, comment)
     else {
       await this.sendMessage(Messages.ERROR_CREATING_SERVICE)
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)

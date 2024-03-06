@@ -15,8 +15,8 @@ export class AskingForPlace extends ResponseContract{
     let places: Array<Place> = []
     if (this.isChat(message)) {
       places = this.getPlaceFromMessage(message.msg)
-    } else {
-      places = this.getPlaceFromLocation(message)
+    } else if (message.location){
+      places = this.getPlaceFromLocation(message.location)
     }
     if (places.length == 0) {
       await this.sendMessage(Messages.NON_NEIGHBORHOOD_FOUND).then(async () => {

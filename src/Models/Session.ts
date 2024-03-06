@@ -4,7 +4,9 @@ import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
 import {WpMessage} from '../Types/WpMessage'
 import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseContext'
-import {Client, Message} from 'whatsapp-web.js'
+import {Client, Message, MessageTypes} from 'whatsapp-web.js'
+import MessageHelper from '../Helpers/MessageHelper'
+import {WpLocation} from '../Types/WpLocation'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -19,6 +21,7 @@ export default class Session implements SessionInterface {
   public messages: Map<string, WpMessage> = new Map()
   public wpClient: Client
   private processorTimeout?: NodeJS.Timer
+  public onCanceled: () => void
 
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
   static readonly STATUS_CREATED = 'CREATED'
@@ -36,6 +39,10 @@ export default class Session implements SessionInterface {
     this.status = Session.STATUS_CREATED
     this.service_id = null
   }
+
+  setOnCanceled(callback: () => void): void {
+    this.onCanceled = callback
+  }
   
   isCompleted(): boolean {
     return this.status === Session.STATUS_COMPLETED
@@ -52,8 +59,17 @@ export default class Session implements SessionInterface {
       id: msg.id.id,
       type: msg.type,
       msg: msg.body,
-      location: msg.location?? null,
+      location: null,
       processed: false
+    }
+
+    if (msg.location) {
+      const loc = msg.location as unknown as WpLocation
+      wpMessage.location = {
+        name: loc.name ?? MessageHelper.USER_LOCATION,
+        lat: parseFloat(msg.location.latitude),
+        lng: parseFloat(msg.location.longitude)
+      }
     }
 
     await SessionRepository.addMsg(this.id, wpMessage)
@@ -76,10 +92,17 @@ export default class Session implements SessionInterface {
           created_at: unprocessedMessagesArray[indexLast].created_at,
           id: unprocessedMessagesArray[indexLast].id,
           type: unprocessedMessagesArray[indexLast].type,
-          location: unprocessedMessagesArray[indexLast].location,
+          location: null,
           msg: text,
           processed: false
         }
+
+        unprocessedMessagesArray.forEach(msg => {
+          if (msg.location) {
+            wpMsg.location = msg.location
+            wpMsg.type = MessageTypes.LOCATION
+          }
+        })
 
         this.processMessage(wpMsg, unprocessedMessagesArray)
         clearTimeout(this.processorTimeout)
@@ -111,6 +134,9 @@ export default class Session implements SessionInterface {
   }
   
   async setStatus(status: string): Promise<void> {
+    if (status === Session.STATUS_COMPLETED) {
+      this.onCanceled()
+    }
     this.status = status
     await SessionRepository.updateStatus(this)
   }

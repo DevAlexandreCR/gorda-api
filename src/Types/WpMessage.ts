@@ -1,4 +1,5 @@
-import {Location, MessageTypes} from 'whatsapp-web.js'
+import {MessageTypes} from 'whatsapp-web.js'
+import {WpLocation} from './WpLocation'
 
 export type WpMessage = {
   created_at: number
@@ -6,5 +7,5 @@ export type WpMessage = {
   type: MessageTypes
   msg: string,
   processed: boolean
-  location: Location
+  location: WpLocation | null
 }

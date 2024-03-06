@@ -15,9 +15,16 @@ export default class ChatBot {
         const sessionObject = new Session(session.chat_id)
         Object.assign(sessionObject, session)
         sessionObject.setClient(this.wpClient)
+        sessionObject.setOnCanceled(this.removeSession.bind(this, sessionObject.id))
         await sessionObject.syncMessages()
         this.sessions.add(sessionObject)
       }
+    })
+  }
+
+  public removeSession(sessionId: string): void {
+    this.sessions.forEach(session => {
+      if (session.id === sessionId) this.sessions.delete(session)
     })
   }
   

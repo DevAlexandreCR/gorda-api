@@ -1,15 +1,15 @@
 import Session from '../../../Models/Session'
-import {Client, Message, MessageContent, MessageTypes} from 'whatsapp-web.js'
+import {MessageContent, MessageTypes} from 'whatsapp-web.js'
 import {Store} from '../../store/Store'
 import CurrentClient from '../../../Models/Client'
 import Place from '../../../Models/Place'
 import Service from '../../../Models/Service'
 import ServiceRepository from '../../../Repositories/ServiceRepository'
-import SessionRepository from '../../../Repositories/SessionRepository'
 import * as Messages from '../Messages'
 import MessageHelper from '../../../Helpers/MessageHelper'
 import * as Sentry from '@sentry/node'
 import {WpMessage} from '../../../Types/WpMessage'
+import {WpLocation} from '../../../Types/WpLocation'
 
 export abstract class ResponseContract {
   
@@ -38,17 +38,6 @@ export abstract class ResponseContract {
   setCurrentClient(chatId: string): void {
     const client = this.store.findClientById(chatId)
     if (client) this.currentClient = client
-    else {
-
-      // message.getContact().then(contact => {
-      //   this.currentClient = new CurrentClient()
-      //   this.currentClient.name = contact.name?? contact.number
-      //   this.currentClient.phone = contact.number
-      // })
-      this.currentClient = new CurrentClient()
-      this.currentClient.name = chatId
-      this.currentClient.phone = chatId // TODO: extract number from chatID
-    }
   }
   
   clientExists(chatId: string): boolean {
@@ -57,7 +46,7 @@ export abstract class ResponseContract {
     return client != undefined
   }
   
-  async createService(message: WpMessage, place: Place, comment: string|null = null): Promise<string> {
+  async createService(place: Place, comment: string|null = null): Promise<string> {
     const service = new Service()
     service.client_id = this.session.chat_id
     service.start_loc = place
@@ -81,17 +70,12 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
   
-  getPlaceFromLocation(message: WpMessage): Array<Place> {
-    const locationMessage = message.location
+  getPlaceFromLocation(location: WpLocation): Array<Place> {
     const place = new Place()
-    if (locationMessage.options && locationMessage.options.name) {
-      place.name = locationMessage.options.name
-    } else {
-      place.name = MessageHelper.USER_LOCATION
-    }
-    place.lat = parseFloat(locationMessage.latitude)
-    place.lng = parseFloat(locationMessage.longitude)
-    
+    place.lat = location.lat
+    place.lng = location.lng
+    place.name = location.name || MessageHelper.USER_LOCATION
+
     return [place]
   }
   
