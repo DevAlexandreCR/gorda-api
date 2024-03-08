@@ -2,7 +2,7 @@ import {ResponseContract} from '../ResponseContract'
 import {MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import * as Messages from '../../Messages'
-import {ASK_FOR_NEIGHBORHOOD, NONE_OF_THE_ABOVE, sendPlaceOptions} from '../../Messages'
+import {ASK_FOR_LOCATION, NONE_OF_THE_ABOVE, sendPlaceOptions} from '../../Messages'
 import {WpMessage} from '../../../../Types/WpMessage'
 
 export class ChoosingPlace extends ResponseContract {
@@ -11,10 +11,10 @@ export class ChoosingPlace extends ResponseContract {
   
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isLocation(message) && message.location) {
-      const places = this.getPlaceFromLocation(message.location)
-      return  this.sendMessage(Messages.requestingService(places[0].name)).then(async () => {
+      const place = this.getPlaceFromLocation(message.location)
+      return  this.sendMessage(Messages.requestingService(place.name)).then(async () => {
         await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
-        await this.session.setPlace(places[0])
+        await this.session.setPlace(place)
       })
     }
     const placeId = this.validateOption(message)
@@ -23,7 +23,7 @@ export class ChoosingPlace extends ResponseContract {
       await  this.sendMessage(sendPlaceOptions(options, true))
     } else if (placeId === NONE_OF_THE_ABOVE) {
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-      await this.sendMessage(ASK_FOR_NEIGHBORHOOD)
+      await this.sendMessage(ASK_FOR_LOCATION)
     } else {
       const place = this.store.findPlaceById(placeId as string)
       if (place) {

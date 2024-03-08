@@ -66,7 +66,7 @@ export default class Session implements SessionInterface {
     if (msg.location) {
       const loc = msg.location as unknown as WpLocation
       wpMessage.location = {
-        name: loc.name ?? MessageHelper.USER_LOCATION,
+        name: loc.name ?? MessageHelper.LOCATION_NO_NAME,
         lat: parseFloat(msg.location.latitude),
         lng: parseFloat(msg.location.longitude)
       }

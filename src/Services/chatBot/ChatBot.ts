@@ -36,9 +36,8 @@ export default class ChatBot {
 
   private async findOrCreateSession(chatId: string, message: Message): Promise<Session> {
     let session = this.findSessionByChatId(chatId)
-    const active = session ? await this.isSessionActive(session) : false
 
-    if (!session || !active) {
+    if (!session) {
       session = await this.createSession(new Session(chatId))
       session.setClient(this.wpClient)
       if (this.isAgreement(message.body)) {
@@ -50,7 +49,7 @@ export default class ChatBot {
     return session
   }
   
-  async isSessionActive(session: SessionInterface): Promise<boolean> {
+  isSessionActive(session: SessionInterface): boolean {
     return session.status !== Session.STATUS_COMPLETED
   }
 
@@ -65,7 +64,7 @@ export default class ChatBot {
 
   findSessionByChatId(chatId: string): Session|null {
     for (const session of this.sessions) {
-      if (session.chat_id === chatId) return session
+      if (session.chat_id === chatId && this.isSessionActive(session)) return session
     }
     return null
   }

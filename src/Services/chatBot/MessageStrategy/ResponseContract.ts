@@ -75,13 +75,13 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
   
-  getPlaceFromLocation(location: WpLocation): Array<Place> {
+  getPlaceFromLocation(location: WpLocation): Place {
     const place = new Place()
     place.lat = location.lat
     place.lng = location.lng
-    place.name = location.name || MessageHelper.USER_LOCATION
+    place.name = location.name || MessageHelper.LOCATION_NO_NAME
 
-    return [place]
+    return place
   }
   
   getPlaceFromMessage(message: string): Array<Place> {

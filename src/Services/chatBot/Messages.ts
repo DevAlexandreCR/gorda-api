@@ -45,20 +45,20 @@ export const welcomeNews = (name: string): string => {
 }
 export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
 export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
-export const ASK_FOR_NEIGHBORHOOD = 'Confirma por favor el lugar donde te' +
-  ' encuentras para asignarte un vehículo en el menor tiempo posible, ejemplo: \n' +
-  '- _Centro_ \n' +
-  '- _Torres del bosque_ \n' +
-  '- _CC Campanario_ \n \n' +
-  '*O también puedes enviar tu ubicación 📍*'
+export const ASK_FOR_LOCATION = '*Envía tu ubicación actual 📍*' +
+  ' para asignarte un vehículo en el menor tiempo posible \n'
+
+export const ASK_FOR_LOCATION_NAME = 'Por favor agrega el nombre del *barrio*, ' +
+  'la *dirección* o algún *punto de referencia* cercano\n'
+
 export const REQUESTING_SERVICE = '* Creando servicio...\n \n' +
   'Para agregar un comentario tipo: \n*Sin acompañante* \n*Con mascota* o \n*Bodega amplia* \nPor favor escríbelo abajo, de lo contrario envía *NO*'
-export const WELCOME = '¿Para dónde vamos hoy? \n \n' + ASK_FOR_NEIGHBORHOOD
+export const WELCOME = '¿Para dónde vamos hoy? \n \n' + ASK_FOR_LOCATION
 export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
   '*Espero poder colaborarte en una próxima ocasión 🙋🏻‍♀️*'
 
-export const NON_NEIGHBORHOOD_FOUND = 'No logramos identificar el lugar donde te encuentras por favor vuelve a intentarlo. \n' +
-  ASK_FOR_NEIGHBORHOOD
+export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encuentras por favor vuelve a intentarlo. \n\n' +
+  ASK_FOR_LOCATION
 export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fue el vehículo asignado. \n \n' +
   '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te '+
