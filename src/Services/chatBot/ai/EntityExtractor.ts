@@ -19,7 +19,7 @@ class EntityExtractor {
     console.time('init classification')
     const entities = await npl.tokenClassification({
       model: config.ENTITY_MODEL_NAME?? undefined,
-      inputs: text
+      inputs: 'Me llamo ' + text
     }, {
       use_cache: true
     })

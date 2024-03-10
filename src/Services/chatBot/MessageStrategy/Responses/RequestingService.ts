@@ -19,7 +19,6 @@ export class RequestingService extends ResponseContract {
     if (body.includes(MessageHelper.CANCEL)) {
       await this.cancelService()
       await this.session.setStatus(Session.STATUS_COMPLETED)
-      await this.sendMessage(Messages.CANCELED)
     } else {
       await this.sendMessage(Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
     }

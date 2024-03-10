@@ -74,8 +74,16 @@ export default class Session implements SessionInterface {
 
     await SessionRepository.addMsg(this.id, wpMessage)
     .then(async key => {
-      this.messages.set(key, wpMessage)
-      await this.processUnprocessedMessages()
+      if (wpMessage.type === MessageTypes.LOCATION) {
+        this.messages.set(key, wpMessage)
+        clearTimeout(this.processorTimeout)
+        delete this.processorTimeout
+        const unprocessedMessagesArray = Array.from(this.getUnprocessedMessages().values())
+        await this.processMessage(wpMessage, unprocessedMessagesArray)
+      } else {
+        this.messages.set(key, wpMessage)
+        await this.processUnprocessedMessages()
+      }
     })
     .catch(e => console.log(e.message))
   }
