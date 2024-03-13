@@ -64,6 +64,7 @@ export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fu
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te '+
   'informaremos. Esto tardara algunos minutos!⏳ .\nSi deseas cancelar el servicio envía *CANCELAR*'
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta más tarde. lamentamos las molestias'
+export const ERROR_WHILE_PROCESSING = 'Ocurrió un error mientras procesábamos tu petición, por favor intenta más tarde. lamentamos las molestias'
 export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER + '\n'
 export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶🏻\n \n' +
   '➡️_Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +

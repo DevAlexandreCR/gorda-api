@@ -7,6 +7,8 @@ import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseConte
 import {Client, Message, MessageTypes} from 'whatsapp-web.js'
 import MessageHelper from '../Helpers/MessageHelper'
 import {WpLocation} from '../Types/WpLocation'
+import {ERROR_WHILE_PROCESSING} from '../Services/chatBot/Messages'
+import {exit} from 'process'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -163,6 +165,10 @@ export default class Session implements SessionInterface {
     this.wpClient = client
   }
 
+  public async sendMessage(content: string): Promise<void> {
+    await this.wpClient.sendMessage(this.chat_id, content)
+  }
+
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {
     const handler = ResponseContext.getResponse(this.status, this)
     const response = new ResponseContext(handler)
@@ -172,6 +178,16 @@ export default class Session implements SessionInterface {
           msg.processed = true
           this.messages.set(message.id, msg)
         })
+      })
+    }).catch(async (e) => {
+      console.log('error while processing message', {
+        error: e.message,
+        message: message.msg,
+        stack: e.stack,
+      })
+      await this.sendMessage(ERROR_WHILE_PROCESSING).catch( e => {
+        console.log('error while sending error message', e.message)
+        exit(1)
       })
     })
   }

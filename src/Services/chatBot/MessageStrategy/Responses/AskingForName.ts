@@ -14,7 +14,7 @@ export class AskingForName extends ResponseContract{
   
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isChat(message)) {
-      const name = await EntityExtractor.extractName(message.msg)
+      const name = await this.retryPromise<string|false>(EntityExtractor.extractName(message.msg), 3)
       if (name) {
         await this.createClient(message.id, name)
         await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)

@@ -1,5 +1,5 @@
 import Session from '../../../Models/Session'
-import {MessageContent, MessageTypes} from 'whatsapp-web.js'
+import {MessageTypes} from 'whatsapp-web.js'
 import {Store} from '../../store/Store'
 import CurrentClient from '../../../Models/Client'
 import Place from '../../../Models/Place'
@@ -10,6 +10,7 @@ import MessageHelper from '../../../Helpers/MessageHelper'
 import * as Sentry from '@sentry/node'
 import {WpMessage} from '../../../Types/WpMessage'
 import {WpLocation} from '../../../Types/WpLocation'
+import {exit} from 'process'
 
 export abstract class ResponseContract {
   
@@ -31,8 +32,12 @@ export abstract class ResponseContract {
     return message.type === MessageTypes.LOCATION
   }
   
-  async sendMessage(content: MessageContent): Promise<void> {
-    await this.session.wpClient.sendMessage(this.session.chat_id, content).catch(e => Sentry.captureException(e))
+  async sendMessage(content: string): Promise<void> {
+    await this.retryPromise<void>(this.session.sendMessage(content), 3)
+      .catch(e => {
+        Sentry.captureException(e)
+        exit(1)
+      })
   }
 
   private getWpClientId(): string {
@@ -100,5 +105,25 @@ export abstract class ResponseContract {
   
   supportMessage(message: WpMessage): boolean {
     return this.messageSupported.includes(message.type)
+  }
+
+  protected retryPromise<T>(promiseFactory: Promise<T>, maxRetries: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const attempt = (attemptNumber: number) => {
+        promiseFactory
+        .then(resolve)
+        .catch(error => {
+          if (attemptNumber < maxRetries) {
+            console.log(`Retry attempt ${attemptNumber + 1}/${maxRetries}`, {
+              error: error.message
+            })
+            setTimeout(() => attempt(attemptNumber + 1), 1000)
+          } else {
+            reject(error)
+          }
+        });
+      };
+      attempt(0);
+    });
   }
 }
