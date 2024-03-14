@@ -10,25 +10,36 @@ export default class ChatBot {
   
   constructor(client: Client) {
     this.wpClient = client
-    SessionRepository.getActiveSessions().then(async sessions => {
-      for (const session of sessions) {
-        const sessionObject = new Session(session.chat_id)
-        Object.assign(sessionObject, session)
-        sessionObject.setClient(this.wpClient)
-        sessionObject.setOnCanceled(this.removeSession.bind(this, sessionObject.id))
-        await sessionObject.syncMessages()
-        this.sessions.add(sessionObject)
+    SessionRepository.sessionActiveListener(async (type, session) => {
+      switch (type) {
+        case 'added':
+          session.setClient(this.wpClient)
+          await session.syncMessages()
+          this.sessions.add(session)
+          break
+        case 'modified':
+          const sessionInSet = Array.from(this.sessions).find(s => s.id === session.id)
+          if (sessionInSet) {
+            this.sessions.delete(sessionInSet)
+            this.sessions.add(session)
+          }
+          break
+        case 'removed':
+          this.removeSession(session.id)
+          break
       }
     })
   }
 
   public removeSession(sessionId: string): void {
-    this.sessions.forEach(session => {
-      if (session.id === sessionId) this.sessions.delete(session)
-    })
+    const sessionInSet = Array.from(this.sessions).find(s => s.id === sessionId)
+    if (sessionInSet) {
+      this.sessions.delete(sessionInSet)
+    }
   }
   
   async processMessage(message: Message): Promise<void> {
+    console.log(this.sessions.size)
     await this.findOrCreateSession(message.from, message).then(async session => {
       await session.addMsg(message)
     })

@@ -95,6 +95,19 @@ class SessionRepository {
     return sessions
   }
 
+  public sessionActiveListener(listener: (type: string, session: Session) => void): void {
+    Firestore.dbSessions()
+    .where('status', 'not-in', [Session.STATUS_COMPLETED])
+    .onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        const sessionInterface = <SessionInterface>change.doc.data()
+        const session = new Session(sessionInterface.chat_id)
+        Object.assign(session, sessionInterface)
+        listener(change.type, session)
+      })
+    })
+  }
+
   public async closeAbandoned(sessions: Array<SessionInterface>): Promise<void> {
     const batch = Firestore.fs.batch()
     sessions.forEach((session) => {

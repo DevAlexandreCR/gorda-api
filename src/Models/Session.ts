@@ -9,6 +9,7 @@ import MessageHelper from '../Helpers/MessageHelper'
 import {WpLocation} from '../Types/WpLocation'
 import {ERROR_WHILE_PROCESSING} from '../Services/chatBot/Messages'
 import {exit} from 'process'
+import config from '../../config.js'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -23,7 +24,6 @@ export default class Session implements SessionInterface {
   public messages: Map<string, WpMessage> = new Map()
   public wpClient: Client
   private processorTimeout?: NodeJS.Timer
-  public onCanceled: () => void
 
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
   static readonly STATUS_CREATED = 'CREATED'
@@ -42,10 +42,6 @@ export default class Session implements SessionInterface {
     this.service_id = null
   }
 
-  setOnCanceled(callback: () => void): void {
-    this.onCanceled = callback
-  }
-  
   isCompleted(): boolean {
     return this.status === Session.STATUS_COMPLETED
   }
@@ -117,7 +113,7 @@ export default class Session implements SessionInterface {
         this.processMessage(wpMsg, unprocessedMessagesArray)
         clearTimeout(this.processorTimeout)
         delete this.processorTimeout
-      }, 10000)
+      }, config.MESSAGE_TIMEOUT as number)
     }
   }
 
@@ -144,9 +140,6 @@ export default class Session implements SessionInterface {
   }
   
   async setStatus(status: string): Promise<void> {
-    if (status === Session.STATUS_COMPLETED) {
-      this.onCanceled
-    }
     this.status = status
     await SessionRepository.updateStatus(this)
   }

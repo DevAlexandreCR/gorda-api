@@ -48,11 +48,11 @@ export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar
 export const ASK_FOR_LOCATION = '*Envía tu ubicación actual 📍*' +
   ' para asignarte un vehículo en el menor tiempo posible \n'
 
-export const ASK_FOR_LOCATION_NAME = 'Por favor agrega el nombre del *barrio*, ' +
-  'la *dirección* o algún *punto de referencia* cercano\n'
+export const ASK_FOR_LOCATION_NAME = 'Por favor agrega el nombre del _barrio_, ' +
+  'la _dirección_ o algún _punto de referencia_ cercano\n'
 
 export const REQUESTING_SERVICE = '* Creando servicio...\n \n' +
-  'Para agregar un comentario tipo: \n*Sin acompañante* \n*Con mascota* o \n*Bodega amplia* \nPor favor escríbelo abajo, de lo contrario envía *NO*'
+  'Para agregar algún requerimiento especial, por ejemplo: \n\n_Pago con nequi_ \n_Con mascota_ \n_Bodega amplia_\n\nPor favor escríbelo abajo, de lo contrario envía *NO*'
 export const WELCOME = '¿Para dónde vamos hoy? \n \n' + ASK_FOR_LOCATION
 export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
   '*Espero poder colaborarte en una próxima ocasión 🙋🏻‍♀️*'

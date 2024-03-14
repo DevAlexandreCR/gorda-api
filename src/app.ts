@@ -14,11 +14,11 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import {RemoveConnectedDrivers} from './Jobs/RemoveConnectedDrivers'
 import schedule from './Jobs/Schedule'
-import SettingsRepository from "./Repositories/SettingsRepository";
-import {WpClient} from "./Interfaces/WpClient";
-import {WhatsAppClientDictionary} from "./Interfaces/WhatsAppClientDiccionary";
-import {ClientDictionary} from "./Interfaces/ClientDiccionary";
-import {requiredClientId} from "./Middlewares/HasData";
+import SettingsRepository from './Repositories/SettingsRepository'
+import {WpClient} from './Interfaces/WpClient'
+import {WhatsAppClientDictionary} from './Interfaces/WhatsAppClientDiccionary'
+import {ClientDictionary} from './Interfaces/ClientDiccionary'
+import {requiredClientId} from './Middlewares/HasData'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
