@@ -20,6 +20,7 @@ export class Created extends ResponseContract {
   
   async validateKey(message: WpMessage): Promise<void> {
     if (this.isLocation(message)) {
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
       const response = new AskingForPlace(this.session)
       await response.processMessage(message)
     } else {

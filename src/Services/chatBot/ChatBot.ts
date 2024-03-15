@@ -6,24 +6,27 @@ import {Agreement} from './MessageStrategy/Responses/Agreement'
 
 export default class ChatBot {
   private readonly wpClient: Client
-  private sessions = new Set<Session>()
+  // TODO: change to Map
+  private sessions = new Map<string, Session>()
   
   constructor(client: Client) {
     this.wpClient = client
     SessionRepository.sessionActiveListener(async (type, session) => {
       switch (type) {
         case 'added':
+          console.log('session added: ', session.id)
           session.setClient(this.wpClient)
-          await session.syncMessages()
-          this.sessions.add(session)
+          await session.syncMessages(true)
+          this.sessions.set(session.id, session)
           break
-        // case 'modified':
-        //   const sessionInSet = Array.from(this.sessions).find(s => s.id === session.id)
-        //   if (sessionInSet) {
-        //     this.sessions.delete(sessionInSet)
-        //     this.sessions.add(session)
-        //   }
-        //   break
+        case 'modified':
+          const sessionInMap = this.sessions.get(session.id)
+          if (sessionInMap) {
+            sessionInMap.status = session.status
+            this.sessions.set(session.id, sessionInMap)
+          }
+          console.log('session modified: ', this.sessions.size, session.status)
+          break
         case 'removed':
           this.removeSession(session.id)
           break
@@ -32,10 +35,9 @@ export default class ChatBot {
   }
 
   public removeSession(sessionId: string): void {
-    const sessionInSet = Array.from(this.sessions).find(s => s.id === sessionId)
-    if (sessionInSet) {
-      this.sessions.delete(sessionInSet)
-    }
+      console.log(this.sessions.size)
+      this.sessions.delete(sessionId)
+      console.log(this.sessions.size)
   }
   
   async processMessage(message: Message): Promise<void> {
@@ -48,12 +50,12 @@ export default class ChatBot {
     let session = this.findSessionByChatId(chatId)
 
     if (!session) {
-      session = await this.createSession(new Session(chatId))
-      session.setClient(this.wpClient)
+      const newSession = new Session(chatId)
       if (this.isAgreement(message.body)) {
-        session.status = Session.STATUS_AGREEMENT
+        newSession.status = Session.STATUS_AGREEMENT
       }
-      this.sessions.add(session)
+      session = await this.createSession(newSession)
+      session.setClient(this.wpClient)
     }
 
     return session
@@ -73,7 +75,12 @@ export default class ChatBot {
   }
 
   findSessionByChatId(chatId: string): Session|null {
-    const sessionInSet = Array.from(this.sessions).find(s => s.chat_id === chatId)
-    return sessionInSet ?? null
+    for (const [_, session] of this.sessions.entries()) {
+      if (session.chat_id === chatId && this.isSessionActive(session)) {
+        return session
+      }
+    }
+
+    return null
   }
 }

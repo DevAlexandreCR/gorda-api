@@ -117,9 +117,9 @@ export default class Session implements SessionInterface {
     }
   }
 
-  async syncMessages(): Promise<void> {
+  async syncMessages(process = false): Promise<void> {
     this.messages = await SessionRepository.getMessages(this.id)
-    await this.processUnprocessedMessages()
+    if (process) await this.processUnprocessedMessages()
   }
 
   private getUnprocessedMessages(): Map<string, WpMessage> {

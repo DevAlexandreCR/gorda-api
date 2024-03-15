@@ -50,7 +50,7 @@ io.attach(server, {cors: {origin: true}})
 io.attach(serverSSL, {cors: {origin: true}})
 server.listen(config.PORT, async () => {
 	console.log('listen: ', config.PORT)
-  await SettingsRepository.getWpClients((clients: ClientDictionary) => {
+  SettingsRepository.getWpClients((clients: ClientDictionary) => {
     Object.values(clients).forEach((client: WpClient) => {
       if (!wpServices[client.id]) {
         const wpService = new WhatsAppClient(client)

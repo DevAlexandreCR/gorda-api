@@ -43,6 +43,6 @@ export default class Service implements ServiceInterface {
   
   async cancel(): Promise<void> {
     this.status = Service.STATUS_CANCELED
-    await ServiceRepository.update(this)
+    await ServiceRepository.updateStatus(this.id, this.status)
   }
 }
