@@ -159,7 +159,11 @@ export default class Session implements SessionInterface {
   }
 
   public async sendMessage(content: string): Promise<void> {
-    await this.wpClient.sendMessage(this.chat_id, content)
+    await this.wpClient.sendMessage(this.chat_id, content).then(msg => {
+      msg.getChat().then(chat => {
+        chat.archive().catch(e => console.log(e.message))
+      })
+    })
   }
 
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {

@@ -6,7 +6,7 @@ import {DataSnapshot} from 'firebase-admin/lib/database'
 import * as Messages from '../chatBot/Messages'
 import {ASK_FOR_CANCEL} from '../chatBot/Messages'
 import {Store} from '../store/Store'
-import config from '../../../config';
+import config from '../../../config'
 import {WpNotificationType} from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
 import {exit} from 'process'
@@ -15,10 +15,9 @@ import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
-import {WpClient} from "../../Interfaces/WpClient";
-import Session from "../../Models/Session";
-import SessionRepository from "../../Repositories/SessionRepository";
-import {ServiceInterface} from "../../Interfaces/ServiceInterface";
+import {WpClient} from '../../Interfaces/WpClient'
+import Session from '../../Models/Session'
+import {ServiceInterface} from '../../Interfaces/ServiceInterface'
 
 export class WhatsAppClient {
   
@@ -70,8 +69,6 @@ export class WhatsAppClient {
 	  .then(async () => {
 		  console.log('authenticated after init server', this.wpClient.alias)
 			this.starting = false
-		  if (!this.deleting) await SettingsRepository.enableWpNotifications(this.wpClient.id, true)
-			.catch(e => console.log(e.message))
 	  })
 	  .catch(e => {
 			this.starting = false
@@ -113,8 +110,12 @@ export class WhatsAppClient {
 	}
 
 	isProcessableMsg(msg: Message): boolean {
-		if(!this.wpClient.chatBot) return false
-		return (msg.type === MessageTypes.TEXT && !msg.from.includes('-')) || msg.type === MessageTypes.LOCATION
+		const session = this.chatBot.findSessionByChatId(msg.from)
+		if (session) return true
+		if (msg.type === MessageTypes.LOCATION) return true
+		if (this.wpClient.chatBot) return (msg.type === MessageTypes.TEXT && !msg.isStatus)
+
+		return false
 	}
 
   onDisconnected = async (reason: string | WAState): Promise<void> => {
@@ -266,7 +267,6 @@ export class WhatsAppClient {
 	}
 
 	serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
-		if (!this.wpClient.chatBot) return
 		const service = new Service()
 		Object.assign(service, snapshot.val() as ServiceInterface)
 
@@ -298,5 +298,18 @@ export class WhatsAppClient {
 			default:
 				console.log('new service', service.id)
 		}
+	}
+
+	sendMessage(chatId: string, message: string): void {
+		this.client.sendMessage(chatId, message).catch(e => {
+			console.log('sendMessage', this.wpClient.alias, e)
+			Sentry.captureException(e)
+			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
+			exit(1)
+		}).then(msg => {
+			msg.getChat().then(chat => {
+				chat.archive().catch(e => console.log(e.message))
+			})
+		})
 	}
 }

@@ -17,13 +17,13 @@ export default class ChatBot {
           await session.syncMessages()
           this.sessions.add(session)
           break
-        case 'modified':
-          const sessionInSet = Array.from(this.sessions).find(s => s.id === session.id)
-          if (sessionInSet) {
-            this.sessions.delete(sessionInSet)
-            this.sessions.add(session)
-          }
-          break
+        // case 'modified':
+        //   const sessionInSet = Array.from(this.sessions).find(s => s.id === session.id)
+        //   if (sessionInSet) {
+        //     this.sessions.delete(sessionInSet)
+        //     this.sessions.add(session)
+        //   }
+        //   break
         case 'removed':
           this.removeSession(session.id)
           break
@@ -39,7 +39,6 @@ export default class ChatBot {
   }
   
   async processMessage(message: Message): Promise<void> {
-    console.log(this.sessions.size)
     await this.findOrCreateSession(message.from, message).then(async session => {
       await session.addMsg(message)
     })
@@ -74,9 +73,7 @@ export default class ChatBot {
   }
 
   findSessionByChatId(chatId: string): Session|null {
-    for (const session of this.sessions) {
-      if (session.chat_id === chatId && this.isSessionActive(session)) return session
-    }
-    return null
+    const sessionInSet = Array.from(this.sessions).find(s => s.chat_id === chatId)
+    return sessionInSet ?? null
   }
 }
