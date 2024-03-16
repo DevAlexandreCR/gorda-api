@@ -106,6 +106,7 @@ export class WhatsAppClient {
   }
 	
 	onMessageReceived = async (msg: Message): Promise<void> => {
+		console.log(msg)
 		if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch(e => console.log(e.message))
 	}
 
@@ -113,7 +114,7 @@ export class WhatsAppClient {
 		const session = this.chatBot.findSessionByChatId(msg.from)
 		if (session) return true
 		if (this.wpClient.assistant) return (msg.type === MessageTypes.LOCATION)
-		if (this.wpClient.chatBot) return (msg.type === MessageTypes.TEXT && !msg.isStatus)
+		if (this.wpClient.chatBot) return (msg.type === MessageTypes.TEXT && !msg.isStatus && !msg.from.includes('-'))
 
 		return false
 	}
