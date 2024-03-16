@@ -112,7 +112,7 @@ export class WhatsAppClient {
 	isProcessableMsg(msg: Message): boolean {
 		const session = this.chatBot.findSessionByChatId(msg.from)
 		if (session) return true
-		if (msg.type === MessageTypes.LOCATION) return true
+		if (this.wpClient.assistant) return (msg.type === MessageTypes.LOCATION)
 		if (this.wpClient.chatBot) return (msg.type === MessageTypes.TEXT && !msg.isStatus)
 
 		return false
@@ -234,6 +234,7 @@ export class WhatsAppClient {
 	setWpClient(client: WpClient): void {
 		this.wpClient.wpNotifications = client.wpNotifications
 		this.wpClient.chatBot = client.chatBot
+		this.wpClient.assistant = client.assistant
 	}
 
 	serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {

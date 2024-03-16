@@ -14,7 +14,6 @@ export default class ChatBot {
     SessionRepository.sessionActiveListener(async (type, session) => {
       switch (type) {
         case 'added':
-          console.log('session added: ', session.id)
           session.setClient(this.wpClient)
           await session.syncMessages(true)
           this.sessions.set(session.id, session)
@@ -23,9 +22,9 @@ export default class ChatBot {
           const sessionInMap = this.sessions.get(session.id)
           if (sessionInMap) {
             sessionInMap.status = session.status
+            sessionInMap.place = session.place
             this.sessions.set(session.id, sessionInMap)
           }
-          console.log('session modified: ', this.sessions.size, session.status)
           break
         case 'removed':
           this.removeSession(session.id)
@@ -35,9 +34,7 @@ export default class ChatBot {
   }
 
   public removeSession(sessionId: string): void {
-      console.log(this.sessions.size)
       this.sessions.delete(sessionId)
-      console.log(this.sessions.size)
   }
   
   async processMessage(message: Message): Promise<void> {

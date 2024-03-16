@@ -5,8 +5,8 @@ import {WpClient} from "../Interfaces/WpClient";
 class SettingsRepository {
 	
 	/* istanbul ignore next */
-	enableWpNotifications(clientId: string, enable: boolean): Promise<void> {
-		return Database.dbWpClients().child(clientId).child('wpNotifications').set(enable);
+	async enableWpNotifications(clientId: string, enable: boolean): Promise<void> {
+		await Database.dbWpClients().child(clientId).child('wpNotifications').set(enable)
 	}
 
 	/* istanbul ignore next */

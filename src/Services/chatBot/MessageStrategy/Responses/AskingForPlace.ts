@@ -11,7 +11,7 @@ import MessageHelper from '../../../../Helpers/MessageHelper'
 export class AskingForPlace extends ResponseContract{
   
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
-  
+
   public async processMessage(message: WpMessage): Promise<void> {
     if(!this.session.place) {
       if (this.isLocation(message) && message.location) {
