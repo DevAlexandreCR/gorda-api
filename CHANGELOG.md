@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added ChatBot and assistant ([#70](https://github.com/DevAlexandreCR/gorda-api/pull/70))
+
 # Release Notes for 1.2.x
 
 ## [1.2.1 (2024-02-26)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.2.1...v1.2.0)
