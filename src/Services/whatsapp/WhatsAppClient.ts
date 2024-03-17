@@ -106,7 +106,6 @@ export class WhatsAppClient {
   }
 	
 	onMessageReceived = async (msg: Message): Promise<void> => {
-		console.log(msg)
 		if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch(e => console.log(e.message))
 	}
 
