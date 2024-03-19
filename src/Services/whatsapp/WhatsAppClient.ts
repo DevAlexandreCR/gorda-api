@@ -91,6 +91,8 @@ export class WhatsAppClient {
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned)
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived)
 	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService)
+		WpNotificationRepository.onServiceCanceled(this.wpClient.id, this.serviceCanceled)
+		WpNotificationRepository.onServiceTerminated(this.wpClient.id, this.serviceTerminated)
 		ServiceRepository.onServiceChanged(this.serviceChanged)
     if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
     console.table(this.client.pupBrowser?._targets)
@@ -113,7 +115,10 @@ export class WhatsAppClient {
 		const session = this.chatBot.findSessionByChatId(msg.from)
 		if (session) return true
 		if (this.wpClient.assistant) return (msg.type === MessageTypes.LOCATION)
-		if (this.wpClient.chatBot) return (msg.type === MessageTypes.TEXT && !msg.isStatus && !msg.from.includes('-'))
+		if (this.wpClient.chatBot) {
+			return msg.type === MessageTypes.LOCATION ||
+				(msg.type === MessageTypes.TEXT && !msg.isStatus && !msg.from.includes('-'))
+		}
 
 		return false
 	}
@@ -238,6 +243,7 @@ export class WhatsAppClient {
 	}
 
 	serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
+		if (!this.wpClient.chatBot) return
 		const service = new Service()
 		Object.assign(service, snapshot.val() as ServiceInterface)
 
