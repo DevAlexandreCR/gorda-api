@@ -212,7 +212,7 @@ export class WhatsAppClient {
 			await this.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 				WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 			})
-		}, config.ARCHIVE_CHAT_TIMEOUT as number)
+		}, 2000)
 	}
 	
 	cancelTimeout = (serviceId: string, clientId: string): void => {
