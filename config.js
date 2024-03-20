@@ -22,6 +22,6 @@ module.exports = {
   GORDA_API_FUNCTIONS: process.env.GORDA_API_FUNCTIONS || 'http://127.0.0.1:5001/gorda-driver/us-central1/api',
   ENTITY_MODEL_NAME: process.env.ENTITY_MODEL_NAME || undefined,
   HUGGINGFACE_TOKEN: process.env.HUGGINGFACE_TOKEN || 'api-token',
-  MESSAGE_TIMEOUT: process.env.MESSAGE_TIMEOUT || 10000,
+  MESSAGE_TIMEOUT: process.env.MESSAGE_TIMEOUT || 5000,
   ARCHIVE_CHAT_TIMEOUT: process.env.ARCHIVE_CHAT_TIMEOUT || 2000
 }
