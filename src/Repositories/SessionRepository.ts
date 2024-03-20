@@ -95,9 +95,10 @@ class SessionRepository {
     return sessions
   }
 
-  public sessionActiveListener(listener: (type: string, session: Session) => void): void {
+  public sessionActiveListener(wpClientId: string, listener: (type: string, session: Session) => void): void {
     Firestore.dbSessions()
     .where('status', 'not-in', [Session.STATUS_COMPLETED])
+    .where('wp_client_id', '==', wpClientId)
     .onSnapshot(snapshot => {
       snapshot.docChanges().forEach(change => {
         const sessionInterface = <SessionInterface>change.doc.data()
