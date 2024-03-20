@@ -26,6 +26,7 @@ export default class ChatBot {
           if (sessionInMap) {
             sessionInMap.status = session.status
             sessionInMap.place = session.place
+            sessionInMap.notifications = session.notifications
             this.sessions.set(session.id, sessionInMap)
           }
           break

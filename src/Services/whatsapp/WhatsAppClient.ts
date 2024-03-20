@@ -18,6 +18,7 @@ import Service from '../../Models/Service'
 import {WpClient} from '../../Interfaces/WpClient'
 import Session from '../../Models/Session'
 import {ServiceInterface} from '../../Interfaces/ServiceInterface'
+import {NotificationType} from '../../Types/NotificationType'
 
 export class WhatsAppClient {
   
@@ -259,9 +260,15 @@ export class WhatsAppClient {
 				const driver = this.store.findDriverById(service.driver_id!!)
 				if (!service.metadata) {
 					await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-					message = Messages.serviceAssigned(driver.vehicle)
+					if (!session.notifications.assigned) {
+						await session.setNotification(NotificationType.assigned)
+						message = Messages.serviceAssigned(driver.vehicle)
+					}
 				} else if (service.metadata.arrived_at > 0 && !service.metadata.start_trip_at) {
-					message = Messages.DRIVER_ARRIVED
+					if (!session.notifications.arrived) {
+						await session.setNotification(NotificationType.arrived)
+						message = Messages.DRIVER_ARRIVED
+					}
 				}
 				break
 			case Service.STATUS_TERMINATED:

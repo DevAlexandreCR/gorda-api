@@ -4,6 +4,7 @@ import Session from '../Models/Session'
 import {Message, MessageTypes} from 'whatsapp-web.js'
 import {WpMessage} from '../Types/WpMessage'
 import Firestore from '../Services/firebase/Firestore'
+import {WpNotifications} from '../Types/WpNotifications'
 
 class SessionRepository {
   
@@ -70,6 +71,12 @@ class SessionRepository {
       placeOptions: session.placeOptions
     })
     return session
+  }
+
+  public async updateNotification(sessionId: string, notifications: WpNotifications): Promise<void> {
+    await Firestore.dbSessions().doc(sessionId).update({
+      notifications: notifications
+    })
   }
   
   public async create(session: SessionInterface): Promise<SessionInterface> {
