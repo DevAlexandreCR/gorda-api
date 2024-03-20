@@ -6,7 +6,7 @@ module.exports = {
   HOST: process.env.HOST || 'localhost',
   PORT: process.env.PORT || 3000,
   APP_DOMAIN: process.env.APP_DOMAIN || 'localhost',
-  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || 'gorda-driver-default-rtdb',
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || 'gorda-driver',
   FIREBASE_DATABASE_URL: process.env.FIREBASE_DATABASE_URL || 'http://localhost:9000',
   AUTHENTICATION_EMULATOR_HOST: process.env.AUTHENTICATION_EMULATOR_HOST || 'http://localhost:9099',
   DATABASE_EMULATOR_HOST: process.env.DATABASE_EMULATOR_HOST || 'localhost',
