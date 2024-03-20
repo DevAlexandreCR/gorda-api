@@ -1,42 +1,41 @@
-import {Client, Message, MessageTypes} from 'whatsapp-web.js'
+import {MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import {ResponseContract} from '../ResponseContract'
 import * as Messages from '../../Messages'
 import {sendPlaceOptions} from '../../Messages'
 import Place from '../../../../Models/Place'
 import {PlaceOption} from '../../../../Interfaces/PlaceOption'
+import {WpMessage} from '../../../../Types/WpMessage'
+import MessageHelper from '../../../../Helpers/MessageHelper'
 
 export class AskingForPlace extends ResponseContract{
   
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
-  
-  public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
-    let places: Array<Place> = []
-    if (this.isChat(message)) {
-      places = this.getPlaceFromMessage(message)
-    } else {
-      places = this.getPlaceFromLocation(message)
-    }
-    if (places.length == 0) {
-      await this.sendMessage(client, message.from, Messages.NON_NEIGHBORHOOD_FOUND).then(async () => {
-        await session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+
+  public async processMessage(message: WpMessage): Promise<void> {
+    if(!this.session.place) {
+      if (this.isLocation(message) && message.location) {
+        const place = this.getPlaceFromLocation(message.location)
+        if (place.name !== MessageHelper.LOCATION_NO_NAME) {
+          await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
+            await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
+            await this.session.setPlace(place)
+          })
+        } else {
+          await this.sendMessage(Messages.ASK_FOR_LOCATION_NAME).then(async () => {
+            await this.session.setPlace(place)
+          })
+        }
+      } else {
+        await this.sendMessage(Messages.NO_LOCATION_FOUND)
+      }
+    } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME && this.isChat(message)) {
+      const place = this.session.place
+      place.name = message.msg
+      await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
+        await this.session.setPlace(place)
       })
-    } else if (places.length == 1) {
-      await this.sendMessage(client, message.from, Messages.requestingService(places[0].name)).then(async () => {
-        await session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
-        await session.setPlace(places[0])
-      })
-    } else {
-      await session.setStatus(Session.STATUS_CHOOSING_PLACE)
-      const options: Array<PlaceOption> = []
-      places.forEach((place, index) => {
-        options.push({
-          option: index + 1,
-          placeId: place.key
-        })
-      })
-      await session.setPlaceOptions(options)
-      await this.sendMessage(client, message.from, sendPlaceOptions(options))
     }
   }
 }

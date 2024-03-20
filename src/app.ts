@@ -14,11 +14,11 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import {RemoveConnectedDrivers} from './Jobs/RemoveConnectedDrivers'
 import schedule from './Jobs/Schedule'
-import SettingsRepository from "./Repositories/SettingsRepository";
-import {WpClient} from "./Interfaces/WpClient";
-import {WhatsAppClientDictionary} from "./Interfaces/WhatsAppClientDiccionary";
-import {ClientDictionary} from "./Interfaces/ClientDiccionary";
-import {requiredClientId} from "./Middlewares/HasData";
+import SettingsRepository from './Repositories/SettingsRepository'
+import {WpClient} from './Interfaces/WpClient'
+import {WhatsAppClientDictionary} from './Interfaces/WhatsAppClientDiccionary'
+import {ClientDictionary} from './Interfaces/ClientDiccionary'
+import {requiredClientId} from './Middlewares/HasData'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -50,7 +50,7 @@ io.attach(server, {cors: {origin: true}})
 io.attach(serverSSL, {cors: {origin: true}})
 server.listen(config.PORT, async () => {
 	console.log('listen: ', config.PORT)
-  await SettingsRepository.getWpClients((clients: ClientDictionary) => {
+  SettingsRepository.getWpClients((clients: ClientDictionary) => {
     Object.values(clients).forEach((client: WpClient) => {
       if (!wpServices[client.id]) {
         const wpService = new WhatsAppClient(client)

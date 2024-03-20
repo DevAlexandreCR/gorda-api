@@ -28,19 +28,19 @@ class ServiceRepository {
 		})
 	}
   
-  public async update(service: ServiceInterface): Promise<ServiceInterface> {
-    await Database.dbServices().child(service.id!).set(service)
-    return service
-  }
-  
-  public async create(service: ServiceInterface): Promise<ServiceInterface> {
-    const res = await Database.dbServices().push(service)
-    service.id = res.key!
-    return this.update(service)
+  public async updateStatus(serviceId: string, status: string): Promise<void> {
+    await Database.dbServices().child(serviceId).update({status: status})
   }
 
-  public async onServiceChanged(onChanged: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbServices().orderByChild('status').limitToLast(100).on('child_changed', onChanged)
+  public async create(service: ServiceInterface): Promise<ServiceInterface> {
+    const res = Database.dbServices().push()
+    service.id = res.key
+    await res.set(service)
+    return service
+  }
+
+  public onServiceChanged(onChanged: (data: DataSnapshot) => void): void {
+    Database.dbServices().orderByChild('status').limitToLast(100).on('child_changed', onChanged)
   }
 }
 

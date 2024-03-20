@@ -1,29 +1,31 @@
 import {ResponseContract} from '../ResponseContract'
-import {Client, Message, MessageTypes} from 'whatsapp-web.js'
+import {MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import * as Messages from '../../Messages'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import {AskingForPlace} from './AskingForPlace'
+import {WpMessage} from '../../../../Types/WpMessage'
 
 export class Created extends ResponseContract {
   
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
   
-  public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
-    if (this.clientExists(message)) await this.validateKey(client, session, message)
+  public async processMessage(message: WpMessage): Promise<void> {
+    if (this.clientExists(this.session.chat_id)) await this.validateKey(message)
     else {
-      await session.setStatus(Session.STATUS_ASKING_FOR_NAME)
-      await this.sendMessage(client, message.from, Messages.ASK_FOR_NAME)
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_NAME)
+      await this.sendMessage(Messages.ASK_FOR_NAME)
     }
   }
   
-  async validateKey(client: Client, session: Session, message: Message): Promise<void> {
-    if (this.isLocation(message) || MessageHelper.hasKey(message.body)) {
-      const response = new AskingForPlace()
-      await response.processMessage(client, session, message)
+  async validateKey(message: WpMessage): Promise<void> {
+    if (this.isLocation(message)) {
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+      const response = new AskingForPlace(this.session)
+      await response.processMessage(message)
     } else {
-      await this.sendMessage(client, message.from, Messages.welcome(this.currentClient.name)).then(async () => {
-        await session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+      await this.sendMessage(Messages.welcome(this.currentClient.name)).then(async () => {
+        await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
       })
     }
   }
