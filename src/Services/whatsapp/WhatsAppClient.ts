@@ -212,7 +212,7 @@ export class WhatsAppClient {
 			await this.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
 				WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 			})
-		}, config.ARCHIVE_CHAT_TIMEOUT as number)
+		}, 2000)
 	}
 	
 	cancelTimeout = (serviceId: string, clientId: string): void => {
@@ -254,6 +254,7 @@ export class WhatsAppClient {
 		if (!session) return
 
 		let message: string|false = false
+		let mustSend: boolean = false
 
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
@@ -270,23 +271,27 @@ export class WhatsAppClient {
 						message = Messages.DRIVER_ARRIVED
 					}
 				}
+				if (!this.wpClient.wpNotifications && message) mustSend = true
 				break
 			case Service.STATUS_TERMINATED:
 				await session.setStatus(Session.STATUS_COMPLETED)
 				message = Messages.SERVICE_COMPLETED
+				mustSend = true
 				break
 			case Service.STATUS_CANCELED:
 				await session.setStatus(Session.STATUS_COMPLETED)
 				message = Messages.CANCELED
+				mustSend = true
 				break
 			case Service.STATUS_PENDING:
 				await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
 				break
 			default:
+				mustSend = false
 				console.log('new service', service.id)
 		}
 
-		if (!this.wpClient.wpNotifications && message) await this.sendMessage(service.client_id, message)
+		if (mustSend && message) await this.sendMessage(service.client_id, message)
 	}
 
 	async sendMessage(chatId: string, message: string): Promise<void> {
