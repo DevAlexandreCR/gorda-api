@@ -14,6 +14,7 @@ export default class Admin {
   constructor() {
     this.app = initializeApp({
       credential: applicationDefault(),
+      projectId: config.FIREBASE_PROJECT_ID,
       databaseURL: config.FIREBASE_DATABASE_URL,
     })
     this.db = getDatabase(this.app)

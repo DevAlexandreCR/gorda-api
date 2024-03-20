@@ -205,22 +205,23 @@ export class WhatsAppClient {
   }
 	
 	onNewService = async (snapshot: DataSnapshot): Promise<void> => {
-		const notification: WpNotificationType = snapshot.val()
-		this.cancelTimeout(snapshot.key!!, notification.client_id)
-		await this.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
-			WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
-		})
+		setTimeout(async () => {
+			const notification: WpNotificationType = snapshot.val()
+			this.cancelTimeout(snapshot.key!!, notification.client_id)
+			await this.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
+				WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
+			})
+		}, config.ARCHIVE_CHAT_TIMEOUT as number)
 	}
 	
 	cancelTimeout = (serviceId: string, clientId: string): void => {
-		const timeout = config.CANCEL_TIMEOUT as number
-		setTimeout(() => {
-			ServiceRepository.findServiceStatusById(serviceId).then(async (status) => {
+		setTimeout(async () => {
+			await ServiceRepository.findServiceStatusById(serviceId).then(async (status) => {
 				if (status === Service.STATUS_PENDING) {
 					await this.sendMessage(clientId, ASK_FOR_CANCEL)
 				}
 			})
-		}, timeout)
+		}, config.CANCEL_TIMEOUT as number)
 	}
   
   logout = (): void => {
@@ -243,7 +244,7 @@ export class WhatsAppClient {
 	}
 
 	serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
-		if (!this.wpClient.chatBot) return
+		if (!this.wpClient.chatBot && !this.wpClient.assistant) return
 		const service = new Service()
 		Object.assign(service, snapshot.val() as ServiceInterface)
 
@@ -251,23 +252,25 @@ export class WhatsAppClient {
 
 		if (!session) return
 
+		let message = ''
+
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
 				const driver = this.store.findDriverById(service.driver_id!!)
 				if (!service.metadata) {
 					await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-					await this.sendMessage(service.client_id, Messages.serviceAssigned(driver.vehicle))
+					message = Messages.serviceAssigned(driver.vehicle)
 				} else if (service.metadata.arrived_at > 0 && !service.metadata.start_trip_at) {
-					await this.sendMessage(service.client_id, Messages.DRIVER_ARRIVED)
+					message = Messages.DRIVER_ARRIVED
 				}
 				break
 			case Service.STATUS_TERMINATED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				await this.sendMessage(service.client_id, Messages.SERVICE_COMPLETED)
+				message = Messages.SERVICE_COMPLETED
 				break
 			case Service.STATUS_CANCELED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				await this.sendMessage(service.client_id, Messages.CANCELED)
+				message = Messages.CANCELED
 				break
 			case Service.STATUS_PENDING:
 				await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
@@ -275,17 +278,21 @@ export class WhatsAppClient {
 			default:
 				console.log('new service', service.id)
 		}
+
+		if (!this.wpClient.wpNotifications) await this.sendMessage(service.client_id, message)
 	}
 
 	async sendMessage(chatId: string, message: string): Promise<void> {
-		await this.client.sendMessage(chatId, message).catch(e => {
-			console.log('sendMessage ' + message, this.wpClient.alias, e)
-			Sentry.captureException(e)
-			if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
-			exit(1)
-		}).then(async msg => {
-			await msg.getChat().then(async chat => {
-				await chat.archive().catch(e => console.log(e.message))
+		await this.client.getChatById(chatId).then(async chat =>{
+			await chat.sendMessage(message).catch(e => {
+				console.log('sendMessage ' + message, this.wpClient.alias, e)
+				Sentry.captureException(e)
+				if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
+				exit(1)
+			}).then(async msg => {
+				setTimeout(async () => {
+					await chat.archive().catch(e => console.log(e.message))
+				}, config.ARCHIVE_CHAT_TIMEOUT as number)
 			})
 		})
 	}
