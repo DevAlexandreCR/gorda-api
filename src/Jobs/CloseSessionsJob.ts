@@ -3,13 +3,14 @@ import {SessionInterface} from '../Interfaces/SessionInterface'
 import dayjs from 'dayjs'
 import Session from '../Models/Session'
 import * as Sentry from '@sentry/node'
+import config from '../../config'
 
 function isSessionAbandoned(session: SessionInterface): boolean {
   const sessionDate = session.created_at
   const now = dayjs().unix() * 1000
   const rate = now - sessionDate
 
-  return rate > 1800000
+  return rate > (config.ABANDONED_SESSIONS_TIMEOUT as number)
 }
 
 export async function updateSessionAbandoned(): Promise<void> {

@@ -19,6 +19,7 @@ module.exports = {
   CHROMIUM_PATH: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser',
   CANCEL_TIMEOUT: process.env.CANCEL_TIMEOUT || 480000,
   DISCONNECT_TIMEOUT: process.env.DISCONNECT_TIMEOUT || 900000,
+  ABANDONED_SESSIONS_TIMEOUT: process.env.ABANDONED_SESSIONS_TIMEOUT || 1800000,
   GORDA_API_FUNCTIONS: process.env.GORDA_API_FUNCTIONS || 'http://127.0.0.1:5001/gorda-driver/us-central1/api',
   ENTITY_MODEL_NAME: process.env.ENTITY_MODEL_NAME || undefined,
   HUGGINGFACE_TOKEN: process.env.HUGGINGFACE_TOKEN || 'api-token',
