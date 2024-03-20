@@ -252,7 +252,7 @@ export class WhatsAppClient {
 
 		if (!session) return
 
-		let message = ''
+		let message: string|false = false
 
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
@@ -279,7 +279,7 @@ export class WhatsAppClient {
 				console.log('new service', service.id)
 		}
 
-		if (!this.wpClient.wpNotifications) await this.sendMessage(service.client_id, message)
+		if (!this.wpClient.wpNotifications && message) await this.sendMessage(service.client_id, message)
 	}
 
 	async sendMessage(chatId: string, message: string): Promise<void> {
