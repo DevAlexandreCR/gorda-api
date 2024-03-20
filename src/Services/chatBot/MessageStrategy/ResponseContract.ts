@@ -67,9 +67,7 @@ export abstract class ResponseContract {
     this.session.service_id = dbService.id
     if(this.session.service_id) await this.session.setService(this.session.service_id)
       .then(async () => {
-        await this.sendMessage(Messages.NEW_SERVICE).then(async () => {
-          await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)
-        })
+        await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)
       })
       .catch(async (e) => {
         console.error(e.message)
