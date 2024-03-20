@@ -40,7 +40,7 @@ class ServiceRepository {
   }
 
   public onServiceChanged(onChanged: (data: DataSnapshot) => void): void {
-    Database.dbServices().orderByChild('status').limitToLast(100).on('child_changed', onChanged)
+    Database.dbServices().orderByChild('created_at').limitToLast(100).on('child_changed', onChanged)
   }
 }
 
