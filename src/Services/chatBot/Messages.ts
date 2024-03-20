@@ -46,14 +46,14 @@ export const welcomeNews = (name: string): string => {
 export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
 export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
 export const ASK_FOR_LOCATION = '*Envía tu ubicación actual 📍*' +
-  ' para asignarte un vehículo en el menor tiempo posible \n'
+  ' para asignarte un vehículo en el menor tiempo posible 👏🏻 \n'
 
-export const ASK_FOR_LOCATION_NAME = 'Por favor agrega el nombre del _barrio_, ' +
-  'la _dirección_ o algún _punto de referencia_ cercano\n'
+export const ASK_FOR_LOCATION_NAME = 'Por favor 👉🏻 agrega el nombre del _barrio_, ' +
+  'o algún _punto de referencia_ cercano\n'
 
 export const REQUESTING_SERVICE = '* Creando servicio...\n \n' +
-  'Para agregar algún requerimiento especial, por ejemplo: \n\n_Pago con nequi_ \n_Con mascota_ \n_Bodega amplia_\n\nPor favor escríbelo abajo, de lo contrario envía *NO*'
-export const WELCOME = '¿Para dónde vamos hoy? \n \n' + ASK_FOR_LOCATION
+  'Para agregar algún requerimiento especial, por ejemplo: \n\n📌 _Pago con nequi_ \n📌 _Con mascota_ \n📌 _Bodega amplia_\n\nPor favor escríbelo abajo, de lo contrario envía *NO*'
+export const WELCOME = '¿Dónde te encuentras? \n \n' + ASK_FOR_LOCATION
 export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
   '*Espero poder colaborarte en una próxima ocasión 🙋🏻‍♀️*'
 
@@ -61,7 +61,7 @@ export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encu
   ASK_FOR_LOCATION
 export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fue el vehículo asignado. \n \n' +
   '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
-export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = 'Estamos buscando un conductor, en cuanto un conductor se reporte te '+
+export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = '➡️Seguimos  buscando un móvil disponible. \nEn cuanto un conductor se reporte te '+
   'informaremos. Esto tardara algunos minutos!⏳ .\nSi deseas cancelar el servicio envía *CANCELAR*'
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta más tarde. lamentamos las molestias'
 export const ERROR_WHILE_PROCESSING = 'Ocurrió un error mientras procesábamos tu petición, por favor intenta más tarde. lamentamos las molestias'
@@ -72,10 +72,9 @@ export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶
 export const NEW_SERVICE = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicará el móvil contigo 🚗 \n \n' +
 	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
 export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
-export const SERVICE_COMPLETED = 'Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n \nSi quieres presentar una solicitud queja o reclamo! ' +
-  `Escribe al ${config.PQR_NUMBER}\n` +
-  'Con gusto te atenderemos.'
-export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLANCA POPAYÁN ✨* por favor dime tu nombre para una atención personalizada. ejemplo: \n' +
+export const SERVICE_COMPLETED = 'Servicio completado! Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n'
+
+export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLANCA POPAYÁN 🚘✨* \n \nPor favor dime tu nombre para una atención personalizada. ejemplo: \n' +
   '*Pepito Perez*\n' +
   '*Maria Paz*'
 export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
