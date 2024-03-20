@@ -6,6 +6,7 @@ class EntityExtractor {
 
   static getInstance(progress_callback = undefined): HfInference {
     if (this.instance === null) {
+      console.log(config)
        this.instance = new HfInference(config.HUGGINGFACE_TOKEN)
     }
 
