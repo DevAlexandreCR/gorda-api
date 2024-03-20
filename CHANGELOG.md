@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Send completed when assistant enabled ([#74](https://github.com/DevAlexandreCR/gorda-api/pull/74))
 
+## [1.3.1 (2024-03-20)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.1...v1.3.0)
+
+### Fixed
+- node-fetch not found huggingface ([#73](https://github.com/DevAlexandreCR/gorda-api/pull/73))
+
 ## [1.3.0 (2024-03-19)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.0...v1.2.1)
 
 ### Added
