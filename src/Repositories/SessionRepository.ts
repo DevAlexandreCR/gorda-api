@@ -4,6 +4,7 @@ import Session from '../Models/Session'
 import {Message, MessageTypes} from 'whatsapp-web.js'
 import {WpMessage} from '../Types/WpMessage'
 import Firestore from '../Services/firebase/Firestore'
+import {WpNotifications} from '../Types/WpNotifications'
 
 class SessionRepository {
   
@@ -71,6 +72,12 @@ class SessionRepository {
     })
     return session
   }
+
+  public async updateNotification(sessionId: string, notifications: WpNotifications): Promise<void> {
+    await Firestore.dbSessions().doc(sessionId).update({
+      notifications: notifications
+    })
+  }
   
   public async create(session: SessionInterface): Promise<SessionInterface> {
     const res = Firestore.dbSessions().doc()
@@ -95,9 +102,10 @@ class SessionRepository {
     return sessions
   }
 
-  public sessionActiveListener(listener: (type: string, session: Session) => void): void {
+  public sessionActiveListener(wpClientId: string, listener: (type: string, session: Session) => void): void {
     Firestore.dbSessions()
     .where('status', 'not-in', [Session.STATUS_COMPLETED])
+    .where('wp_client_id', '==', wpClientId)
     .onSnapshot(snapshot => {
       snapshot.docChanges().forEach(change => {
         const sessionInterface = <SessionInterface>change.doc.data()

@@ -18,6 +18,7 @@ import Service from '../../Models/Service'
 import {WpClient} from '../../Interfaces/WpClient'
 import Session from '../../Models/Session'
 import {ServiceInterface} from '../../Interfaces/ServiceInterface'
+import {NotificationType} from '../../Types/NotificationType'
 
 export class WhatsAppClient {
   
@@ -87,7 +88,7 @@ export class WhatsAppClient {
 	}
   
   onReady = (): void => {
-    this.chatBot = new ChatBot(this.client)
+    this.chatBot = new ChatBot(this.client, this.wpClient.id)
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned)
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived)
 	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService)
@@ -252,16 +253,22 @@ export class WhatsAppClient {
 
 		if (!session) return
 
-		let message = ''
+		let message: string|false = false
 
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
 				const driver = this.store.findDriverById(service.driver_id!!)
 				if (!service.metadata) {
 					await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-					message = Messages.serviceAssigned(driver.vehicle)
+					if (!session.notifications.assigned) {
+						await session.setNotification(NotificationType.assigned)
+						message = Messages.serviceAssigned(driver.vehicle)
+					}
 				} else if (service.metadata.arrived_at > 0 && !service.metadata.start_trip_at) {
-					message = Messages.DRIVER_ARRIVED
+					if (!session.notifications.arrived) {
+						await session.setNotification(NotificationType.arrived)
+						message = Messages.DRIVER_ARRIVED
+					}
 				}
 				break
 			case Service.STATUS_TERMINATED:
@@ -279,7 +286,7 @@ export class WhatsAppClient {
 				console.log('new service', service.id)
 		}
 
-		if (!this.wpClient.wpNotifications) await this.sendMessage(service.client_id, message)
+		if (!this.wpClient.wpNotifications && message) await this.sendMessage(service.client_id, message)
 	}
 
 	async sendMessage(chatId: string, message: string): Promise<void> {

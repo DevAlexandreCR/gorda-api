@@ -6,17 +6,18 @@ import {Agreement} from './MessageStrategy/Responses/Agreement'
 
 export default class ChatBot {
   private readonly wpClient: Client
-  // TODO: change to Map
+  private readonly wpClientId: string
   private sessions = new Map<string, Session>()
   
-  constructor(client: Client) {
+  constructor(client: Client, wpClientId: string) {
     this.wpClient = client
-    SessionRepository.sessionActiveListener(async (type, session) => {
+    this.wpClientId = wpClientId
+    SessionRepository.sessionActiveListener(this.wpClientId, async (type, session) => {
       switch (type) {
         case 'added':
           const chat = await this.wpClient.getChatById(session.chat_id)
           session.setChat(chat)
-          session.setWpClientId(this.wpClient.info.wid.user.slice(-10))
+          session.setWpClientId(this.wpClientId)
           await session.syncMessages(true)
           this.sessions.set(session.id, session)
           break
@@ -25,6 +26,7 @@ export default class ChatBot {
           if (sessionInMap) {
             sessionInMap.status = session.status
             sessionInMap.place = session.place
+            sessionInMap.notifications = session.notifications
             this.sessions.set(session.id, sessionInMap)
           }
           break
@@ -50,13 +52,13 @@ export default class ChatBot {
 
     if (!session) {
       const newSession = new Session(chatId)
+      newSession.setWpClientId(this.wpClientId)
       if (this.isAgreement(message.body)) {
         newSession.status = Session.STATUS_AGREEMENT
       }
       session = await this.createSession(newSession)
       const chat = await message.getChat()
       session.setChat(chat)
-      session.setWpClientId(this.wpClient.info.wid.user.slice(-10))
     }
 
     return session
