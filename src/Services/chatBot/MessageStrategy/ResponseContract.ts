@@ -41,7 +41,7 @@ export abstract class ResponseContract {
   }
 
   private getWpClientId(): string {
-    return this.session.wpClient.info.wid.user.slice(-10)
+    return this.session.wp_client_id
   }
   
   setCurrentClient(chatId: string): void {

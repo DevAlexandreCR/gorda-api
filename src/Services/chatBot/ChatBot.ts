@@ -14,7 +14,9 @@ export default class ChatBot {
     SessionRepository.sessionActiveListener(async (type, session) => {
       switch (type) {
         case 'added':
-          session.setClient(this.wpClient)
+          const chat = await this.wpClient.getChatById(session.chat_id)
+          session.setChat(chat)
+          session.setWpClientId(this.wpClient.info.wid.user.slice(-10))
           await session.syncMessages(true)
           this.sessions.set(session.id, session)
           break
@@ -52,7 +54,9 @@ export default class ChatBot {
         newSession.status = Session.STATUS_AGREEMENT
       }
       session = await this.createSession(newSession)
-      session.setClient(this.wpClient)
+      const chat = await message.getChat()
+      session.setChat(chat)
+      session.setWpClientId(this.wpClient.info.wid.user.slice(-10))
     }
 
     return session

@@ -4,7 +4,7 @@ import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
 import {WpMessage} from '../Types/WpMessage'
 import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseContext'
-import {Client, Message, MessageTypes} from 'whatsapp-web.js'
+import {Chat, Client, Message, MessageTypes} from 'whatsapp-web.js'
 import MessageHelper from '../Helpers/MessageHelper'
 import {WpLocation} from '../Types/WpLocation'
 import {ERROR_WHILE_PROCESSING} from '../Services/chatBot/Messages'
@@ -22,7 +22,8 @@ export default class Session implements SessionInterface {
   public updated_at: number | null
   public place: Place | null = null
   public messages: Map<string, WpMessage> = new Map()
-  public wpClient: Client
+  public chat: Chat
+  public wp_client_id: string
   private processorTimeout?: NodeJS.Timer
 
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
@@ -154,15 +155,17 @@ export default class Session implements SessionInterface {
     await SessionRepository.updatePlaceOptions(this)
   }
 
-  public setClient(client: Client): void {
-    this.wpClient = client
+  public setChat(chat: Chat): void {
+    this.chat = chat
+  }
+
+  public setWpClientId(wpClientId: string): void {
+    this.wp_client_id = wpClientId
   }
 
   public async sendMessage(content: string): Promise<void> {
-    await this.wpClient.sendMessage(this.chat_id, content).then(msg => {
-      msg.getChat().then(chat => {
-        chat.archive().catch(e => console.log(e.message))
-      })
+    await this.chat.sendMessage(content).then(msg => {
+      this.chat.archive().catch(e => console.log(e.message))
     })
   }
 

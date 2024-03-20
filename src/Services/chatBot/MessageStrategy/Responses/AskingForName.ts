@@ -34,9 +34,8 @@ export class AskingForName extends ResponseContract{
   }
   
   async getContact(): Promise<Contact> {
-    const chat = await this.session.wpClient.getChatById(this.session.chat_id)
     return new Promise((resolve) => {
-      chat.getContact()
+      this.session.chat.getContact()
         .then(contact => {
           resolve(contact)
         })

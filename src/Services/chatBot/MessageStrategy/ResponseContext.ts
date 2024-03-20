@@ -40,7 +40,7 @@ export class ResponseContext {
   
   public async processMessage(message: WpMessage): Promise<void> {
     if (!this.response.supportMessage(message))
-    return this.response.session.wpClient.sendMessage(this.response.session.chat_id, Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(() => {
+    return this.response.session.sendMessage(Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(() => {
       console.log('Message not supported')
     })
     await this.response.processMessage(message)
