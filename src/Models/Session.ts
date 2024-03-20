@@ -10,6 +10,8 @@ import {WpLocation} from '../Types/WpLocation'
 import {ERROR_WHILE_PROCESSING} from '../Services/chatBot/Messages'
 import {exit} from 'process'
 import config from '../../config.js'
+import {WpNotifications} from '../Types/WpNotifications'
+import {NotificationType} from '../Types/NotificationType'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -24,6 +26,7 @@ export default class Session implements SessionInterface {
   public messages: Map<string, WpMessage> = new Map()
   public chat: Chat
   public wp_client_id: string
+  public notifications: WpNotifications
   private processorTimeout?: NodeJS.Timer
 
   static readonly STATUS_AGREEMENT = 'AGREEMENT'
@@ -41,6 +44,11 @@ export default class Session implements SessionInterface {
     this.created_at = new Date().getTime()
     this.status = Session.STATUS_CREATED
     this.service_id = null
+    this.notifications = {
+      greeting: false,
+      assigned: false,
+      arrived: false
+    }
   }
 
   isCompleted(): boolean {
@@ -153,6 +161,11 @@ export default class Session implements SessionInterface {
   async setPlaceOptions(placeOptions: Array<PlaceOption>): Promise<void> {
     this.placeOptions = placeOptions
     await SessionRepository.updatePlaceOptions(this)
+  }
+
+  async setNotification(notification: NotificationType): Promise<void> {
+    this.notifications[notification] = true
+    await SessionRepository.updateNotification(this.id, this.notifications)
   }
 
   public setChat(chat: Chat): void {
