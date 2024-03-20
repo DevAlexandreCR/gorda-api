@@ -1,5 +1,6 @@
 export default class MessageHelper {
   static USER_LOCATION = 'Ubicación del usuario'
+  static LOCATION_NO_NAME = 'location-no-name'
   static CANCEL = 'cancelar'
   static KEYS = ['servicio', 'movil']
 

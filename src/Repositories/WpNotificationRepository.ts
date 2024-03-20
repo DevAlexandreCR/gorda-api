@@ -10,26 +10,26 @@ class WpNotificationRepository {
 			.remove()
 	}
 
-  public async onServiceAssigned(wpClient: string, onAssigned: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbWpNotifications()
-    .child('assigned')
-    .orderByChild('wp_client_id')
-    .equalTo(wpClient)
-    .limitToLast(3)
-    .on('child_added', onAssigned)
+  public onServiceAssigned(wpClient: string, onAssigned: (data: DataSnapshot) => void): void {
+    Database.dbWpNotifications()
+      .child('assigned')
+      .orderByChild('wp_client_id')
+      .equalTo(wpClient)
+      .limitToLast(3)
+      .on('child_added', onAssigned)
   }
 
-  public async onServiceCanceled(wpClient: string, onCanceled: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbWpNotifications()
-    .child('canceled')
-    .orderByChild('wp_client_id')
-    .equalTo(wpClient)
-    .limitToLast(3)
-    .on('child_added', onCanceled)
+  public onServiceCanceled(wpClient: string, onCanceled: (data: DataSnapshot) => void): void {
+    Database.dbWpNotifications()
+      .child('canceled')
+      .orderByChild('wp_client_id')
+      .equalTo(wpClient)
+      .limitToLast(3)
+      .on('child_added', onCanceled)
   }
 
-  public async onServiceTerminated(wpClient: string, onTerminated: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbWpNotifications()
+  public onServiceTerminated(wpClient: string, onTerminated: (data: DataSnapshot) => void): void {
+    Database.dbWpNotifications()
     .child('terminated')
     .orderByChild('wp_client_id')
     .equalTo(wpClient)
@@ -37,8 +37,8 @@ class WpNotificationRepository {
     .on('child_added', onTerminated)
   }
 	
-	public async onNewService(wpClient: string, onNew: (data: DataSnapshot) => void): Promise<void> {
-		await Database.dbWpNotifications()
+	public onNewService(wpClient: string, onNew: (data: DataSnapshot) => void): void {
+		Database.dbWpNotifications()
 			.child('new')
       .orderByChild('wp_client_id')
       .equalTo(wpClient)
@@ -46,13 +46,13 @@ class WpNotificationRepository {
 			.on('child_added', onNew)
 	}
 
-  public async onDriverArrived(wpClient: string, onArrived: (data: DataSnapshot) => void): Promise<void> {
-    await Database.dbWpNotifications()
-    .child('arrived')
-    .orderByChild('wp_client_id')
-    .equalTo(wpClient)
-    .limitToLast(3)
-    .on('child_added', onArrived)
+  public onDriverArrived(wpClient: string, onArrived: (data: DataSnapshot) => void): void {
+    Database.dbWpNotifications()
+      .child('arrived')
+      .orderByChild('wp_client_id')
+      .equalTo(wpClient)
+      .limitToLast(3)
+      .on('child_added', onArrived)
   }
 }
 

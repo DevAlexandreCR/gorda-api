@@ -6,10 +6,12 @@ module.exports = {
   HOST: process.env.HOST || 'localhost',
   PORT: process.env.PORT || 3000,
   APP_DOMAIN: process.env.APP_DOMAIN || 'localhost',
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || 'gorda-driver',
   FIREBASE_DATABASE_URL: process.env.FIREBASE_DATABASE_URL || 'http://localhost:9000',
   AUTHENTICATION_EMULATOR_HOST: process.env.AUTHENTICATION_EMULATOR_HOST || 'http://localhost:9099',
   DATABASE_EMULATOR_HOST: process.env.DATABASE_EMULATOR_HOST || 'localhost',
   DATABASE_EMULATOR_PORT: process.env.DATABASE_EMULATOR_PORT || 9000,
+  FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST || 'localhost:8080',
   STORAGE_EMULATOR_HOST: process.env.STORAGE_EMULATOR_HOST || 'http://localhost:9199',
   DEFAULT_CLIENT_PHOTO_URL: process.env.DEFAULT_CLIENT_PHOTO_URL || 'http://localhost',
   PQR_NUMBER: process.env.PQR_NUMBER || '+573000000000',
@@ -17,5 +19,10 @@ module.exports = {
   CHROMIUM_PATH: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser',
   CANCEL_TIMEOUT: process.env.CANCEL_TIMEOUT || 480000,
   DISCONNECT_TIMEOUT: process.env.DISCONNECT_TIMEOUT || 900000,
-  GORDA_API_FUNCTIONS: process.env.GORDA_API_FUNCTIONS || 'http://127.0.0.1:5001/gorda-driver/us-central1/api'
+  ABANDONED_SESSIONS_TIMEOUT: process.env.ABANDONED_SESSIONS_TIMEOUT || 1800000,
+  GORDA_API_FUNCTIONS: process.env.GORDA_API_FUNCTIONS || 'http://127.0.0.1:5001/gorda-driver/us-central1/api',
+  ENTITY_MODEL_NAME: process.env.ENTITY_MODEL_NAME || undefined,
+  HUGGINGFACE_TOKEN: process.env.HUGGINGFACE_TOKEN || 'api-token',
+  MESSAGE_TIMEOUT: process.env.MESSAGE_TIMEOUT || 5000,
+  ARCHIVE_CHAT_TIMEOUT: process.env.ARCHIVE_CHAT_TIMEOUT || 2000
 }

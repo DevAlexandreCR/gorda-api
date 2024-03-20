@@ -13,6 +13,7 @@ export default class Service implements ServiceInterface {
   start_loc: PlaceInterface
   amount: number | null
   driver_id: string | null
+  wp_client_id: string
   client_id: string
   created_at: number
   comment: string | null
@@ -42,6 +43,6 @@ export default class Service implements ServiceInterface {
   
   async cancel(): Promise<void> {
     this.status = Service.STATUS_CANCELED
-    await ServiceRepository.update(this)
+    await ServiceRepository.updateStatus(this.id, this.status)
   }
 }

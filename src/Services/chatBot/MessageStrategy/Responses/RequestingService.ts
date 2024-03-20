@@ -1,10 +1,11 @@
 import {ResponseContract} from '../ResponseContract'
-import {Client, Message, MessageTypes} from 'whatsapp-web.js'
+import {MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import * as Messages from '../../Messages'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import Service from '../../../../Models/Service'
+import {WpMessage} from '../../../../Types/WpMessage'
 
 export class RequestingService extends ResponseContract {
   
@@ -12,23 +13,24 @@ export class RequestingService extends ResponseContract {
   
   public messageSupported: Array<string> = [MessageTypes.TEXT]
   
-  public async processMessage(client: Client, session: Session, message: Message): Promise<void> {
-    await this.setService(session)
-    const body = message.body.toLowerCase()
+  public async processMessage(message: WpMessage): Promise<void> {
+    await this.setService()
+    const body = message.msg.toLowerCase()
     if (body.includes(MessageHelper.CANCEL)) {
-      this.cancelService(session)
+      await this.cancelService()
+      await this.session.setStatus(Session.STATUS_COMPLETED)
     } else {
-      await this.sendMessage(client, message.from, Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
+      await this.sendMessage(Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
     }
   }
-  
-  cancelService(session:Session): void {
-    this.service.cancel().then(async () => await session.setStatus(Session.STATUS_COMPLETED))
+
+  cancelService(): Promise<void> {
+    return this.service.cancel()
   }
   
-  async setService(session: Session): Promise<void> {
-      if (session.service_id) {
-        const service = await ServiceRepository.findServiceById(session.service_id)
+  async setService(): Promise<void> {
+      if (this.session.service_id) {
+        const service = await ServiceRepository.findServiceById(this.session.service_id)
         this.service = new Service()
         Object.assign(this.service, service)
       }
