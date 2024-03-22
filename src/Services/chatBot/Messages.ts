@@ -59,6 +59,9 @@ export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
 
 export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encuentras por favor vuelve a intentarlo. \n\n' +
   ASK_FOR_LOCATION
+
+export const NO_LOCATION_NAME_FOUND = '⛔No logramos identificar el nombre del barrio o del lugar por favor vuelve a intentarlo. \n\n' +
+  ASK_FOR_LOCATION_NAME
 export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fue el vehículo asignado. \n \n' +
   '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = '➡️Seguimos  buscando un móvil disponible. \nEn cuanto un conductor se reporte te '+

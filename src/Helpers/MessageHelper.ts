@@ -10,6 +10,12 @@ export default class MessageHelper {
       .replace(/[^a-zA-Z0-9 ]/g, '')
       .toLowerCase().trim()
   }
+  public static isPlaceName(str: string): boolean {
+    const nameRegex = /^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$/
+    const locationRegex = /^[0-9a-zA-Z\s,'-]*$/;
+    return nameRegex.test(str) || locationRegex.test(str)
+  }
+
 
   public static hasKey(message: string): boolean {
     return message.includes(this.KEYS[0]) || message.includes(this.KEYS[1])
