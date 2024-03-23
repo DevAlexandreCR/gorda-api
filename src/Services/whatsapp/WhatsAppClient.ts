@@ -89,6 +89,7 @@ export class WhatsAppClient {
   
   onReady = (): void => {
     this.chatBot = new ChatBot(this.client, this.wpClient.id)
+		this.chatBot.syncSessions()
 	  WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned)
 	  WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived)
 	  WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService)

@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/node'
 import {WpMessage} from '../../../../Types/WpMessage'
 import EntityExtractor from '../../ai/EntityExtractor'
 import Session from '../../../../Models/Session'
+import {AskingForPlace} from './AskingForPlace'
 
 export class AskingForName extends ResponseContract{
   
@@ -17,8 +18,17 @@ export class AskingForName extends ResponseContract{
       const name = await this.retryPromise<string|false>(EntityExtractor.extractName(message.msg), 3)
       if (name) {
         await this.createClient(message.id, name)
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-        await this.sendMessage(Messages.welcomeNews(this.currentClient.name))
+        if(!this.session.place) {
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+          await this.sendMessage(Messages.welcomeNews(this.currentClient.name))
+        } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME) {
+          await this.sendMessage(Messages.newClientAskPlaceName(name))
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+        } else {
+          await this.sendMessage(Messages.newClientAskForComment(name, this.session.place.name)).then(async () => {
+            await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
+          })
+        }
       } else {
         await this.sendMessage(Messages.ASK_FOR_NAME)
       }

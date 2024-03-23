@@ -8,6 +8,7 @@ export default class ChatBot {
   private readonly wpClient: Client
   private readonly wpClientId: string
   private sessions = new Map<string, Session>()
+
   
   constructor(client: Client, wpClientId: string) {
     this.wpClient = client
@@ -18,7 +19,7 @@ export default class ChatBot {
           const chat = await this.wpClient.getChatById(session.chat_id)
           session.setChat(chat)
           session.setWpClientId(this.wpClientId)
-          await session.syncMessages(true)
+          await session.syncMessages()
           this.sessions.set(session.id, session)
           break
         case 'modified':
@@ -34,6 +35,21 @@ export default class ChatBot {
           this.removeSession(session.id)
           break
       }
+    })
+  }
+
+  public syncSessions(): void {
+    SessionRepository.getActiveSessions().then(sessions => {
+      sessions.forEach(sessionData => {
+        const session = new Session(sessionData.chat_id)
+        Object.assign(session, sessionData)
+        this.wpClient.getChatById(session.chat_id).then(chat => {
+          session.setChat(chat)
+          session.syncMessages(true).then(() => {
+            this.sessions.set(session.id, session)
+          })
+        })
+      })
     })
   }
 

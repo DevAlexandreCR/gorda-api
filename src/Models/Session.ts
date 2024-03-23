@@ -77,6 +77,7 @@ export default class Session implements SessionInterface {
         lat: parseFloat(msg.location.latitude),
         lng: parseFloat(msg.location.longitude)
       }
+      wpMessage.msg = ''
     }
 
     await SessionRepository.addMsg(this.id, wpMessage)
@@ -96,7 +97,6 @@ export default class Session implements SessionInterface {
   }
 
   async processUnprocessedMessages(): Promise<void> {
-    // TODO: move this to another Object
     let unprocessedMessages = this.getUnprocessedMessages()
     if (unprocessedMessages.size === 1 || (unprocessedMessages.size > 1 && !this.processorTimeout)) {
       this.processorTimeout = setTimeout(() => {

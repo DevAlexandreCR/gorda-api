@@ -95,7 +95,7 @@ class SessionRepository {
     .where('status', 'not-in', [Session.STATUS_COMPLETED])
     .get()
     const sessions = Array<SessionInterface>()
-    res.forEach(snapshot => {
+    res.docs.forEach(snapshot => {
       const session = <SessionInterface>snapshot.data()
       sessions.push(session)
     })
