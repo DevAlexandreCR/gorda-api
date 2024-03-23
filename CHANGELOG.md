@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.3.x
 
+## [1.3.2 (2024-03-20)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.3...v1.3.2)
+
+### Fixed
+- Message unsupported ([#77](https://github.com/DevAlexandreCR/gorda-api/pull/77))
+
 ## [1.3.2 (2024-03-20)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.2...v1.3.1)
 
 ### Fixed
