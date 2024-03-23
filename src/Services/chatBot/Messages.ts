@@ -40,17 +40,32 @@ export const BAD_AGREEMENT =
   'Movil con bodega amplia convenio Monte Luna \n \n' +
   `o escríbenos al ${config.PQR_NUMBER} para agregarlo.`
 
-export const welcomeNews = (name: string): string => {
-  return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨* ${WELCOME}`
+const newClientGreeting = (name: string): string => {
+  return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨*`
 }
+
+export const welcomeNews = (name: string): string => {
+  const greeting = newClientGreeting(name)
+  return `${greeting} ${WELCOME}`
+}
+export const newClientAskPlaceName = (name: string): string => {
+  const greeting = newClientGreeting(name)
+  return `${greeting} \n\n${ASK_FOR_LOCATION_NAME}`
+}
+
+export const newClientAskForComment = (name: string, place: string): string => {
+  const greeting = newClientGreeting(name)
+  const placeName = requestingService(place)
+  return `${greeting} \n\n${placeName}`
+}
+
 export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
 export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
 export const ASK_FOR_LOCATION = '*Envía tu ubicación actual 📍*' +
   ' para asignarte un vehículo en el menor tiempo posible 👏🏻 \n'
 
-export const ASK_FOR_LOCATION_NAME = 'Por favor 👉🏻 agrega el nombre del _barrio_, ' +
+export const ASK_FOR_LOCATION_NAME = '☑️ Ya tenemos tu ubicación! ahora por favor 👉🏻 agrega el nombre del _barrio_, ' +
   'o algún _punto de referencia_ cercano\n'
-
 export const REQUESTING_SERVICE = '* Creando servicio...\n \n' +
   'Para agregar algún requerimiento especial, por ejemplo: \n\n📌 _Pago con nequi_ \n📌 _Con mascota_ \n📌 _Bodega amplia_\n\nPor favor escríbelo abajo, de lo contrario envía *NO*'
 export const WELCOME = '¿Dónde te encuentras? \n \n' + ASK_FOR_LOCATION
@@ -59,6 +74,9 @@ export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
 
 export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encuentras por favor vuelve a intentarlo. \n\n' +
   ASK_FOR_LOCATION
+
+export const NO_LOCATION_NAME_FOUND = '⛔No logramos identificar el nombre del barrio o del lugar por favor vuelve a intentarlo. \n\n' +
+  ASK_FOR_LOCATION_NAME
 export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fue el vehículo asignado. \n \n' +
   '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = '➡️Seguimos  buscando un móvil disponible. \nEn cuanto un conductor se reporte te '+

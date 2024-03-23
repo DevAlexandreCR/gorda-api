@@ -10,7 +10,7 @@ export class Store {
   static instance: Store;
   drivers: Set<Driver> = new Set<Driver>()
   places: Set<Place> = new Set<Place>()
-  clients: Set<Client> = new Set<Client>()
+  clients: Map<string, Client> = new Map()
   
   private constructor() {
     this.setDrivers()
@@ -32,8 +32,10 @@ export class Store {
   }
   
   private setClients() {
-    ClientRepository.getAll((client) => {
-      this.clients.add(client)
+    ClientRepository.onClient((client) => {
+      this.clients.set(client.id, client)
+    }, (clientId) => {
+      if (clientId) this.clients.delete(clientId)
     })
   }
   
@@ -49,8 +51,7 @@ export class Store {
   }
   
   findClientById(clientId: string): Client|undefined {
-    const clientsArray = Array.from(this.clients)
-    return  clientsArray.find(dri => dri.id === clientId)
+    return this.clients.get(clientId)
   }
   
   findPlaceById(placeId: string): Place|undefined {

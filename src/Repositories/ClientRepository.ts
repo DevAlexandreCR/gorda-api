@@ -9,12 +9,18 @@ import * as Sentry from '@sentry/node'
 class ClientRepository {
   
   /* istanbul ignore next */
-  getAll(listener: (client: Client)=> void): void {
+  onClient(AddListener: (client: Client) => void, deleteListener: (clientId: string|false) => void): void {
     DBService.dbClients().on('child_added', (snapshot) => {
       const client = snapshot.val() as ClientInterface
       const clientTmp = new Client
       Object.assign(clientTmp, client)
-      listener(clientTmp)
+      AddListener(clientTmp)
+    })
+
+    DBService.dbClients().on('child_removed', (snapshot) => {
+      if (!snapshot.key) return false
+      const client = snapshot.val() as ClientInterface
+      deleteListener(client.id)
     })
   }
   
