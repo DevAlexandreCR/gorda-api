@@ -8,32 +8,52 @@ export default class ChatBot {
   private readonly wpClient: Client
   private readonly wpClientId: string
   private sessions = new Map<string, Session>()
+
   
   constructor(client: Client, wpClientId: string) {
     this.wpClient = client
     this.wpClientId = wpClientId
-    SessionRepository.sessionActiveListener(this.wpClientId, async (type, session) => {
-      switch (type) {
-        case 'added':
-          const chat = await this.wpClient.getChatById(session.chat_id)
+  }
+
+  private async syncSessions(): Promise<void> {
+    await SessionRepository.getActiveSessions().then(async sessions => {
+      sessions.forEach(sessionData => {
+        const session = new Session(sessionData.chat_id)
+        Object.assign(session, sessionData)
+        this.wpClient.getChatById(session.chat_id).then(chat => {
           session.setChat(chat)
-          session.setWpClientId(this.wpClientId)
-          await session.syncMessages(true)
-          this.sessions.set(session.id, session)
-          break
-        case 'modified':
-          const sessionInMap = this.sessions.get(session.id)
-          if (sessionInMap) {
-            sessionInMap.status = session.status
-            sessionInMap.place = session.place
-            sessionInMap.notifications = session.notifications
-            this.sessions.set(session.id, sessionInMap)
-          }
-          break
-        case 'removed':
-          this.removeSession(session.id)
-          break
-      }
+          session.syncMessages(true).then(() => {
+            this.sessions.set(session.id, session)
+          })
+        })
+      })
+    })
+  }
+
+  public sync(): void {
+    this.syncSessions().then(() => {
+      SessionRepository.sessionActiveListener(this.wpClientId, async (type, session) => {
+        switch (type) {
+          case 'added':
+            const chat = await this.wpClient.getChatById(session.chat_id)
+            session.setChat(chat)
+            session.setWpClientId(this.wpClientId)
+            this.sessions.set(session.id, session)
+            break
+          case 'modified':
+            const sessionInMap = this.sessions.get(session.id)
+            if (sessionInMap) {
+              sessionInMap.status = session.status
+              sessionInMap.place = session.place
+              sessionInMap.notifications = session.notifications
+              this.sessions.set(session.id, sessionInMap)
+            }
+            break
+          case 'removed':
+            this.removeSession(session.id)
+            break
+        }
+      })
     })
   }
 

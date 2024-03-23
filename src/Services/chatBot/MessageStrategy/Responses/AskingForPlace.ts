@@ -2,7 +2,7 @@ import {MessageTypes} from 'whatsapp-web.js'
 import Session from '../../../../Models/Session'
 import {ResponseContract} from '../ResponseContract'
 import * as Messages from '../../Messages'
-import {sendPlaceOptions} from '../../Messages'
+import {NO_LOCATION_NAME_FOUND, sendPlaceOptions} from '../../Messages'
 import Place from '../../../../Models/Place'
 import {PlaceOption} from '../../../../Interfaces/PlaceOption'
 import {WpMessage} from '../../../../Types/WpMessage'
@@ -30,12 +30,17 @@ export class AskingForPlace extends ResponseContract{
         await this.sendMessage(Messages.NO_LOCATION_FOUND)
       }
     } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME && this.isChat(message)) {
-      const place = this.session.place
-      place.name = message.msg
-      await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
-        await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
-        await this.session.setPlace(place)
-      })
+      const name = MessageHelper.normalize(message.msg)
+      if (name.length > 3 && MessageHelper.isPlaceName(name)) {
+        const place = this.session.place
+        place.name = name
+        await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
+          await this.session.setPlace(place)
+        })
+      } else {
+        await this.sendMessage(Messages.NO_LOCATION_NAME_FOUND)
+      }
     }
   }
 }
