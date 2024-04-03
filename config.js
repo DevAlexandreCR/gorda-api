@@ -24,5 +24,6 @@ module.exports = {
   ENTITY_MODEL_NAME: process.env.ENTITY_MODEL_NAME || undefined,
   HUGGINGFACE_TOKEN: process.env.HUGGINGFACE_TOKEN || 'api-token',
   MESSAGE_TIMEOUT: process.env.MESSAGE_TIMEOUT || 5000,
-  ARCHIVE_CHAT_TIMEOUT: process.env.ARCHIVE_CHAT_TIMEOUT || 2000
+  ARCHIVE_CHAT_TIMEOUT: process.env.ARCHIVE_CHAT_TIMEOUT || 2000,
+  WWEB_VERSION: process.env.WWEB_VERSION || '2.2412.54',
 }
