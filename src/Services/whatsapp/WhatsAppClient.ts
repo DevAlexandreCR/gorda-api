@@ -73,7 +73,9 @@ export class WhatsAppClient {
 
 	this.init(false)
 	  .then(async () => {
-			this.client.getWWebVersion().then(version => console.log('wweb version', version))
+			this.client.getWWebVersion()
+			.then(version => console.log('wweb version', version))
+			.catch(e => console.log('Error getting the version', e.message))
 		  console.log('authenticated after init server', this.wpClient.alias)
 			this.starting = false
 	  })
