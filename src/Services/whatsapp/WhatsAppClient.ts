@@ -36,6 +36,7 @@ export class WhatsAppClient {
 	}
 
 	initClient(): void {
+		const remotePath = `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${config.WWEB_VERSION}.html`
     this.client = new Client({
       authStrategy: new LocalAuth({
 				clientId: this.wpClient.id,
@@ -43,6 +44,10 @@ export class WhatsAppClient {
 			}),
 			qrMaxRetries: 2,
 			takeoverOnConflict: false,
+			webVersionCache: {
+				type: 'remote',
+				remotePath: remotePath,
+			},
       puppeteer: {
         executablePath: config.CHROMIUM_PATH,
         headless: true,
@@ -68,6 +73,9 @@ export class WhatsAppClient {
 
 	this.init(false)
 	  .then(async () => {
+			this.client.getWWebVersion()
+			.then(version => console.log('wweb version', version))
+			.catch(e => console.log('Error getting the version', e.message))
 		  console.log('authenticated after init server', this.wpClient.alias)
 			this.starting = false
 	  })
