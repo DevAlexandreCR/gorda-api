@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.3.x
 
+## [1.3.4 (2024-04-03)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.4...v1.3.3)
+
+### Fixed
+- Add wweb version from remote ([#79](https://github.com/DevAlexandreCR/gorda-api/pull/79))
+
 ## [1.3.3 (2024-03-23)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.3...v1.3.2)
 
 ### Fixed
