@@ -1,18 +1,22 @@
-import config from '../../../config'
 import Vehicle from '../../Models/Vehicle'
 import MessageHelper from '../../Helpers/MessageHelper'
 import {Locale} from '../../Helpers/Locale'
 import {PlaceOption} from '../../Interfaces/PlaceOption'
 import {Store} from '../store/Store'
+import {MessagesEnum} from './MessagesEnum'
+import {Placeholders, replacePlaceholders} from './Placeholders'
 
 const locale = Locale.getInstance()
 const store = Store.getInstance()
 
 export const requestingService = (placeName: string): string => {
-  return  'Lugar: *' + placeName + REQUESTING_SERVICE
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PLACE, placeName)
+  return  replacePlaceholders(store.findMessageById(MessagesEnum.REQUESTING_SERVICE).message, placeholdersMap)
 }
 export const cancelService = (serviceID: string): string => {
   return 'Si deseas cancelar reenvíanos éste mensaje \n' +
+
   `Cancelar servicio convenio id=${serviceID}`
 }
 export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): string => {
@@ -24,33 +28,34 @@ export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = 
     const place = store.findPlaceById(opt.placeId)
     optionsMessage += `*${opt.option}* ${place?.name} \n`
   })
-  optionsMessage += `*${options.length + 1}* ${NONE_OF_THE_ABOVE}`
+  optionsMessage += `*${options.length + 1}* ${store.findMessageById(MessagesEnum.NONE_OF_THE_ABOVE)}`
   if (resend) return error + message + optionsMessage
   return found + message + optionsMessage
 }
 export const serviceAssigned = (vehicle: Vehicle): string => {
-  return `El Móvil 🚘  *${MessageHelper.truncatePlate(vehicle.plate)}* color ${locale.__('colors.' + vehicle.color.name)} ${SERVICE_ASSIGNED}`
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PLATE, MessageHelper.truncatePlate(vehicle.plate))
+  placeholdersMap.set(Placeholders.COLOR, locale.__('colors.' + vehicle.color.name))
+  return  replacePlaceholders(store.findMessageById(MessagesEnum.SERVICE_ASSIGNED).message, placeholdersMap)
 }
 export const greeting = (name: string): string => {
-  return `Hola 🙋🏻‍♀ *${name}*  ${WELCOME}`
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  return  replacePlaceholders(store.findMessageById(MessagesEnum.GREETING).message, placeholdersMap)
 }
-export const BAD_AGREEMENT = 
-  'No logramos reconocer el lugar del convenio, por favor verifica que esté bien escrito, ejemplo:\n \n' +
-  'Movil convenio Campanario \n' +
-  'Movil con bodega amplia convenio Monte Luna \n \n' +
-  `o escríbenos al ${config.PQR_NUMBER} para agregarlo.`
 
 const newClientGreeting = (name: string): string => {
-  return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨*`
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  return  replacePlaceholders(store.findMessageById(MessagesEnum.GREETING_NEW_USERS).message, placeholdersMap)
 }
 
 export const greetingNews = (name: string): string => {
-  const greeting = newClientGreeting(name)
-  return `${greeting} ${WELCOME}`
+  return newClientGreeting(name)
 }
 export const newClientAskPlaceName = (name: string): string => {
   const greeting = newClientGreeting(name)
-  return `${greeting} \n\n${ASK_FOR_LOCATION_NAME}`
+  return `${greeting} \n\n${store.findMessageById(MessagesEnum.ASK_FOR_LOCATION_NAME)}`
 }
 
 export const newClientAskForComment = (name: string, place: string): string => {
@@ -58,44 +63,3 @@ export const newClientAskForComment = (name: string, place: string): string => {
   const placeName = requestingService(place)
   return `${greeting} \n\n${placeName}`
 }
-
-export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
-export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
-export const ASK_FOR_LOCATION = '*Envía tu ubicación actual 📍*' +
-  ' para asignarte un vehículo en el menor tiempo posible 👏🏻 \n'
-
-export const ASK_FOR_LOCATION_NAME = '☑️ Ya tenemos tu ubicación! ahora por favor 👉🏻 agrega el nombre del _barrio_, ' +
-  'o algún _punto de referencia_ cercano\n'
-export const REQUESTING_SERVICE = '* Creando servicio...\n \n' +
-  'Para agregar algún requerimiento especial, por ejemplo: \n\n📌 _Pago con nequi_ \n📌 _Con mascota_ \n📌 _Bodega amplia_\n\nPor favor escríbelo abajo, de lo contrario envía *NO*'
-export const WELCOME = '¿Dónde te encuentras? \n \n' + ASK_FOR_LOCATION
-export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
-  '*Espero poder colaborarte en una próxima ocasión 🙋🏻‍♀️*'
-
-export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encuentras por favor vuelve a intentarlo. \n\n' +
-  ASK_FOR_LOCATION
-
-export const NO_LOCATION_NAME_FOUND = '⛔No logramos identificar el nombre del barrio o del lugar por favor vuelve a intentarlo. \n\n' +
-  ASK_FOR_LOCATION_NAME
-export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = '➡️Seguimos  buscando un móvil disponible. \nEn cuanto un conductor se reporte te '+
-  'informaremos. Esto tardara algunos minutos!⏳ .\nSi deseas cancelar el servicio envía *CANCELAR*'
-export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta más tarde. lamentamos las molestias'
-export const ERROR_WHILE_PROCESSING = 'Ocurrió un error mientras procesábamos tu petición, por favor intenta más tarde. lamentamos las molestias'
-export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER + '\n'
-export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶🏻\n \n' +
-  '➡️ _Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +
-  'Todo nuestro equipo te agradece por el apoyo y la confianza *LA SEGURIDAD DE TU VIAJE SIEMPRE EN LAS MEJORES MANOS🍀✨*'
-export const SERVICE_CREATED = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicará el móvil contigo 🚗 \n \n' +
-	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
-export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
-export const SERVICE_COMPLETED = 'Servicio completado! Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n'
-
-export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLANCA POPAYÁN 🚘✨* \n \nPor favor dime tu nombre para una atención personalizada. ejemplo: \n' +
-  '*Pepito Perez*\n' +
-  '*Maria Paz*'
-export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
-export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino '+
-  'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'
-
-export const ASK_FOR_CANCEL = 'Que pena contigo 🥺 por el momento no tengo móvil disponible. \n \n' +
-	'*¿Desea que siga insistiendo?*'

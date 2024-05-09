@@ -6,6 +6,7 @@ import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
 import {ChatBotMessage} from '../../Types/ChatBotMessage'
 import SettingsRepository from '../../Repositories/SettingsRepository'
+import {MessagesEnum} from '../chatBot/MessagesEnum'
 
 export class Store {
   
@@ -13,7 +14,7 @@ export class Store {
   drivers: Set<Driver> = new Set<Driver>()
   places: Set<Place> = new Set<Place>()
   clients: Map<string, Client> = new Map()
-  messages: Map<string, ChatBotMessage> = new Map()
+  messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   
   private constructor() {
     this.setDrivers()
@@ -62,6 +63,16 @@ export class Store {
   
   findClientById(clientId: string): Client|undefined {
     return this.clients.get(clientId)
+  }
+
+  findMessageById(msgId: MessagesEnum): ChatBotMessage {
+    return this.messages.get(msgId) ?? {
+      id: MessagesEnum.MESSAGE_NOT_FOUND,
+      name: MessagesEnum.MESSAGE_NOT_FOUND,
+      description: MessagesEnum.MESSAGE_NOT_FOUND,
+      message: MessagesEnum.MESSAGE_NOT_FOUND,
+      enabled: true
+    } as ChatBotMessage
   }
   
   findPlaceById(placeId: string): Place|undefined {
