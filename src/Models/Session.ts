@@ -7,11 +7,12 @@ import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseConte
 import {Chat, Client, Message, MessageTypes} from 'whatsapp-web.js'
 import MessageHelper from '../Helpers/MessageHelper'
 import {WpLocation} from '../Types/WpLocation'
-import {ERROR_WHILE_PROCESSING} from '../Services/chatBot/Messages'
 import {exit} from 'process'
 import config from '../../config.js'
 import {WpNotifications} from '../Types/WpNotifications'
 import {NotificationType} from '../Types/NotificationType'
+import {getSingleMessage} from '../Services/chatBot/Messages'
+import {MessagesEnum} from '../Services/chatBot/MessagesEnum'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -198,10 +199,13 @@ export default class Session implements SessionInterface {
         message: message.msg,
         stack: e.stack,
       })
-      await this.sendMessage(ERROR_WHILE_PROCESSING).catch( e => {
-        console.log('error while sending error message', e.message)
-        exit(1)
-      })
+      const msg = getSingleMessage(MessagesEnum.ERROR_WHILE_PROCESSING)
+      if (msg.enabled) {
+        await this.sendMessage(msg.message).catch( e => {
+          console.log('error while sending error message', e.message)
+          exit(1)
+        })
+      }
     })
   }
 }

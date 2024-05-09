@@ -5,6 +5,7 @@ import * as Messages from '../../Messages'
 import {AskingForPlace} from './AskingForPlace'
 import {WpMessage} from '../../../../Types/WpMessage'
 import {NotificationType} from '../../../../Types/NotificationType'
+import {MessagesEnum} from '../../MessagesEnum'
 
 export class Created extends ResponseContract {
   
@@ -18,7 +19,7 @@ export class Created extends ResponseContract {
         await this.session.setPlace(place)
       }
       await this.session.setStatus(Session.STATUS_ASKING_FOR_NAME)
-      await this.sendMessage(Messages.ASK_FOR_NAME)
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_NAME))
     }
   }
   

@@ -24,12 +24,10 @@ export const requestingService = (placeName: string): ChatBotMessage => {
   return message
 }
 
-export const cancelService = (serviceID: string): string => {
-  return 'Si deseas cancelar reenvíanos éste mensaje \n' +
-
-  `Cancelar servicio convenio id=${serviceID}`
+export const cancelService = (serviceID: string): ChatBotMessage => {
+  return getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
 }
-export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): string => {
+export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): ChatBotMessage => {
   const error = 'No reconocimos ninguna opción válida, '
   const found = 'Encontramos éstas coincidencias, '
   const message = 'envía el número de la opción correcta o puedes enviar tu ubicación actual: \n'
@@ -39,8 +37,10 @@ export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = 
     optionsMessage += `*${opt.option}* ${place?.name} \n`
   })
   optionsMessage += `*${options.length + 1}* ${store.findMessageById(MessagesEnum.NONE_OF_THE_ABOVE)}`
-  if (resend) return error + message + optionsMessage
-  return found + message + optionsMessage
+  let msg = found + message + optionsMessage
+  if (resend) msg = error + message + optionsMessage
+
+  return getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
 }
 
 export const serviceAssigned = (vehicle: Vehicle): ChatBotMessage => {

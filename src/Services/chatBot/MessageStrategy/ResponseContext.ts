@@ -10,6 +10,8 @@ import {ChoosingPlace} from './Responses/ChoosingPlace'
 import {AskingForComment} from './Responses/AskingForComment'
 import { Agreement } from './Responses/Agreement'
 import {WpMessage} from '../../../Types/WpMessage'
+import {getSingleMessage} from '../Messages'
+import {MessagesEnum} from '../MessagesEnum'
 
 export class ResponseContext {
 
@@ -39,10 +41,15 @@ export class ResponseContext {
   }
   
   public async processMessage(message: WpMessage): Promise<void> {
-    if (!this.response.supportMessage(message))
-    return this.response.session.sendMessage(Messages.MESSAGE_TYPE_NOT_SUPPORTED).then(() => {
-      console.log('Message not supported')
-    })
+    if (!this.response.supportMessage(message)) {
+      const msg = getSingleMessage(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
+      if (msg.enabled) {
+        return this.response.session.sendMessage(msg.message).then(() => {
+          console.log('Message not supported')
+        })
+      }
+    }
+
     await this.response.processMessage(message)
   }
 }

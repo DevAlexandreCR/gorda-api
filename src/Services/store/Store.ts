@@ -67,10 +67,10 @@ export class Store {
 
   findMessageById(msgId: MessagesEnum): ChatBotMessage {
     return this.messages.get(msgId) ?? {
-      id: MessagesEnum.MESSAGE_NOT_FOUND,
-      name: MessagesEnum.MESSAGE_NOT_FOUND,
-      description: MessagesEnum.MESSAGE_NOT_FOUND,
-      message: MessagesEnum.MESSAGE_NOT_FOUND,
+      id: MessagesEnum.DEFAULT_MESSAGE,
+      name: MessagesEnum.DEFAULT_MESSAGE,
+      description: MessagesEnum.DEFAULT_MESSAGE,
+      message: MessagesEnum.DEFAULT_MESSAGE,
       enabled: true
     } as ChatBotMessage
   }
