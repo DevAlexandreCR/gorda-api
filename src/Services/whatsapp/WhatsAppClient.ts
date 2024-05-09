@@ -4,7 +4,6 @@ import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
 import {DataSnapshot} from 'firebase-admin/lib/database'
 import * as Messages from '../chatBot/Messages'
-import {ASK_FOR_CANCEL} from '../chatBot/Messages'
 import {Store} from '../store/Store'
 import config from '../../../config'
 import {WpNotificationType} from '../../Interfaces/WpNotificationType'
@@ -19,6 +18,8 @@ import {WpClient} from '../../Interfaces/WpClient'
 import Session from '../../Models/Session'
 import {ServiceInterface} from '../../Interfaces/ServiceInterface'
 import {NotificationType} from '../../Types/NotificationType'
+import {MessagesEnum} from '../chatBot/MessagesEnum'
+import {ChatBotMessage} from '../../Types/ChatBotMessage'
 
 export class WhatsAppClient {
   
@@ -185,9 +186,14 @@ export class WhatsAppClient {
     const notification: WpNotificationType = snapshot.val()
     if (notification.driver_id != null && notification.wp_client_id == this.wpClient.id) {
       const driver = this.store.findDriverById(notification.driver_id)
-      await this.sendMessage(notification.client_id, Messages.serviceAssigned(driver.vehicle)).then(() => {
-				WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
-			})
+			const msg = Messages.serviceAssigned(driver.vehicle)
+			if (msg.enabled) {
+				await this.sendMessage(notification.client_id, msg.message).then(() => {
+					WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
+				})
+			} else {
+				await WpNotificationRepository.deleteNotification('assigned', snapshot.key?? '')
+			}
     } else {
       console.error('can not send message cause driver id is not set')
     }
@@ -195,32 +201,52 @@ export class WhatsAppClient {
 
   driverArrived = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    await this.sendMessage(notification.client_id, Messages.DRIVER_ARRIVED).then(() => {
-			WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
-		})
+		const msg = Messages.getSingleMessage(MessagesEnum.DRIVER_ARRIVED)
+		if (msg.enabled) {
+			await this.sendMessage(notification.client_id, msg.message).then(() => {
+				WpNotificationRepository.deleteNotification('arrived', snapshot.key?? '')
+			})
+		} else {
+			await WpNotificationRepository.deleteNotification('arrived', snapshot.key ?? '')
+		}
   }
 
   serviceCanceled = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    await this.sendMessage(notification.client_id, Messages.CANCELED).then(() => {
-			WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
-		})
+		const msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
+		if (msg.enabled) {
+			await this.sendMessage(notification.client_id, msg.message).then(() => {
+				WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
+			})
+		} else {
+			await WpNotificationRepository.deleteNotification('canceled', snapshot.key ?? '')
+		}
   }
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    await this.sendMessage(notification.client_id, Messages.SERVICE_COMPLETED).then(() => {
-			WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
-		})
+		const msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+		if (msg.enabled) {
+			await this.sendMessage(notification.client_id, msg.message).then(() => {
+				WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
+			})
+		} else {
+			await WpNotificationRepository.deleteNotification('terminated', snapshot.key ?? '')
+		}
   }
 	
 	onNewService = async (snapshot: DataSnapshot): Promise<void> => {
 		setTimeout(async () => {
 			const notification: WpNotificationType = snapshot.val()
 			this.cancelTimeout(snapshot.key!!, notification.client_id)
-			await this.sendMessage(notification.client_id, Messages.SERVICE_CREATED).then(() => {
-				WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
-			})
+			const msg = Messages.getSingleMessage(MessagesEnum.SERVICE_CREATED)
+			if (msg.enabled) {
+				await this.sendMessage(notification.client_id, msg.message).then(() => {
+					WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
+				})
+			} else {
+				await WpNotificationRepository.deleteNotification('new', snapshot.key ?? '')
+			}
 		}, 2000)
 	}
 	
@@ -228,7 +254,10 @@ export class WhatsAppClient {
 		setTimeout(async () => {
 			await ServiceRepository.findServiceStatusById(serviceId).then(async (status) => {
 				if (status === Service.STATUS_PENDING) {
-					await this.sendMessage(clientId, ASK_FOR_CANCEL)
+					const msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL)
+					if (msg.enabled) {
+						await this.sendMessage(clientId, msg.message)
+					}
 				}
 			})
 		}, config.CANCEL_TIMEOUT as number)
@@ -264,6 +293,7 @@ export class WhatsAppClient {
 
 		let message: string|false = false
 		let mustSend: boolean = false
+		let msg: ChatBotMessage
 
 		switch (service.status) {
 			case Service.STATUS_IN_PROGRESS:
@@ -272,25 +302,28 @@ export class WhatsAppClient {
 					await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
 					if (!session.notifications.assigned) {
 						await session.setNotification(NotificationType.assigned)
-						message = Messages.serviceAssigned(driver.vehicle)
+						msg = Messages.serviceAssigned(driver.vehicle)
 					}
 				} else if (service.metadata.arrived_at > 0 && !service.metadata.start_trip_at) {
 					if (!session.notifications.arrived) {
 						await session.setNotification(NotificationType.arrived)
-						message = Messages.DRIVER_ARRIVED
+						msg = Messages.getSingleMessage(MessagesEnum.DRIVER_ARRIVED)
+						message = msg.message
 					}
 				}
 				if (!this.wpClient.wpNotifications && message) mustSend = true
 				break
 			case Service.STATUS_TERMINATED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				message = Messages.SERVICE_COMPLETED
-				mustSend = true
+				msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+				message = msg.message
+				mustSend = msg.enabled
 				break
 			case Service.STATUS_CANCELED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				message = Messages.CANCELED
-				mustSend = true
+				msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
+				message = msg.message
+				mustSend = msg.enabled
 				break
 			case Service.STATUS_PENDING:
 				await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
