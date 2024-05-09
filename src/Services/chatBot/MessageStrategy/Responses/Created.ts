@@ -29,7 +29,7 @@ export class Created extends ResponseContract {
       await response.processMessage(message)
     } else {
       if (!this.session.notifications.greeting) {
-        await this.sendMessage(Messages.welcome(this.currentClient.name)).then(async () => {
+        await this.sendMessage(Messages.greeting(this.currentClient.name)).then(async () => {
           await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
           await this.session.setNotification(NotificationType.greeting)
         })

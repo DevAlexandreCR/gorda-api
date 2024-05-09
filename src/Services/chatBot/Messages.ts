@@ -31,7 +31,7 @@ export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = 
 export const serviceAssigned = (vehicle: Vehicle): string => {
   return `El Móvil 🚘  *${MessageHelper.truncatePlate(vehicle.plate)}* color ${locale.__('colors.' + vehicle.color.name)} ${SERVICE_ASSIGNED}`
 }
-export const welcome = (name: string): string => {
+export const greeting = (name: string): string => {
   return `Hola 🙋🏻‍♀ *${name}*  ${WELCOME}`
 }
 export const BAD_AGREEMENT = 
@@ -44,7 +44,7 @@ const newClientGreeting = (name: string): string => {
   return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨*`
 }
 
-export const welcomeNews = (name: string): string => {
+export const greetingNews = (name: string): string => {
   const greeting = newClientGreeting(name)
   return `${greeting} ${WELCOME}`
 }
@@ -77,8 +77,6 @@ export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encu
 
 export const NO_LOCATION_NAME_FOUND = '⛔No logramos identificar el nombre del barrio o del lugar por favor vuelve a intentarlo. \n\n' +
   ASK_FOR_LOCATION_NAME
-export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fue el vehículo asignado. \n \n' +
-  '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
 export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = '➡️Seguimos  buscando un móvil disponible. \nEn cuanto un conductor se reporte te '+
   'informaremos. Esto tardara algunos minutos!⏳ .\nSi deseas cancelar el servicio envía *CANCELAR*'
 export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta más tarde. lamentamos las molestias'
@@ -87,7 +85,7 @@ export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar
 export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶🏻\n \n' +
   '➡️ _Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +
   'Todo nuestro equipo te agradece por el apoyo y la confianza *LA SEGURIDAD DE TU VIAJE SIEMPRE EN LAS MEJORES MANOS🍀✨*'
-export const NEW_SERVICE = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicará el móvil contigo 🚗 \n \n' +
+export const SERVICE_CREATED = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicará el móvil contigo 🚗 \n \n' +
 	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
 export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
 export const SERVICE_COMPLETED = 'Servicio completado! Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n'
@@ -96,7 +94,6 @@ export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLAN
   '*Pepito Perez*\n' +
   '*Maria Paz*'
 export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
-export const PING = 'WP running!'
 export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino '+
   'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'
 

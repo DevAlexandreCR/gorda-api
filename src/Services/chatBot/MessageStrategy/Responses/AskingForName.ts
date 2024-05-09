@@ -20,7 +20,7 @@ export class AskingForName extends ResponseContract{
         await this.createClient(message.id, name)
         if(!this.session.place) {
           await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-          await this.sendMessage(Messages.welcomeNews(this.currentClient.name))
+          await this.sendMessage(Messages.greetingNews(this.currentClient.name))
         } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME) {
           await this.sendMessage(Messages.newClientAskPlaceName(name))
           await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)

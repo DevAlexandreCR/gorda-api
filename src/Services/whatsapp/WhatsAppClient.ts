@@ -218,7 +218,7 @@ export class WhatsAppClient {
 		setTimeout(async () => {
 			const notification: WpNotificationType = snapshot.val()
 			this.cancelTimeout(snapshot.key!!, notification.client_id)
-			await this.sendMessage(notification.client_id, Messages.NEW_SERVICE).then(() => {
+			await this.sendMessage(notification.client_id, Messages.SERVICE_CREATED).then(() => {
 				WpNotificationRepository.deleteNotification('new', snapshot.key?? '')
 			})
 		}, 2000)

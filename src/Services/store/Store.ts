@@ -4,6 +4,8 @@ import PlaceRepository from '../../Repositories/PlaceRepository'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
+import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import SettingsRepository from '../../Repositories/SettingsRepository'
 
 export class Store {
   
@@ -11,11 +13,13 @@ export class Store {
   drivers: Set<Driver> = new Set<Driver>()
   places: Set<Place> = new Set<Place>()
   clients: Map<string, Client> = new Map()
+  messages: Map<string, ChatBotMessage> = new Map()
   
   private constructor() {
     this.setDrivers()
     this.setPlaces()
     this.setClients()
+    this.listenMessages()
   }
   
   public static getInstance(): Store {
@@ -42,6 +46,12 @@ export class Store {
   private setDrivers() {
     DriverRepository.getAll((driver) => {
       this.drivers.add(driver)
+    })
+  }
+
+  private listenMessages(): void {
+    SettingsRepository.getChatBotMessages((messages) => {
+      this.messages = messages
     })
   }
   
