@@ -6,6 +6,7 @@ module.exports = {
   HOST: process.env.HOST || 'localhost',
   PORT: process.env.PORT || 3000,
   APP_DOMAIN: process.env.APP_DOMAIN || 'localhost',
+  APP_NAME: process.env.APP_NAME || 'Gorda',
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || 'gorda-driver',
   FIREBASE_DATABASE_URL: process.env.FIREBASE_DATABASE_URL || 'http://localhost:9000',
   AUTHENTICATION_EMULATOR_HOST: process.env.AUTHENTICATION_EMULATOR_HOST || 'http://localhost:9099',

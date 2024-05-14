@@ -9,3 +9,4 @@ firebase.config.js
 .wwebjs_cache/
 firebaseAccount.json
 .ecosystem.config.js
+/.wwebjs_auth/*

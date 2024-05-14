@@ -4,6 +4,7 @@ import Session from '../../../../Models/Session'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import * as Messages from '../../Messages'
 import {WpMessage} from '../../../../Types/WpMessage'
+import {MessagesEnum} from '../../MessagesEnum'
 
 export class AskingForComment extends ResponseContract {
   
@@ -20,7 +21,7 @@ export class AskingForComment extends ResponseContract {
     
     if (place) await this.createService(place, comment)
     else {
-      await this.sendMessage(Messages.ERROR_CREATING_SERVICE)
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ERROR_CREATING_SERVICE))
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
     }
   }

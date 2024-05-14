@@ -6,6 +6,7 @@ import * as Messages from '../../Messages'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import Service from '../../../../Models/Service'
 import {WpMessage} from '../../../../Types/WpMessage'
+import {MessagesEnum} from '../../MessagesEnum'
 
 export class RequestingService extends ResponseContract {
   
@@ -20,7 +21,7 @@ export class RequestingService extends ResponseContract {
       await this.cancelService()
       await this.session.setStatus(Session.STATUS_COMPLETED)
     } else {
-      await this.sendMessage(Messages.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_FIND_DRIVER))
     }
   }
 
