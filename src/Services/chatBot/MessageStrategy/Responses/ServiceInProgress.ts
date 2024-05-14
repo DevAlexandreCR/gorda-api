@@ -17,7 +17,7 @@ export class ServiceInProgress extends ResponseContract{
     await this.setService()
     
     if (this.service.metadata && this.service.metadata.arrived_at)
-      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.SERVICE_IN_PROGRESS))
+      await this.sendMessage(Messages.serviceInProgress())
     else {
       const body = message.msg.toLowerCase()
       if (body.includes(MessageHelper.CANCEL)) {

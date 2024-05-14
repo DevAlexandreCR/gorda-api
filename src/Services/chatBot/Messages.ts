@@ -56,7 +56,7 @@ export const greeting = (name: string): ChatBotMessage => {
   const placeholdersMap = new Map<Placeholders, string>()
   placeholdersMap.set(Placeholders.USERNAME, name)
   const message = store.findMessageById(MessagesEnum.GREETING)
-  message.message = replacePlaceholders(store.findMessageById(MessagesEnum.GREETING).message, placeholdersMap)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
   return message
 }
 
@@ -65,7 +65,7 @@ const newClientGreeting = (name: string): ChatBotMessage => {
   placeholdersMap.set(Placeholders.USERNAME, name)
   placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
   const message = store.findMessageById(MessagesEnum.GREETING_NEW_USERS)
-  message.message = replacePlaceholders(store.findMessageById(MessagesEnum.GREETING_NEW_USERS).message, placeholdersMap)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
   return message
 }
 
@@ -77,7 +77,7 @@ export const newClientAskPlaceName = (name: string): ChatBotMessage => {
   const placeholdersMap = new Map<Placeholders, string>()
   placeholdersMap.set(Placeholders.USERNAME, name)
   const message = store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_PLACE)
-  message.message = replacePlaceholders(store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_PLACE).message, placeholdersMap)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
   return message
 }
 
@@ -88,5 +88,13 @@ export const newClientAskForComment = (name: string, place: string): ChatBotMess
   const message = store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_COMMENT)
   message.message = replacePlaceholders(message.message, placeholdersMap)
 
+  return message
+}
+
+export const serviceInProgress = (): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PQR_NUMBER, config.PQR_NUMBER)
+  const message = store.findMessageById(MessagesEnum.SERVICE_IN_PROGRESS)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
   return message
 }
