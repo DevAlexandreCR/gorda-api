@@ -130,4 +130,5 @@ process.on('exit', async () => {
     detached: true
   })
   chromium.unref()
+  console.log('restart chromium...')
 })
