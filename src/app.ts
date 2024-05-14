@@ -19,6 +19,8 @@ import {WpClient} from './Interfaces/WpClient'
 import {WhatsAppClientDictionary} from './Interfaces/WhatsAppClientDiccionary'
 import {ClientDictionary} from './Interfaces/ClientDiccionary'
 import {requiredClientId} from './Middlewares/HasData'
+import process from 'process'
+import {spawn} from 'child_process'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -120,4 +122,13 @@ io.on('connection', async (socket: Socket) => {
   socket.on('disconnect', reason => {
     console.log('disconnecting ...', reason)
   })
+})
+
+process.on('exit', async () => {
+  const chromium = spawn(config.CHROMIUM_PATH, ['--remote-debugging-port=9222'], {
+    stdio: 'ignore',
+    detached: true
+  })
+  chromium.unref()
+  console.log('restart chromium...')
 })
