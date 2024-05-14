@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.3.x
 
+## [1.3.7 (2024-05-14)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.7...v1.3.6)
+
+### Fixed
+- Restart chromium on exit ([#84](https://github.com/DevAlexandreCR/gorda-api/pull/84))
+
 ## [1.3.6 (2024-05-14)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.3.6...v1.3.5)
 
 ### Fixed
