@@ -106,7 +106,7 @@ io.on('connection', async (socket: Socket) => {
     console.log('destroy ....')
     if (wpServices[clientId]) {
       wpServices[clientId].deleting = true
-      wpServices[clientId].logout()
+      await wpServices[clientId].logout()
     }
     delete wpServices[clientId]
   })

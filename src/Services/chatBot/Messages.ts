@@ -1,21 +1,33 @@
-import config from '../../../config'
 import Vehicle from '../../Models/Vehicle'
 import MessageHelper from '../../Helpers/MessageHelper'
 import {Locale} from '../../Helpers/Locale'
 import {PlaceOption} from '../../Interfaces/PlaceOption'
 import {Store} from '../store/Store'
+import {MessagesEnum} from './MessagesEnum'
+import {Placeholders, replacePlaceholders} from './Placeholders'
+import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import config from '../../../config'
+
+export function getSingleMessage(messagesEnum: MessagesEnum): ChatBotMessage {
+  return store.findMessageById(messagesEnum)
+}
+
 
 const locale = Locale.getInstance()
 const store = Store.getInstance()
 
-export const requestingService = (placeName: string): string => {
-  return  'Lugar: *' + placeName + REQUESTING_SERVICE
+export const requestingService = (placeName: string): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PLACE, placeName)
+  const message = store.findMessageById(MessagesEnum.REQUESTING_SERVICE)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
+  return message
 }
-export const cancelService = (serviceID: string): string => {
-  return 'Si deseas cancelar reenvíanos éste mensaje \n' +
-  `Cancelar servicio convenio id=${serviceID}`
+
+export const cancelService = (serviceID: string): ChatBotMessage => {
+  return getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
 }
-export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): string => {
+export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): ChatBotMessage => {
   const error = 'No reconocimos ninguna opción válida, '
   const found = 'Encontramos éstas coincidencias, '
   const message = 'envía el número de la opción correcta o puedes enviar tu ubicación actual: \n'
@@ -24,81 +36,65 @@ export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = 
     const place = store.findPlaceById(opt.placeId)
     optionsMessage += `*${opt.option}* ${place?.name} \n`
   })
-  optionsMessage += `*${options.length + 1}* ${NONE_OF_THE_ABOVE}`
-  if (resend) return error + message + optionsMessage
-  return found + message + optionsMessage
-}
-export const serviceAssigned = (vehicle: Vehicle): string => {
-  return `El Móvil 🚘  *${MessageHelper.truncatePlate(vehicle.plate)}* color ${locale.__('colors.' + vehicle.color.name)} ${SERVICE_ASSIGNED}`
-}
-export const welcome = (name: string): string => {
-  return `Hola 🙋🏻‍♀ *${name}*  ${WELCOME}`
-}
-export const BAD_AGREEMENT = 
-  'No logramos reconocer el lugar del convenio, por favor verifica que esté bien escrito, ejemplo:\n \n' +
-  'Movil convenio Campanario \n' +
-  'Movil con bodega amplia convenio Monte Luna \n \n' +
-  `o escríbenos al ${config.PQR_NUMBER} para agregarlo.`
+  optionsMessage += `*${options.length + 1}* ${store.findMessageById(MessagesEnum.NONE_OF_THE_ABOVE)}`
+  let msg = found + message + optionsMessage
+  if (resend) msg = error + message + optionsMessage
 
-const newClientGreeting = (name: string): string => {
-  return `Hola *${name}* 🙋🏻‍♀ Bienvenido a *RED BLANCA POPAYÁN ✨*`
+  return getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
 }
 
-export const welcomeNews = (name: string): string => {
-  const greeting = newClientGreeting(name)
-  return `${greeting} ${WELCOME}`
-}
-export const newClientAskPlaceName = (name: string): string => {
-  const greeting = newClientGreeting(name)
-  return `${greeting} \n\n${ASK_FOR_LOCATION_NAME}`
-}
-
-export const newClientAskForComment = (name: string, place: string): string => {
-  const greeting = newClientGreeting(name)
-  const placeName = requestingService(place)
-  return `${greeting} \n\n${placeName}`
+export const serviceAssigned = (vehicle: Vehicle): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PLATE, MessageHelper.truncatePlate(vehicle.plate))
+  placeholdersMap.set(Placeholders.COLOR, locale.__('colors.' + vehicle.color.name))
+  const message = store.findMessageById(MessagesEnum.SERVICE_ASSIGNED)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
+  return message
 }
 
-export const NONE_OF_THE_ABOVE = 'Ninguna de las anteriores'
-export const SERVICE_NOT_FOUND = 'No se encontró el servicio que desea cancelar.'
-export const ASK_FOR_LOCATION = '*Envía tu ubicación actual 📍*' +
-  ' para asignarte un vehículo en el menor tiempo posible 👏🏻 \n'
+export const greeting = (name: string): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  const message = store.findMessageById(MessagesEnum.GREETING)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
+  return message
+}
 
-export const ASK_FOR_LOCATION_NAME = '☑️ Ya tenemos tu ubicación! ahora por favor 👉🏻 agrega el nombre del _barrio_, ' +
-  'o algún _punto de referencia_ cercano\n'
-export const REQUESTING_SERVICE = '* Creando servicio...\n \n' +
-  'Para agregar algún requerimiento especial, por ejemplo: \n\n📌 _Pago con nequi_ \n📌 _Con mascota_ \n📌 _Bodega amplia_\n\nPor favor escríbelo abajo, de lo contrario envía *NO*'
-export const WELCOME = '¿Dónde te encuentras? \n \n' + ASK_FOR_LOCATION
-export const CANCELED = 'se ha cancelado tu solicitud! 🥹\n' +
-  '*Espero poder colaborarte en una próxima ocasión 🙋🏻‍♀️*'
+const newClientGreeting = (name: string): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
+  const message = store.findMessageById(MessagesEnum.GREETING_NEW_USERS)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
+  return message
+}
 
-export const NO_LOCATION_FOUND = 'No logramos identificar el lugar donde te encuentras por favor vuelve a intentarlo. \n\n' +
-  ASK_FOR_LOCATION
+export const greetingNews = (name: string): ChatBotMessage => {
+  return newClientGreeting(name)
+}
 
-export const NO_LOCATION_NAME_FOUND = '⛔No logramos identificar el nombre del barrio o del lugar por favor vuelve a intentarlo. \n\n' +
-  ASK_FOR_LOCATION_NAME
-export const ASK_FOR_DRIVER = 'Con gusto! en un momento te confirmaremos cual fue el vehículo asignado. \n \n' +
-  '*Recuerda que esto puede tardar de 2 a 5min ⌛Agradecemos tu paciencia!!💕*'
-export const ASK_FOR_CANCEL_WHILE_FIND_DRIVER = '➡️Seguimos  buscando un móvil disponible. \nEn cuanto un conductor se reporte te '+
-  'informaremos. Esto tardara algunos minutos!⏳ .\nSi deseas cancelar el servicio envía *CANCELAR*'
-export const ERROR_CREATING_SERVICE = 'No pudimos crear el servicio, por favor intenta más tarde. lamentamos las molestias'
-export const ERROR_WHILE_PROCESSING = 'Ocurrió un error mientras procesábamos tu petición, por favor intenta más tarde. lamentamos las molestias'
-export const SERVICE_IN_PROGRESS = 'Tienes un servicio en progreso para reportar una queja comunicate al ' + config.PQR_NUMBER + '\n'
-export const SERVICE_ASSIGNED = ' 👈🏻en un momento se comunica contigo!🫶🏻\n \n' +
-  '➡️ _Recuerda verificar tus pertenencias antes de bajarte del vehículo._\n \n' +
-  'Todo nuestro equipo te agradece por el apoyo y la confianza *LA SEGURIDAD DE TU VIAJE SIEMPRE EN LAS MEJORES MANOS🍀✨*'
-export const NEW_SERVICE = 'Con gusto!☺️ en un momento te confirmamos el número de placa y en breve se comunicará el móvil contigo 🚗 \n \n' +
-	'*Recuerda esto puede tardar de 5 a 7 min. Agradecemos tu paciencia* 🤗 \n \n'
-export const MESSAGE_TYPE_NOT_SUPPORTED = 'Por favor intenta nuevamente con un mensaje válido.\n'
-export const SERVICE_COMPLETED = 'Servicio completado! Gracias por confiar en *RED BLANCA POPAYÁN💫💞* \n'
+export const newClientAskPlaceName = (name: string): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  const message = store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_PLACE)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
+  return message
+}
 
-export const ASK_FOR_NAME = 'Hola 🙋🏻‍♀ te has comunicado con *RED BLANCA POPAYÁN 🚘✨* \n \nPor favor dime tu nombre para una atención personalizada. ejemplo: \n' +
-  '*Pepito Perez*\n' +
-  '*Maria Paz*'
-export const DRIVER_ARRIVED = '¡Tu conductor ha llegado! 🏠🚗'
-export const PING = 'WP running!'
-export const ASK_FOR_CANCEL_WHILE_WAIT_DRIVER = 'Tu conductor está en camino '+
-  'por favor espera unos segundos. \nSi deseas cancelar el servicio envía *CANCELAR*'
+export const newClientAskForComment = (name: string, place: string): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PLACE, place)
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  const message = store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_COMMENT)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
 
-export const ASK_FOR_CANCEL = 'Que pena contigo 🥺 por el momento no tengo móvil disponible. \n \n' +
-	'*¿Desea que siga insistiendo?*'
+  return message
+}
+
+export const serviceInProgress = (): ChatBotMessage => {
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.PQR_NUMBER, config.PQR_NUMBER)
+  const message = store.findMessageById(MessagesEnum.SERVICE_IN_PROGRESS)
+  message.message = replacePlaceholders(message.message, placeholdersMap)
+  return message
+}

@@ -11,6 +11,8 @@ import * as Sentry from '@sentry/node'
 import {WpMessage} from '../../../Types/WpMessage'
 import {WpLocation} from '../../../Types/WpLocation'
 import {exit} from 'process'
+import {ChatBotMessage} from '../../../Types/ChatBotMessage'
+import {MessagesEnum} from '../MessagesEnum'
 
 export abstract class ResponseContract {
   
@@ -32,12 +34,16 @@ export abstract class ResponseContract {
     return message.type === MessageTypes.LOCATION
   }
   
-  async sendMessage(content: string): Promise<void> {
-    await this.retryPromise<void>(this.session.sendMessage(content), 3)
+  async sendMessage(message: ChatBotMessage): Promise<void> {
+    if (message.enabled) {
+      await this.retryPromise<void>(this.session.sendMessage(message.message), 3)
       .catch(e => {
         Sentry.captureException(e)
         exit(1)
       })
+    } else {
+      return Promise.resolve()
+    }
   }
 
   private getWpClientId(): string {
@@ -71,7 +77,7 @@ export abstract class ResponseContract {
       })
       .catch(async (e) => {
         console.error(e.message)
-        await this.sendMessage(Messages.ERROR_CREATING_SERVICE)
+        await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ERROR_CREATING_SERVICE))
         await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
       })
 
@@ -115,7 +121,7 @@ export abstract class ResponseContract {
             console.log(`Retry attempt ${attemptNumber + 1}/${maxRetries}`, {
               error: error.message
             })
-            setTimeout(() => attempt(attemptNumber + 1), 1000)
+            setTimeout(() => attempt(attemptNumber + 1), 2000)
           } else {
             reject(error)
           }

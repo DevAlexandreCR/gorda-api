@@ -13,6 +13,10 @@ class FirestoreService {
   public dbSessions(): CollectionReference {
     return this.fs.collection('sessions')
   }
+
+  public dbChatBotMessages(): CollectionReference {
+    return this.fs.collection('messages')
+  }
 }
 
 export default new FirestoreService()

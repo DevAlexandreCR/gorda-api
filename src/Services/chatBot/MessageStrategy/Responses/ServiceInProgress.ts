@@ -6,6 +6,7 @@ import Service from '../../../../Models/Service'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import {WpMessage} from '../../../../Types/WpMessage'
+import {MessagesEnum} from '../../MessagesEnum'
 
 export class ServiceInProgress extends ResponseContract{
   
@@ -16,14 +17,14 @@ export class ServiceInProgress extends ResponseContract{
     await this.setService()
     
     if (this.service.metadata && this.service.metadata.arrived_at)
-      await this.sendMessage(Messages.SERVICE_IN_PROGRESS)
+      await this.sendMessage(Messages.serviceInProgress())
     else {
       const body = message.msg.toLowerCase()
       if (body.includes(MessageHelper.CANCEL)) {
         await this.cancelService()
         await this.session.setStatus(Session.STATUS_COMPLETED)
       } else {
-        await this.sendMessage(Messages.ASK_FOR_CANCEL_WHILE_WAIT_DRIVER)
+        await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_WAIT_DRIVER))
       }
     }
   }
