@@ -1,5 +1,6 @@
 export enum NotificationType {
   assigned = 'assigned',
   arrived = 'arrived',
-  greeting = 'greeting'
+  greeting = 'greeting',
+  completed = 'completed'
 }

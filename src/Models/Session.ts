@@ -48,7 +48,8 @@ export default class Session implements SessionInterface {
     this.notifications = {
       greeting: false,
       assigned: false,
-      arrived: false
+      arrived: false,
+      completed: false
     }
   }
 

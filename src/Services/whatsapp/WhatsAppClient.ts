@@ -216,10 +216,10 @@ export class WhatsAppClient {
 		const msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
 		if (msg.enabled) {
 			await this.sendMessage(notification.client_id, msg.message).then(() => {
-				WpNotificationRepository.deleteNotification('canceled', snapshot.key?? '')
+				WpNotificationRepository.deleteNotification(Service.STATUS_CANCELED, snapshot.key?? '')
 			})
 		} else {
-			await WpNotificationRepository.deleteNotification('canceled', snapshot.key ?? '')
+			await WpNotificationRepository.deleteNotification(Service.STATUS_CANCELED, snapshot.key ?? '')
 		}
   }
 
@@ -228,10 +228,10 @@ export class WhatsAppClient {
 		const msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
 		if (msg.enabled) {
 			await this.sendMessage(notification.client_id, msg.message).then(() => {
-				WpNotificationRepository.deleteNotification('terminated', snapshot.key?? '')
+				WpNotificationRepository.deleteNotification(Service.STATUS_TERMINATED, snapshot.key?? '')
 			})
 		} else {
-			await WpNotificationRepository.deleteNotification('terminated', snapshot.key ?? '')
+			await WpNotificationRepository.deleteNotification(Service.STATUS_TERMINATED, snapshot.key ?? '')
 		}
   }
 	
@@ -263,9 +263,10 @@ export class WhatsAppClient {
 		}, config.CANCEL_TIMEOUT as number)
 	}
   
-  logout = (): void => {
-    this.client.destroy()
-      .then(() => {
+  logout = async (): Promise<void> => {
+    await this.client.logout()
+      .then(async () => {
+				console.log('logout successfully', this.wpClient.alias)
         if (this.socket) this.socket.to(this.wpClient.id).emit('destroy')
       })
       .catch(e => {
@@ -283,13 +284,13 @@ export class WhatsAppClient {
 	}
 
 	serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
-		if (!this.wpClient.chatBot && !this.wpClient.assistant) return
+		if (!this.wpClient.chatBot && !this.wpClient.assistant) return Promise.resolve()
 		const service = new Service()
 		Object.assign(service, snapshot.val() as ServiceInterface)
 
 		let session = this.chatBot.findSessionByChatId(service.client_id)
 
-		if (!session) return
+		if (!session) return Promise.resolve()
 
 		let message: string|false = false
 		let mustSend: boolean = false
@@ -303,27 +304,35 @@ export class WhatsAppClient {
 					if (!session.notifications.assigned) {
 						await session.setNotification(NotificationType.assigned)
 						msg = Messages.serviceAssigned(driver.vehicle)
+						message = msg.message
+						mustSend = msg.enabled && !this.wpClient.wpNotifications
 					}
 				} else if (service.metadata.arrived_at > 0 && !service.metadata.start_trip_at) {
 					if (!session.notifications.arrived) {
 						await session.setNotification(NotificationType.arrived)
 						msg = Messages.getSingleMessage(MessagesEnum.DRIVER_ARRIVED)
 						message = msg.message
+						mustSend = msg.enabled && !this.wpClient.wpNotifications
 					}
 				}
-				if (!this.wpClient.wpNotifications && message) mustSend = true
 				break
 			case Service.STATUS_TERMINATED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
-				message = msg.message
-				mustSend = msg.enabled
+				if (!session.notifications.completed) {
+					await session.setNotification(NotificationType.completed)
+					msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+					message = msg.message
+					mustSend = msg.enabled && !this.wpClient.wpNotifications
+				}
 				break
 			case Service.STATUS_CANCELED:
 				await session.setStatus(Session.STATUS_COMPLETED)
-				msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
-				message = msg.message
-				mustSend = msg.enabled
+				if (!session.notifications.completed) {
+					await session.setNotification(NotificationType.completed)
+					msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
+					message = msg.message
+					mustSend = msg.enabled && !this.wpClient.wpNotifications
+				}
 				break
 			case Service.STATUS_PENDING:
 				await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
@@ -333,7 +342,7 @@ export class WhatsAppClient {
 				console.log('new service', service.id)
 		}
 
-		if (mustSend && message) await this.sendMessage(service.client_id, message)
+		if (mustSend && message && !this.wpClient.wpNotifications) await this.sendMessage(service.client_id, message)
 	}
 
 	async sendMessage(chatId: string, message: string): Promise<void> {
