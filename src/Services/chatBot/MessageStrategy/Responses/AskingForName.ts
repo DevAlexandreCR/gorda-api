@@ -8,7 +8,7 @@ import {WpMessage} from '../../../../Types/WpMessage'
 import EntityExtractor from '../../ai/EntityExtractor'
 import Session from '../../../../Models/Session'
 import {MessagesEnum} from '../../MessagesEnum'
-
+import { WpContactInterface } from '../../../whatsapp/interfaces/WpContactInterface'
 export class AskingForName extends ResponseContract{
   
   public messageSupported: Array<string> = [MessageTypes.TEXT]
@@ -44,7 +44,7 @@ export class AskingForName extends ResponseContract{
     this.currentClient = await ClientRepository.create(contact)
   }
   
-  async getContact(): Promise<Contact> {
+  async getContact(): Promise<WpContactInterface> {
     return new Promise((resolve) => {
       this.session.chat.getContact()
         .then(contact => {

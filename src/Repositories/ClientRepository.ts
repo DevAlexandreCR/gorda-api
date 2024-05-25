@@ -2,9 +2,9 @@ import DBService from '../Services/firebase/Database'
 import Client from '../Models/Client'
 import {ClientInterface} from '../Interfaces/ClientInterface'
 import Database from '../Services/firebase/Database'
-import {Contact} from 'whatsapp-web.js'
 import config from '../../config'
 import * as Sentry from '@sentry/node'
+import { WpContactInterface } from '../Services/whatsapp/interfaces/WpContactInterface'
 
 class ClientRepository {
   
@@ -24,7 +24,7 @@ class ClientRepository {
     })
   }
   
-  public async create(contact: Contact): Promise<ClientInterface> {
+  public async create(contact: WpContactInterface): Promise<ClientInterface> {
     const newClient: Client = new Client
     newClient.id = contact.id._serialized
     newClient.name = contact.name?? contact.pushname
