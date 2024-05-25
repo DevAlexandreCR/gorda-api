@@ -23,6 +23,7 @@ import {ChatBotMessage} from '../../Types/ChatBotMessage'
 import { WpStates } from './constants/WpStates'
 import { WpEvents } from './constants/WpEvents'
 import { WPClientInterface } from './interfaces/WPClientInterface'
+import { WpMessageInterface } from './interfaces/WpMessageInterface'
 
 export class WhatsAppClient {
   
@@ -111,7 +112,7 @@ export class WhatsAppClient {
 		WpNotificationRepository.onServiceTerminated(this.wpClient.id, this.serviceTerminated)
 		ServiceRepository.onServiceChanged(this.serviceChanged)
     if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.READY)
-    console.table(this.client.pupBrowser?._targets)
+    console.log(this.client.info)
   }
 
   onQR = (qr: string): void => {
@@ -123,11 +124,11 @@ export class WhatsAppClient {
 		console.log('authentication successfully!', this.wpClient.alias)
   }
 	
-	onMessageReceived = async (msg: Message): Promise<void> => {
+	onMessageReceived = async (msg: WpMessageInterface): Promise<void> => {
 		if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch(e => console.log(e.message))
 	}
 
-	isProcessableMsg(msg: Message): boolean {
+	isProcessableMsg(msg: WpMessageInterface): boolean {
 		const session = this.chatBot.findSessionByChatId(msg.from)
 		if (session) return true
 		if (this.wpClient.assistant) return (msg.type === MessageTypes.LOCATION)
@@ -174,7 +175,7 @@ export class WhatsAppClient {
 		this.starting = true
     console.log('initializing whatsapp client...', this.wpClient.alias)
 		if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
-		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e, this.wpClient.alias))
+		// if (web && !this.client.pupPage?.isClosed()) await this.client.logout().catch(e => console.log(e, this.wpClient.alias))
     return this.client.initialize()
   }
   

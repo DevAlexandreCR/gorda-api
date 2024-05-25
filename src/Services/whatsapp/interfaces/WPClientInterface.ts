@@ -1,8 +1,11 @@
-import { WpEvents } from "../constants/WpEvents"
-import { WpStates } from "../constants/WpStates"
-import { WpChatInterface } from "./WpChatInterface"
+import { WpEvents } from '../constants/WpEvents'
+import { WpStates } from '../constants/WpStates'
+import { WpChatInterface } from './WpChatInterface'
 
 export interface WPClientInterface {
+
+    info: string
+
     build(): this
     sendMessage(phoneNumber: string, message: string): boolean
     receiveMessage(phoneNumber: string): string
@@ -12,4 +15,5 @@ export interface WPClientInterface {
     getChatById(chatId: string): Promise<WpChatInterface>
     logout(): Promise<void>
     getWWebVersion(): Promise<string>
+    initialize(): Promise<void>
 }

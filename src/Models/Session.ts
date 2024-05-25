@@ -4,7 +4,7 @@ import {PlaceOption} from '../Interfaces/PlaceOption'
 import Place from './Place'
 import {WpMessage} from '../Types/WpMessage'
 import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseContext'
-import {Chat, Client, Message, MessageTypes} from 'whatsapp-web.js'
+import {Message, MessageTypes} from 'whatsapp-web.js'
 import MessageHelper from '../Helpers/MessageHelper'
 import {WpLocation} from '../Types/WpLocation'
 import {exit} from 'process'
@@ -13,6 +13,8 @@ import {WpNotifications} from '../Types/WpNotifications'
 import {NotificationType} from '../Types/NotificationType'
 import {getSingleMessage} from '../Services/chatBot/Messages'
 import {MessagesEnum} from '../Services/chatBot/MessagesEnum'
+import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
+import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -25,7 +27,7 @@ export default class Session implements SessionInterface {
   public updated_at: number | null
   public place: Place | null = null
   public messages: Map<string, WpMessage> = new Map()
-  public chat: Chat
+  public chat: WpChatInterface
   public wp_client_id: string
   public notifications: WpNotifications
   private processorTimeout?: NodeJS.Timer
@@ -62,7 +64,7 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateId(this)
   }
 
-  async addMsg(msg: Message): Promise<void> {
+  async addMsg(msg: WpMessageInterface): Promise<void> {
     const wpMessage: WpMessage = {
       created_at: msg.timestamp,
       id: msg.id.id,
@@ -170,7 +172,7 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateNotification(this.id, this.notifications)
   }
 
-  public setChat(chat: Chat): void {
+  public setChat(chat: WpChatInterface): void {
     this.chat = chat
   }
 

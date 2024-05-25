@@ -1,9 +1,9 @@
-import {Message} from 'whatsapp-web.js'
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
 import {SessionInterface} from '../../Interfaces/SessionInterface'
 import {Agreement} from './MessageStrategy/Responses/Agreement'
 import { WPClientInterface } from '../whatsapp/interfaces/WPClientInterface'
+import { WpMessageInterface } from '../whatsapp/interfaces/WpMessageInterface'
 
 export default class ChatBot {
   private readonly wpClient: WPClientInterface
@@ -62,13 +62,13 @@ export default class ChatBot {
       this.sessions.delete(sessionId)
   }
   
-  async processMessage(message: Message): Promise<void> {
+  async processMessage(message: WpMessageInterface): Promise<void> {
     await this.findOrCreateSession(message.from, message).then(async session => {
       await session.addMsg(message)
     })
   }
 
-  private async findOrCreateSession(chatId: string, message: Message): Promise<Session> {
+  private async findOrCreateSession(chatId: string, message: WpMessageInterface): Promise<Session> {
     let session = this.findSessionByChatId(chatId)
 
     if (!session) {
