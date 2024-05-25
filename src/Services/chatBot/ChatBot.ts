@@ -1,16 +1,17 @@
-import {Client, Message} from 'whatsapp-web.js'
+import {Message} from 'whatsapp-web.js'
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
 import {SessionInterface} from '../../Interfaces/SessionInterface'
 import {Agreement} from './MessageStrategy/Responses/Agreement'
+import { WPClientInterface } from '../whatsapp/interfaces/WPClientInterface'
 
 export default class ChatBot {
-  private readonly wpClient: Client
+  private readonly wpClient: WPClientInterface
   private readonly wpClientId: string
   private sessions = new Map<string, Session>()
 
   
-  constructor(client: Client, wpClientId: string) {
+  constructor(client: WPClientInterface, wpClientId: string) {
     this.wpClient = client
     this.wpClientId = wpClientId
   }

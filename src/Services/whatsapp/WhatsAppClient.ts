@@ -1,4 +1,4 @@
-import {Client, Events, LocalAuth, Message, MessageTypes, WAState} from 'whatsapp-web.js'
+import {Client, LocalAuth, Message, MessageTypes} from 'whatsapp-web.js'
 import * as Sentry from '@sentry/node'
 import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
@@ -20,10 +20,13 @@ import {ServiceInterface} from '../../Interfaces/ServiceInterface'
 import {NotificationType} from '../../Types/NotificationType'
 import {MessagesEnum} from '../chatBot/MessagesEnum'
 import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import { WpStates } from './constants/WpStates'
+import { WpEvents } from './constants/WpEvents'
+import { WPClientInterface } from './interfaces/WPClientInterface'
 
 export class WhatsAppClient {
   
-  public client: Client
+  public client: WPClientInterface
   private socket: SocketIOServer | null = null
   static SESSION_PATH = 'storage/sessions/'
   private chatBot: ChatBot
@@ -38,39 +41,41 @@ export class WhatsAppClient {
 
 	initClient(): void {
 		const remotePath = `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${config.WWEB_VERSION}.html`
-    this.client = new Client({
-      authStrategy: new LocalAuth({
-				clientId: this.wpClient.id,
-				dataPath: WhatsAppClient.SESSION_PATH
-			}),
-			qrMaxRetries: 2,
-			takeoverOnConflict: false,
-			webVersionCache: {
-				type: 'remote',
-				remotePath: remotePath,
-			},
-      puppeteer: {
-        executablePath: config.CHROMIUM_PATH,
-        headless: true,
-        args: [
-          '--disable-gpu',
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--unhandled-rejections=strict',
-		  		'--no-zygote'
-        ]
-      }
-    })
+
+		// this.client = 
+		// this.client = new Client({
+		// authStrategy: new LocalAuth({
+		// 			clientId: this.wpClient.id,
+		// 			dataPath: WhatsAppClient.SESSION_PATH
+		// 		}),
+		// 		qrMaxRetries: 2,
+		// 		takeoverOnConflict: false,
+		// 		webVersionCache: {
+		// 			type: 'remote',
+		// 			remotePath: remotePath,
+		// 		},
+		// puppeteer: {
+		// 	executablePath: config.CHROMIUM_PATH,
+		// 	headless: true,
+		// 	args: [
+		// 	'--disable-gpu',
+		// 	'--no-sandbox',
+		// 	'--disable-setuid-sandbox',
+		// 	'--disable-dev-shm-usage',
+		// 	'--unhandled-rejections=strict',
+		// 			'--no-zygote'
+		// 	]
+		// }
+		// })
     
-    this.client.on(Events.QR_RECEIVED, this.onQR)
-    this.client.on(Events.READY, this.onReady)
-    this.client.on(Events.AUTHENTICATED, this.onAuth)
-    this.client.on(Events.AUTHENTICATION_FAILURE, this.onAuthFailure)
-    this.client.on(Events.STATE_CHANGED, this.onStateChanged)
-    this.client.on(Events.DISCONNECTED, this.onDisconnected)
-		this.client.on(Events.LOADING_SCREEN, this.onLoadingScreen)
-		this.client.on(Events.MESSAGE_RECEIVED, this.onMessageReceived)
+    this.client.on(WpEvents.QR_RECEIVED, this.onQR)
+    this.client.on(WpEvents.READY, this.onReady)
+    this.client.on(WpEvents.AUTHENTICATED, this.onAuth)
+    this.client.on(WpEvents.AUTHENTICATION_FAILURE, this.onAuthFailure)
+    this.client.on(WpEvents.STATE_CHANGED, this.onStateChanged)
+    this.client.on(WpEvents.DISCONNECTED, this.onDisconnected)
+		this.client.on(WpEvents.LOADING_SCREEN, this.onLoadingScreen)
+		this.client.on(WpEvents.MESSAGE_RECEIVED, this.onMessageReceived)
 
 	this.init(false)
 	  .then(async () => {
@@ -105,12 +110,12 @@ export class WhatsAppClient {
 		WpNotificationRepository.onServiceCanceled(this.wpClient.id, this.serviceCanceled)
 		WpNotificationRepository.onServiceTerminated(this.wpClient.id, this.serviceTerminated)
 		ServiceRepository.onServiceChanged(this.serviceChanged)
-    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.READY)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.READY)
     console.table(this.client.pupBrowser?._targets)
   }
 
   onQR = (qr: string): void => {
-    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.QR_RECEIVED, qr)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.QR_RECEIVED, qr)
     console.log('sending qr code..', this.wpClient.alias, qr)
   }
   
@@ -134,11 +139,11 @@ export class WhatsAppClient {
 		return false
 	}
 
-  onDisconnected = async (reason: string | WAState): Promise<void> => {
+  onDisconnected = async (reason: string | WpStates): Promise<void> => {
     console.log('Client disconnected ', this.wpClient.alias, reason)
 		await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
-    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.DISCONNECTED, reason)
-    if (reason === EmitEvents.NAVIGATION) await this.client.destroy().catch(e => {
+    if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.DISCONNECTED, reason)
+    if (reason === EmitEvents.NAVIGATION) await this.client.logout().catch(e => {
 			console.log('destroy ', this.wpClient.alias, e.message)
 			this.socket?.emit(EmitEvents.FAILURE, e.message)
 			Sentry.captureException(e)
@@ -147,8 +152,8 @@ export class WhatsAppClient {
   }
   
   onAuthFailure = (message: string): void => {
-    if (this.socket) this.socket.to(this.wpClient.id).emit(Events.AUTHENTICATION_FAILURE, message)
-    console.log(Events.AUTHENTICATION_FAILURE, this.wpClient.alias, message)
+    if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.AUTHENTICATION_FAILURE, message)
+    console.log(WpEvents.AUTHENTICATION_FAILURE, this.wpClient.alias, message)
   }
 	
 	onLoadingScreen = (percent: string, message: string): void => {
@@ -156,19 +161,19 @@ export class WhatsAppClient {
 			percent: percent,
 			message: message
 		}
-		if (this.socket) this.socket.to(this.wpClient.id).emit(Events.LOADING_SCREEN, loading)
-		console.log(Events.LOADING_SCREEN, this.wpClient.alias, percent, message)
+		if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.LOADING_SCREEN, loading)
+		console.log(WpEvents.LOADING_SCREEN, this.wpClient.alias, percent, message)
 	}
 	
-  onStateChanged = (waState: WAState): void => {
+  onStateChanged = (waState: WpStates): void => {
     if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, waState)
-    console.log(Events.STATE_CHANGED, this.wpClient.alias, waState)
+    console.log(WpEvents.STATE_CHANGED, this.wpClient.alias, waState)
   }
   
   init = async (web = true): Promise<void> => {
 		this.starting = true
     console.log('initializing whatsapp client...', this.wpClient.alias)
-		if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
+		if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
 		if (web && !this.client.pupPage?.isClosed()) await this.client.destroy().catch(e => console.log(e, this.wpClient.alias))
     return this.client.initialize()
   }
@@ -178,7 +183,7 @@ export class WhatsAppClient {
       if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, state)
     }).catch(e => {
       console.log(EmitEvents.GET_STATE, this.wpClient.alias, e.message)
-      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.UNPAIRED)
+      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.UNPAIRED)
     })
   }
   
@@ -350,7 +355,7 @@ export class WhatsAppClient {
 			await chat.sendMessage(message).catch(e => {
 				console.log('sendMessage ' + message, this.wpClient.alias, e)
 				Sentry.captureException(e)
-				if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WAState.OPENING)
+				if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
 				exit(1)
 			}).then(async msg => {
 				setTimeout(async () => {
