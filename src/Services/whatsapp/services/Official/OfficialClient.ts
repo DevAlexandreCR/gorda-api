@@ -1,9 +1,13 @@
-import { WpEvents } from '../constants/WpEvents'
-import { WpStates } from '../constants/WpStates'
-import { WPClientInterface } from '../interfaces/WPClientInterface'
-import { WpChatInterface } from '../interfaces/WpChatInterface'
+import { WpEvents } from '../../constants/WpEvents'
+import { WpStates } from '../../constants/WpStates'
+import { WPClientInterface } from '../../interfaces/WPClientInterface'
+import { WpChatInterface } from '../../interfaces/WpChatInterface'
+import { WpMessageInterface } from '../../interfaces/WpMessageInterface'
 
 export class OfficialClient implements WPClientInterface {
+    getInfo(): string {
+        throw new Error('Method not implemented.')
+    }
     info: string
     getWWebVersion(): Promise<string> {
         throw new Error('Method not implemented.')
@@ -14,16 +18,13 @@ export class OfficialClient implements WPClientInterface {
     build(): this {
         throw new Error('Method not implemented.')
     }
-    sendMessage(phoneNumber: string, message: string): boolean {
+    sendMessage(phoneNumber: string, message: string): Promise<void> {
         throw new Error('Method not implemented.')
     }
     receiveMessage(phoneNumber: string): string {
         throw new Error('Method not implemented.')
     }
     on(event: WpEvents, callback: (...args: any) => void): void {
-        throw new Error('Method not implemented.')
-    }
-    getWWebVerison(): Promise<string> {
         throw new Error('Method not implemented.')
     }
     getState(): Promise<WpStates> {
@@ -34,8 +35,5 @@ export class OfficialClient implements WPClientInterface {
     }
     logout(): Promise<void> {
         throw new Error('Method not implemented.')
-    }
-    static getConfig(): any {
-        // Add your implementation here
     }
 }

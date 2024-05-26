@@ -107,7 +107,7 @@ export class WhatsAppClient {
         )
         ServiceRepository.onServiceChanged(this.serviceChanged)
         if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.READY)
-        console.log(this.client.info)
+        console.log(this.client.getInfo())
     }
 
     onQR = (qr: string): void => {
@@ -469,7 +469,7 @@ export class WhatsAppClient {
                             .emit(EmitEvents.GET_STATE, WpStates.OPENING)
                     exit(1)
                 })
-                .then(async (msg) => {
+                .then(async () => {
                     setTimeout(async () => {
                         await chat
                             .archive()

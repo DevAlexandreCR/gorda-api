@@ -1,8 +1,8 @@
 import { WpClient } from '../../Interfaces/WpClient'
 import { WpClients } from './constants/WPClients'
 import { WPClientInterface } from './interfaces/WPClientInterface'
-import { OfficialClient } from './services/OfficialClient'
-import { WWebClient } from './services/WWebClient'
+import { OfficialClient } from './services/Official/OfficialClient'
+import { WWebClient } from './services/WWebClient/WWebClient'
 
 export class ClientFactory {
     static build(wpClient: WpClient): WPClientInterface {

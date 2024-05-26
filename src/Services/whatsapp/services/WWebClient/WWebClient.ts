@@ -1,14 +1,14 @@
 import { Client, LocalAuth } from 'whatsapp-web.js'
-import { WpEvents } from '../constants/WpEvents'
-import { WpStates } from '../constants/WpStates'
-import { WPClientInterface } from '../interfaces/WPClientInterface'
-import { WpChatInterface } from '../interfaces/WpChatInterface'
-import config from '../../../../config'
-import { WhatsAppClient } from '../WhatsAppClient'
-import { WpClient } from '../../../Interfaces/WpClient'
+import { WpEvents } from '../../constants/WpEvents'
+import { WpStates } from '../../constants/WpStates'
+import { WPClientInterface } from '../../interfaces/WPClientInterface'
+import { WpChatInterface } from '../../interfaces/WpChatInterface'
+import config from '../../../../../config'
+import { WhatsAppClient } from '../../WhatsAppClient'
+import { WpClient } from '../../../../Interfaces/WpClient'
+import { WpChatAdapter } from './Adapters/WpChatAdapter'
 
 export class WWebClient implements WPClientInterface {
-    info: string
     private client: Client
     private wpClient: WpClient
 
@@ -41,6 +41,10 @@ export class WWebClient implements WPClientInterface {
         })
     }
 
+    getInfo(): string {
+        return this.client.info?.pushname.toString()
+    }
+
     getWWebVersion(): Promise<string> {
         return this.client.getWWebVersion()
     }
@@ -49,33 +53,33 @@ export class WWebClient implements WPClientInterface {
         return this.client.initialize()
     }
 
-    sendMessage(phoneNumber: string, message: string): boolean {
-        throw new Error('Method not implemented.')
-    }
-
-    receiveMessage(phoneNumber: string): string {
-        throw new Error('Method not implemented.')
+    async sendMessage(phoneNumber: string, message: string): Promise<void> {
+        this.client
+            .sendMessage(phoneNumber, message)
+            .then(() => {
+                Promise.resolve()
+            })
+            .catch((e) => {
+                Promise.reject(e)
+            })
     }
 
     on(event: WpEvents, callback: (...args: any) => void): void {
         this.client.on(event, callback)
     }
 
-    getWWebVerison(): Promise<string> {
-        throw new Error('Method not implemented.')
+    async getState(): Promise<WpStates> {
+        const state = await this.client.getState()
+        return state as unknown as WpStates
     }
 
-    getState(): Promise<WpStates> {
-        throw new Error('Method not implemented.')
-    }
+    async getChatById(chatId: string): Promise<WpChatInterface> {
+        const chat = await this.client.getChatById(chatId)
 
-    getChatById(chatId: string): Promise<WpChatInterface> {
-        throw new Error('Method not implemented.')
+        return new WpChatAdapter(chat)
     }
 
     logout(): Promise<void> {
-        throw new Error('Method not implemented.')
+        return this.client.logout()
     }
-
-    getCongig() {}
 }

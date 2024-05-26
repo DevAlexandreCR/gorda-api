@@ -90,7 +90,7 @@ io.on('connection', async (socket: Socket) => {
     if (clientId) await socket.join(clientId)
 
     if (wpServices[clientId])
-        socket.emit('client', wpServices[clientId].client.info)
+        socket.emit('client', wpServices[clientId].client.getInfo())
 
     socket.on('auth', async () => {
         console.log('auth from gorda web...')
