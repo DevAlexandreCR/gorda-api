@@ -4,19 +4,19 @@ import { WpChatInterface } from './WpChatInterface'
 import { WpMessageInterface } from './WpMessageInterface'
 
 export interface WPClientInterface {
-    sendMessage(phoneNumber: string, message: string): Promise<void>
+  sendMessage(phoneNumber: string, message: string): Promise<void>
 
-    on(event: WpEvents, callback: (...arg: any) => void): void
+  on(event: WpEvents, callback: (...arg: any) => void): void
 
-    getWWebVersion(): Promise<string>
+  getWWebVersion(): Promise<string>
 
-    getState(): Promise<WpStates>
+  getState(): Promise<WpStates>
 
-    getChatById(chatId: string): Promise<WpChatInterface>
+  getChatById(chatId: string): Promise<WpChatInterface>
 
-    logout(): Promise<void>
+  logout(): Promise<void>
 
-    initialize(): Promise<void>
+  initialize(): Promise<void>
 
-    getInfo(): string
+  getInfo(): string
 }

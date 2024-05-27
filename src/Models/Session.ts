@@ -4,7 +4,6 @@ import { PlaceOption } from '../Interfaces/PlaceOption'
 import Place from './Place'
 import { WpMessage } from '../Types/WpMessage'
 import { ResponseContext } from '../Services/chatBot/MessageStrategy/ResponseContext'
-import { Message, MessageTypes } from 'whatsapp-web.js'
 import MessageHelper from '../Helpers/MessageHelper'
 import { WpLocation } from '../Types/WpLocation'
 import { exit } from 'process'
@@ -15,6 +14,7 @@ import { getSingleMessage } from '../Services/chatBot/Messages'
 import { MessagesEnum } from '../Services/chatBot/MessagesEnum'
 import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
 import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
+import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
 
 export default class Session implements SessionInterface {
     public id: string

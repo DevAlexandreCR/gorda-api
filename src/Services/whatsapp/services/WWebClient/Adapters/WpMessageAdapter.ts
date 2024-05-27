@@ -6,27 +6,27 @@ import { WpChatAdapter } from './WpChatAdapter'
 import { LocType } from '../../../../../Interfaces/LocType'
 
 export class WpMessageAdapter implements WpMessageInterface {
-    id: { id: string }
-    timestamp: number
-    type: MessageTypes
-    from: string
-    isStatus: boolean
-    body: string
-    location: LocType
+  id: { id: string }
+  timestamp: number
+  type: MessageTypes
+  from: string
+  isStatus: boolean
+  body: string
+  location: LocType
 
-    constructor(private message: Message) {
-        this.id = { id: message.id.id }
-        this.timestamp = message.timestamp
-        this.type = message.type
-        this.from = message.from
-        this.isStatus = message.isStatus
-        this.body = message.body
-        this.location = message.location as unknown as LocType
-    }
+  constructor(private message: Message) {
+    this.id = { id: message.id.id }
+    this.timestamp = message.timestamp
+    this.type = message.type
+    this.from = message.from
+    this.isStatus = message.isStatus
+    this.body = message.body
+    this.location = message.location as unknown as LocType
+  }
 
-    async getChat(): Promise<WpChatInterface> {
-        const chat = await this.message.getChat()
+  async getChat(): Promise<WpChatInterface> {
+    const chat = await this.message.getChat()
 
-        return new WpChatAdapter(chat)
-    }
+    return new WpChatAdapter(chat)
+  }
 }

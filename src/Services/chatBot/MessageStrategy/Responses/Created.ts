@@ -1,16 +1,15 @@
-import {ResponseContract} from '../ResponseContract'
-import {MessageTypes} from 'whatsapp-web.js'
+import { ResponseContract } from '../ResponseContract'
 import Session from '../../../../Models/Session'
 import * as Messages from '../../Messages'
-import {AskingForPlace} from './AskingForPlace'
-import {WpMessage} from '../../../../Types/WpMessage'
-import {NotificationType} from '../../../../Types/NotificationType'
-import {MessagesEnum} from '../../MessagesEnum'
+import { AskingForPlace } from './AskingForPlace'
+import { WpMessage } from '../../../../Types/WpMessage'
+import { NotificationType } from '../../../../Types/NotificationType'
+import { MessagesEnum } from '../../MessagesEnum'
+import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class Created extends ResponseContract {
-  
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
-  
+
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.clientExists(this.session.chat_id)) await this.validateKey(message)
     else {
@@ -22,7 +21,7 @@ export class Created extends ResponseContract {
       await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_NAME))
     }
   }
-  
+
   async validateKey(message: WpMessage): Promise<void> {
     if (this.isLocation(message)) {
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
