@@ -17,9 +17,11 @@
   "author": "devalexandrecr@gmail.com",
   "license": "ISC",
   "dependencies": {
+    "@hapi/boom": "^10.0.1",
     "@huggingface/inference": "^2.6.4",
     "@sentry/node": "^7.5.0",
     "@sentry/tracing": "^7.5.0",
+    "@whiskeysockets/baileys": "^6.7.4",
     "axios": "^1.4.0",
     "dayjs": "^1.11.1",
     "dotenv": "^16.0.0",
@@ -27,6 +29,7 @@
     "firebase-admin": "^11.4.1",
     "i18n": "^0.15.0",
     "node-cron": "^3.0.2",
+    "pino": "^9.1.0",
     "socket.io": "^4.4.1",
     "whatsapp-web.js": "^v1.23.0"
   },

@@ -30,7 +30,6 @@ import { MessageTypes } from './constants/MessageTypes'
 export class WhatsAppClient {
   public client: WPClientInterface
   private socket: SocketIOServer | null = null
-  static SESSION_PATH = 'storage/sessions/'
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
   private wpClient: WpClient

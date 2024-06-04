@@ -11,6 +11,7 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 export class WWebClient implements WPClientInterface {
   private client: Client
   private wpClient: WpClient
+  static SESSION_PATH = 'storage/sessions/wweb-client/'
 
   constructor(wpClient: WpClient) {
     this.wpClient = wpClient
@@ -18,7 +19,7 @@ export class WWebClient implements WPClientInterface {
     this.client = new Client({
       authStrategy: new LocalAuth({
         clientId: this.wpClient.id,
-        dataPath: WhatsAppClient.SESSION_PATH,
+        dataPath: WWebClient.SESSION_PATH,
       }),
       qrMaxRetries: 2,
       takeoverOnConflict: false,

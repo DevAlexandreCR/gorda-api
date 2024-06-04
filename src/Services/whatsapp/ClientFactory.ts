@@ -1,6 +1,7 @@
 import { WpClient } from '../../Interfaces/WpClient'
 import { WpClients } from './constants/WPClients'
 import { WPClientInterface } from './interfaces/WPClientInterface'
+import { BaileysClient } from './services/Baileys/BaileysClient'
 import { OfficialClient } from './services/Official/OfficialClient'
 import { WWebClient } from './services/WWebClient/WWebClient'
 
@@ -9,8 +10,13 @@ export class ClientFactory {
     switch (wpClient.service) {
       case WpClients.WHATSAPP_WEB_JS:
         return new WWebClient(wpClient)
+        break
       case WpClients.OFFICIAL:
         return new OfficialClient()
+        break
+      case WpClients.BAILEYS:
+        return new BaileysClient(wpClient)
+        break
       default:
         throw new Error('Client not found')
     }

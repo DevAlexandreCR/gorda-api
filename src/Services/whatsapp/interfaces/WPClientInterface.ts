@@ -1,3 +1,4 @@
+import { Socket } from 'socket.io'
 import { WpEvents } from '../constants/WpEvents'
 import { WpStates } from '../constants/WpStates'
 import { WpChatInterface } from './WpChatInterface'
