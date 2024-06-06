@@ -4,9 +4,6 @@ export interface WpContactInterface {
   id: {
     _serialized: string
   }
-  name: string
-  phoneNumber: string
-  email?: string
 
   getProfilePicUrl(): string | PromiseLike<string>
 }

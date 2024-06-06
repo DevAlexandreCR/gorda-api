@@ -104,7 +104,7 @@ export class WhatsAppClient {
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
     const session = this.chatBot.findSessionByChatId(msg.from)
-    if (session) return true
+    if (session && (msg.type === MessageTypes.LOCATION || msg.type === MessageTypes.TEXT)) return true
     if (this.wpClient.assistant) return msg.type === MessageTypes.LOCATION
     if (this.wpClient.chatBot) {
       return (
@@ -152,7 +152,6 @@ export class WhatsAppClient {
     this.starting = true
     console.log('initializing whatsapp client...', this.wpClient.alias)
     if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
-    // if (web && !this.client.pupPage?.isClosed()) await this.client.logout().catch(e => console.log(e, this.wpClient.alias))
     return this.client.initialize()
   }
 

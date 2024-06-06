@@ -3,7 +3,7 @@ import { MessageTypes } from '../constants/MessageTypes'
 import { WpChatInterface } from './WpChatInterface'
 
 export interface WpMessageInterface {
-  id: { id: string }
+  id: string
   timestamp: number
   type: MessageTypes
   from: string

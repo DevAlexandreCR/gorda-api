@@ -6,7 +6,7 @@ import { WpChatAdapter } from './WpChatAdapter'
 import { LocType } from '../../../../../Interfaces/LocType'
 
 export class WpMessageAdapter implements WpMessageInterface {
-  id: { id: string }
+  id: string
   timestamp: number
   type: MessageTypes
   from: string
@@ -15,7 +15,7 @@ export class WpMessageAdapter implements WpMessageInterface {
   location: LocType
 
   constructor(private message: Message) {
-    this.id = { id: message.id.id }
+    this.id = message.id.id
     this.timestamp = message.timestamp
     this.type = message.type
     this.from = message.from
