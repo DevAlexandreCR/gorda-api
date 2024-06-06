@@ -65,8 +65,6 @@ export default class Session implements SessionInterface {
   }
 
   async addMsg(msg: WpMessageInterface): Promise<void> {
-    console.log(msg)
-
     const wpMessage: WpMessage = {
       created_at: msg.timestamp,
       id: msg.id,

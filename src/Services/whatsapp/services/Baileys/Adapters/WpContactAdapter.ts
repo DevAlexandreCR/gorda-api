@@ -8,11 +8,19 @@ export class WpContactAdapter implements WpContactInterface {
 
   constructor(private contact: Contact) {
     this.pushname = contact.name as string
-    this.number = contact.lid as string
-    this.id = { _serialized: contact.lid as string }
+    this.number = this.extractPhoneNumber(contact.lid as string)
+    this.id = { _serialized: this.modifyPhoneNumber(contact.lid as string) }
   }
 
   getProfilePicUrl(): string | PromiseLike<string> {
     return this.contact.imgUrl as string
+  }
+
+  private extractPhoneNumber(input: string): string | null {
+    return input.replace(/@.*$/, '')
+  }
+
+  private modifyPhoneNumber(phoneNumber: string): string {
+    return phoneNumber.replace(/@.*$/, '@c.us')
   }
 }
