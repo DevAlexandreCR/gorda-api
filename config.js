@@ -27,4 +27,6 @@ module.exports = {
   MESSAGE_TIMEOUT: process.env.MESSAGE_TIMEOUT || 5000,
   ARCHIVE_CHAT_TIMEOUT: process.env.ARCHIVE_CHAT_TIMEOUT || 2000,
   WWEB_VERSION: process.env.WWEB_VERSION || '2.2412.54',
+  WAPI_TOKEN: process.env.WAPI_TOKEN || '',
+  WAPI_URL: process.env.WAPI_URL || 'https://graph.facebook.com/v19.0/',
 }

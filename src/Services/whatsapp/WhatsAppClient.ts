@@ -333,20 +333,26 @@ export class WhatsAppClient {
   }
 
   async sendMessage(chatId: string, message: string): Promise<void> {
-    await this.client.getChatById(chatId).then(async (chat) => {
-      await chat
-        .sendMessage(message)
-        .catch((e) => {
-          console.log('sendMessage ' + message, this.wpClient.alias, e)
-          Sentry.captureException(e)
-          if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
-          exit(1)
-        })
-        .then(async () => {
-          setTimeout(async () => {
-            await chat.archive().catch((e) => console.log(e.message))
-          }, config.ARCHIVE_CHAT_TIMEOUT as number)
-        })
+    await this.client.sendMessage(chatId, message).catch((e) => {
+      console.log('sendMessage ' + message, this.wpClient.alias, e)
+      Sentry.captureException(e)
+      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
+      exit(1)
     })
+    //   await this.client.getChatById(chatId).then(async (chat) => {
+    //     await chat
+    //       .sendMessage(message)
+    //       .catch((e) => {
+    //         console.log('sendMessage ' + message, this.wpClient.alias, e)
+    //         Sentry.captureException(e)
+    //         if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
+    //         exit(1)
+    //       })
+    //       .then(async () => {
+    //         setTimeout(async () => {
+    //           await chat.archive().catch((e) => console.log(e.message))
+    //         }, config.ARCHIVE_CHAT_TIMEOUT as number)
+    //       })
+    //   })
   }
 }

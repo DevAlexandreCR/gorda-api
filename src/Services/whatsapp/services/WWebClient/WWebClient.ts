@@ -4,14 +4,15 @@ import { WpStates } from '../../constants/WpStates'
 import { WPClientInterface } from '../../interfaces/WPClientInterface'
 import { WpChatInterface } from '../../interfaces/WpChatInterface'
 import config from '../../../../../config'
-import { WhatsAppClient } from '../../WhatsAppClient'
 import { WpClient } from '../../../../Interfaces/WpClient'
 import { WpChatAdapter } from './Adapters/WpChatAdapter'
+import { WpClients } from '../../constants/WPClients'
 
 export class WWebClient implements WPClientInterface {
   private client: Client
   private wpClient: WpClient
   static SESSION_PATH = 'storage/sessions/wweb-client/'
+  serviceName = WpClients.WHATSAPP_WEB_JS
 
   constructor(wpClient: WpClient) {
     this.wpClient = wpClient

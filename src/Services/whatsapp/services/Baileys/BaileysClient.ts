@@ -26,6 +26,7 @@ import P, { Logger } from 'pino'
 import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
+import { WpClients } from '../../constants/WPClients'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -36,6 +37,7 @@ export class BaileysClient implements WPClientInterface {
   static SESSION_PATH = 'storage/sessions/baileys/'
   private retries = 0
   private interval: NodeJS.Timer
+  serviceName: WpClients = WpClients.BAILEYS
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: 'trace' }) as unknown as Logger
