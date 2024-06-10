@@ -44,7 +44,13 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
             from: message.from,
             isStatus: false,
             body: message.text?.body ?? '',
-            location: message.location ? message.location : undefined,
+            location: message.location
+              ? {
+                  name: message.location.name,
+                  lat: message.location.latitude,
+                  lng: message.location.longitude,
+                }
+              : undefined,
           },
           wpClientService,
         )
