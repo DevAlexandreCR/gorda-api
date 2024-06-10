@@ -9,6 +9,9 @@ import axios from 'axios'
 import { WpClients } from '../../constants/WPClients'
 import { Store } from '../../../store/Store'
 import { WpChatAdapter } from './Adapters/WpChatAdapter'
+import MessageRepository from '../../../../Repositories/MessageRepository'
+import { MessageTypes } from '../../../../Services/whatsapp/constants/MessageTypes'
+import DateHelper from '../../../../Helpers/DateHelper'
 
 export class OfficialClient implements WPClientInterface {
   private config: Config
@@ -57,23 +60,27 @@ export class OfficialClient implements WPClientInterface {
   }
 
   async initialize(): Promise<void> {
-    return await this.sendMessage('+573103794656', 'Prueba de inicialización de whatsapp').then(() => {
+    return await this.sendMessage('573103794656', 'Prueba de inicialización de whatsapp').then(() => {
       this.status = WpStates.CONNECTED
       this.triggerEvent(WpEvents.AUTHENTICATED)
       this.triggerEvent(WpEvents.READY)
     })
   }
 
-  sendMessage(phoneNumber: string, message: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+  async sendMessage(phoneNumber: string, message: string): Promise<void> {
+    const phone = phoneNumber.replace('@c.us', '')
+    return new Promise(async (resolve, reject) => {
       const data = {
         messaging_product: this.config.messagingProduct,
-        to: phoneNumber.replace('@c.us', ''),
+        to: phone,
         type: 'text',
         text: {
           body: message,
         },
       }
+
+      const client = this.store.findClientById(phone)
+      const chat = await this.store.getChatById(client?.id ?? phone, client?.name)
 
       axios
         .post(this.config.apiUrl, data, {
@@ -84,12 +91,19 @@ export class OfficialClient implements WPClientInterface {
           timeout: this.config.timeout,
         })
         .then((response) => {
-          console.log(response.data)
+          const msgId = response.data.messages[0]?.id ?? DateHelper.unix()
+          console.log('Message sent', msgId)
+          MessageRepository.addMessage(chat.id, {
+            id: msgId,
+            created_at: DateHelper.unix(),
+            type: MessageTypes.TEXT,
+            body: message,
+            fromMe: true,
+          })
           resolve()
         })
         .catch((error) => {
           console.log(error.response?.data)
-
           reject(error)
         })
     })
