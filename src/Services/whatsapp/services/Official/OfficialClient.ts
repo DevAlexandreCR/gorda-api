@@ -7,12 +7,16 @@ import { WpChatInterface } from '../../interfaces/WpChatInterface'
 import { Config } from './Constants/Config'
 import axios from 'axios'
 import { WpClients } from '../../constants/WPClients'
+import { Store } from '../../../store/Store'
+import { WpChatAdapter } from './Adapters/WpChatAdapter'
 
 export class OfficialClient implements WPClientInterface {
   private config: Config
   private status: WpStates
   private eventCallbacks: { [key: string]: Function[] } = {}
   serviceName = WpClients.OFFICIAL
+  private static instances: { [key: string]: OfficialClient } = {}
+  private store: Store
 
   constructor(private wpClient: WpClient) {
     this.config = {
@@ -21,6 +25,27 @@ export class OfficialClient implements WPClientInterface {
       timeout: 3000,
       messagingProduct: 'whatsapp',
     }
+
+    this.store = Store.getInstance()
+  }
+
+  getState(): Promise<WpStates> {
+    return Promise.resolve(this.status)
+  }
+
+  logout(): Promise<void> {
+    this.status = WpStates.UNPAIRED
+    this.triggerEvent(WpEvents.DISCONNECTED)
+    this.triggerEvent(WpEvents.AUTHENTICATED)
+    return Promise.resolve()
+  }
+
+  public static getInstance(wpClient: WpClient): OfficialClient {
+    if (!OfficialClient.instances[wpClient.id]) {
+      OfficialClient.instances[wpClient.id] = new OfficialClient(wpClient)
+    }
+
+    return OfficialClient.instances[wpClient.id]
   }
 
   getInfo(): string {
@@ -70,10 +95,6 @@ export class OfficialClient implements WPClientInterface {
     })
   }
 
-  receiveMessage(phoneNumber: string): string {
-    return 'Message received'
-  }
-
   on(event: WpEvents, callback: (...args: any) => void): void {
     if (!this.eventCallbacks[event]) {
       this.eventCallbacks[event] = []
@@ -81,22 +102,17 @@ export class OfficialClient implements WPClientInterface {
     this.eventCallbacks[event].push(callback)
   }
 
-  getState(): Promise<WpStates> {
-    return Promise.resolve(this.status)
+  async getChatById(chatId: string): Promise<WpChatInterface> {
+    const chat = await this.store.getChatById(chatId)
+    if (chat) {
+      const wpChat = new WpChatAdapter(this, chat.id)
+      return Promise.resolve(wpChat)
+    } else {
+      return Promise.reject('Chat not found')
+    }
   }
 
-  getChatById(chatId: string): Promise<WpChatInterface> {
-    throw new Error('Method not implemented.')
-  }
-
-  logout(): Promise<void> {
-    this.status = WpStates.PAIRING
-    this.triggerEvent(WpEvents.AUTHENTICATED)
-
-    return Promise.resolve()
-  }
-
-  private triggerEvent(event: WpEvents, ...args: any[]): void {
+  public triggerEvent(event: WpEvents, ...args: any[]): void {
     if (this.eventCallbacks[event]) {
       this.eventCallbacks[event].forEach((callback) => callback(...args))
     }

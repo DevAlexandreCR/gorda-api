@@ -12,7 +12,7 @@ export class ClientFactory {
         return new WWebClient(wpClient)
         break
       case WpClients.OFFICIAL:
-        return new OfficialClient(wpClient)
+        return OfficialClient.getInstance(wpClient)
         break
       case WpClients.BAILEYS:
         return new BaileysClient(wpClient)

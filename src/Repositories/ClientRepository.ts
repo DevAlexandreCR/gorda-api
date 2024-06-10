@@ -25,7 +25,7 @@ class ClientRepository {
 
   public async create(contact: WpContactInterface): Promise<ClientInterface> {
     const newClient: Client = new Client()
-    newClient.id = contact.id._serialized
+    newClient.id = contact.id
     newClient.name = contact.pushname ?? contact.pushname
     newClient.phone = `+${contact.number}`
     newClient.photoUrl = await contact.getProfilePicUrl()

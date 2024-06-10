@@ -1,8 +1,10 @@
 import { WpContactInterface } from './WpContactInterface'
-import { WpMessageInterface } from './WpMessageInterface'
 
 export interface WpChatInterface {
-  sendMessage(message: string): Promise<WpMessageInterface>
+  id: string
+  archived: boolean
+
+  sendMessage(message: string): Promise<void>
 
   archive(): Promise<void>
 

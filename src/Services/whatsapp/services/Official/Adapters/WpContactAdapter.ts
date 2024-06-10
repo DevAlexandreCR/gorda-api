@@ -1,18 +1,20 @@
-import { WpContactInterface } from '../../../interfaces/WpContactInterface'
 import { ClientInterface } from '../../../../../Interfaces/ClientInterface'
+import { WpContactInterface } from '../../../interfaces/WpContactInterface'
 
 export class WpContactAdapter implements WpContactInterface {
   pushname: string
   number: any
   id: string
+  photoUrl: string
 
-  constructor(private contact: ClientInterface) {
+  constructor(contact: ClientInterface) {
     this.pushname = contact.name
     this.number = contact.phone
     this.id = contact.id
+    this.photoUrl = contact.photoUrl
   }
 
   getProfilePicUrl(): string | PromiseLike<string> {
-    return this.contact.photoUrl as string
+    return Promise.resolve(this.photoUrl)
   }
 }

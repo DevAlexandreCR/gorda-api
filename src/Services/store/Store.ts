@@ -4,46 +4,60 @@ import PlaceRepository from '../../Repositories/PlaceRepository'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
-import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import { ChatBotMessage } from '../../Types/ChatBotMessage'
 import SettingsRepository from '../../Repositories/SettingsRepository'
-import {MessagesEnum} from '../chatBot/MessagesEnum'
+import { MessagesEnum } from '../chatBot/MessagesEnum'
+import { ClientDictionary } from '../../Interfaces/ClientDiccionary'
+import ChatRepository from '../../Repositories/ChatRepository'
+import { Chat } from '../../Interfaces/Chat'
+import DateHelper from '../../Helpers/DateHelper'
+import { ClientInterface } from '../../Interfaces/ClientInterface'
+import { WpContactInterface } from '../../Services/whatsapp/interfaces/WpContactInterface'
 
 export class Store {
-  
-  static instance: Store;
+  static instance: Store
   drivers: Set<Driver> = new Set<Driver>()
   places: Set<Place> = new Set<Place>()
   clients: Map<string, Client> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
-  
+  wpClients: ClientDictionary = {}
+  wpChats: Map<string, Chat> = new Map()
+
   private constructor() {
     this.setDrivers()
     this.setPlaces()
     this.setClients()
     this.listenMessages()
   }
-  
+
   public static getInstance(): Store {
     if (!Store.instance) {
-      Store.instance = new Store();
+      Store.instance = new Store()
     }
-    return Store.instance;
+    return Store.instance
   }
-  
+
   private setPlaces() {
     PlaceRepository.getAll((place) => {
       this.places.add(place)
     })
   }
-  
+
   private setClients() {
-    ClientRepository.onClient((client) => {
-      this.clients.set(client.id, client)
-    }, (clientId) => {
-      if (clientId) this.clients.delete(clientId)
-    })
+    ClientRepository.onClient(
+      (client) => {
+        this.clients.set(client.id, client)
+      },
+      (clientId) => {
+        if (clientId) this.clients.delete(clientId)
+      },
+    )
   }
-  
+
+  createClient(client: WpContactInterface): Promise<ClientInterface> {
+    return ClientRepository.create(client)
+  }
+
   private setDrivers() {
     DriverRepository.getAll((driver) => {
       this.drivers.add(driver)
@@ -55,29 +69,66 @@ export class Store {
       this.messages = messages
     })
   }
-  
+
+  getWpClients(listener?: (clients: ClientDictionary) => void): void {
+    SettingsRepository.getWpClients((clients: ClientDictionary) => {
+      this.wpClients = clients
+      if (listener) listener(clients)
+    })
+  }
+
+  getChats(): void {
+    ChatRepository.getChats((chats) => {
+      chats.forEach((chat) => {
+        this.wpChats.set(chat.id, chat)
+      })
+    })
+  }
+
+  async getChatById(chatId: string, profileName: string = 'Usuario'): Promise<Chat> {
+    const chat = this.wpChats.get(chatId)
+
+    if (chat) {
+      return chat
+    } else {
+      return await ChatRepository.addChat({
+        id: chatId,
+        archived: false,
+        lastMessage: DateHelper.unix(),
+        clientName: profileName,
+      })
+    }
+  }
+
+  addChat(chat: Chat): Promise<Chat> {
+    return ChatRepository.addChat(chat)
+  }
+
   findDriverById(driverId: string): Driver {
     const driversArray = Array.from(this.drivers)
-    return  driversArray.find(dri => dri.id === driverId) ?? new Driver()
+    return driversArray.find((dri) => dri.id === driverId) ?? new Driver()
   }
-  
-  findClientById(clientId: string): Client|undefined {
+
+  findClientById(clientId: string): Client | undefined {
     return this.clients.get(clientId)
   }
 
   findMessageById(msgId: MessagesEnum): ChatBotMessage {
-    return this.messages.get(msgId) ?? {
-      id: MessagesEnum.DEFAULT_MESSAGE,
-      name: MessagesEnum.DEFAULT_MESSAGE,
-      description: MessagesEnum.DEFAULT_MESSAGE,
-      message: MessagesEnum.DEFAULT_MESSAGE,
-      enabled: true
-    } as ChatBotMessage
+    return (
+      this.messages.get(msgId) ??
+      ({
+        id: MessagesEnum.DEFAULT_MESSAGE,
+        name: MessagesEnum.DEFAULT_MESSAGE,
+        description: MessagesEnum.DEFAULT_MESSAGE,
+        message: MessagesEnum.DEFAULT_MESSAGE,
+        enabled: true,
+      } as ChatBotMessage)
+    )
   }
-  
-  findPlaceById(placeId: string): Place|undefined {
+
+  findPlaceById(placeId: string): Place | undefined {
     const placesArray = Array.from(this.places)
-    return placesArray.find(pla => {
+    return placesArray.find((pla) => {
       return pla.key === placeId
     })
   }

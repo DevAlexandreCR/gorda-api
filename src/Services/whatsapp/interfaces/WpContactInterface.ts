@@ -1,9 +1,7 @@
 export interface WpContactInterface {
   pushname: string
   number: any
-  id: {
-    _serialized: string
-  }
+  id: string
 
   getProfilePicUrl(): string | PromiseLike<string>
 }

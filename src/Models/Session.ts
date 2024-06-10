@@ -181,7 +181,7 @@ export default class Session implements SessionInterface {
   }
 
   public async sendMessage(content: string): Promise<void> {
-    await this.chat.sendMessage(content).then((msg) => {
+    await this.chat.sendMessage(content).then(() => {
       this.chat.archive().catch((e) => console.log(e.message))
     })
   }

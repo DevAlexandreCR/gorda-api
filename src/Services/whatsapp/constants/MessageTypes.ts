@@ -1,5 +1,5 @@
 export enum MessageTypes {
-  TEXT = 'chat',
+  TEXT = 'text',
   AUDIO = 'audio',
   VOICE = 'ptt',
   IMAGE = 'image',

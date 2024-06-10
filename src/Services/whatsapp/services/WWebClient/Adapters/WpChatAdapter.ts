@@ -1,20 +1,24 @@
 import { Chat } from 'whatsapp-web.js'
 import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpContactInterface } from '../../../interfaces/WpContactInterface'
-import { WpMessageInterface } from '../../../interfaces/WpMessageInterface'
-import { WpMessageAdapter } from './WpMessageAdapter'
 import { WpContactAdapter } from './WpContactAdapter'
 
 export class WpChatAdapter implements WpChatInterface {
-  constructor(private chat: Chat) {}
+  id: string
+  archived: boolean
 
-  async sendMessage(message: string): Promise<WpMessageInterface> {
-    const msg = await this.chat.sendMessage(message)
+  constructor(private chat: Chat) {
+    this.id = chat.id._serialized
+  }
 
-    return new WpMessageAdapter(msg)
+  async sendMessage(message: string): Promise<void> {
+    await this.chat.sendMessage(message)
+
+    return Promise.resolve()
   }
 
   async archive(): Promise<void> {
+    this.archived = true
     return this.chat.archive()
   }
 
