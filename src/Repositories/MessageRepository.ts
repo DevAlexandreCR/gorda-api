@@ -2,8 +2,8 @@ import { Message } from '../Interfaces/Message'
 import Firestore from '../Services/firebase/Firestore'
 
 class MessageRepository {
-  public getMessages(chatId: string, listener: (messages: Message[]) => void): void {
-    Firestore.dbMessages(chatId)
+  public getMessages(wpClientId: string, chatId: string, listener: (messages: Message[]) => void): void {
+    Firestore.dbMessages(wpClientId, chatId)
       .limit(100)
       .onSnapshot((snapshot) => {
         const messages: Message[] = []
@@ -17,8 +17,8 @@ class MessageRepository {
       })
   }
 
-  public async addMessage(chatId: string, message: Message): Promise<void> {
-    await Firestore.dbMessages(chatId).doc(message.id).set(message)
+  public async addMessage(wpClientId: string, chatId: string, message: Message): Promise<void> {
+    await Firestore.dbMessages(wpClientId, chatId).doc(message.id).set(message)
     return Promise.resolve()
   }
 }

@@ -77,21 +77,21 @@ export class Store {
     })
   }
 
-  getChats(): void {
-    ChatRepository.getChats((chats) => {
+  getChats(wpClientId: string): void {
+    ChatRepository.getChats(wpClientId, (chats) => {
       chats.forEach((chat) => {
         this.wpChats.set(chat.id, chat)
       })
     })
   }
 
-  async getChatById(chatId: string, profileName: string = 'Usuario'): Promise<Chat> {
+  async getChatById(wpClientId: string, chatId: string, profileName: string = 'Usuario'): Promise<Chat> {
     const chat = this.wpChats.get(chatId)
 
     if (chat) {
       return chat
     } else {
-      return await ChatRepository.addChat({
+      return await ChatRepository.addChat(wpClientId, {
         id: chatId,
         archived: false,
         lastMessage: DateHelper.unix(),
@@ -100,8 +100,8 @@ export class Store {
     }
   }
 
-  addChat(chat: Chat): Promise<Chat> {
-    return ChatRepository.addChat(chat)
+  addChat(wpClientId: string, chat: Chat): Promise<Chat> {
+    return ChatRepository.addChat(wpClientId, chat)
   }
 
   findDriverById(driverId: string): Driver {

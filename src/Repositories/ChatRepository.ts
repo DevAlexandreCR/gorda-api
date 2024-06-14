@@ -2,8 +2,8 @@ import { Chat } from '../Interfaces/Chat'
 import Firestore from '../Services/firebase/Firestore'
 
 class ChatRepository {
-  public getChats(listener: (chats: Chat[]) => void): void {
-    Firestore.dbChats()
+  public getChats(wpClientId: string, listener: (chats: Chat[]) => void): void {
+    Firestore.dbChats(wpClientId)
       .limit(100)
       .onSnapshot((snapshot) => {
         const chats: Chat[] = []
@@ -17,8 +17,8 @@ class ChatRepository {
       })
   }
 
-  public async addChat(chat: Chat): Promise<Chat> {
-    await Firestore.dbChats().doc(chat.id).set(chat)
+  public async addChat(wpClientId: string, chat: Chat): Promise<Chat> {
+    await Firestore.dbChats(wpClientId).doc(chat.id).set(chat)
     return Promise.resolve(chat)
   }
 }

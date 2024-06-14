@@ -18,12 +18,12 @@ class FirestoreService {
     return this.fs.collection('messages')
   }
 
-  public dbChats(): CollectionReference {
-    return this.fs.collection('chats')
+  public dbChats(wpClientId: string): CollectionReference {
+    return this.fs.collection('wpClients').doc(wpClientId).collection('chats')
   }
 
-  public dbMessages(chatId: string): CollectionReference {
-    return this.fs.collection('chats').doc(chatId).collection('messages')
+  public dbMessages(wpClientId: string, chatId: string): CollectionReference {
+    return this.fs.collection('wpClients').doc(wpClientId).collection('chats').doc(chatId).collection('messages')
   }
 }
 

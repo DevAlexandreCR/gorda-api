@@ -10,7 +10,7 @@ import { WpClients } from '../../constants/WPClients'
 import { Store } from '../../../store/Store'
 import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import MessageRepository from '../../../../Repositories/MessageRepository'
-import { MessageTypes } from '../../../../Services/whatsapp/constants/MessageTypes'
+import { MessageTypes } from '../../constants/MessageTypes'
 import DateHelper from '../../../../Helpers/DateHelper'
 
 export class OfficialClient implements WPClientInterface {
@@ -25,7 +25,7 @@ export class OfficialClient implements WPClientInterface {
     this.config = {
       apiKey: config.WAPI_TOKEN,
       apiUrl: config.WAPI_URL + wpClient.id + '/messages',
-      timeout: 3000,
+      timeout: 5000,
       messagingProduct: 'whatsapp',
     }
 
@@ -69,7 +69,7 @@ export class OfficialClient implements WPClientInterface {
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
     const phone = phoneNumber.replace('@c.us', '')
-    return new Promise(async (resolve, reject) => {
+    return new Promise<void>(async (resolve, reject) => {
       const data = {
         messaging_product: this.config.messagingProduct,
         to: phone,
@@ -80,7 +80,7 @@ export class OfficialClient implements WPClientInterface {
       }
 
       const client = this.store.findClientById(phone)
-      const chat = await this.store.getChatById(client?.id ?? phone, client?.name)
+      const chat = await this.store.getChatById(this.wpClient.id, client?.id ?? phone, client?.name)
 
       axios
         .post(this.config.apiUrl, data, {
@@ -93,7 +93,7 @@ export class OfficialClient implements WPClientInterface {
         .then((response) => {
           const msgId = response.data.messages[0]?.id ?? DateHelper.unix()
           console.log('Message sent', msgId)
-          MessageRepository.addMessage(chat.id, {
+          MessageRepository.addMessage(this.wpClient.id, chat.id, {
             id: msgId,
             created_at: DateHelper.unix(),
             type: MessageTypes.TEXT,
@@ -117,7 +117,7 @@ export class OfficialClient implements WPClientInterface {
   }
 
   async getChatById(chatId: string): Promise<WpChatInterface> {
-    const chat = await this.store.getChatById(chatId)
+    const chat = await this.store.getChatById(this.wpClient.id, chatId)
     if (chat) {
       const wpChat = new WpChatAdapter(this, chat.id)
       return Promise.resolve(wpChat)
