@@ -13,7 +13,6 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { RemoveConnectedDrivers } from './Jobs/RemoveConnectedDrivers'
 import schedule from './Jobs/Schedule'
-import SettingsRepository from './Repositories/SettingsRepository'
 import { WpClient } from './Interfaces/WpClient'
 import { WhatsAppClientDictionary } from './Interfaces/WhatsAppClientDiccionary'
 import { ClientDictionary } from './Interfaces/ClientDiccionary'
@@ -122,6 +121,12 @@ io.on('connection', async (socket: Socket) => {
   socket.on('starting', async () => {
     if (wpServices[clientId]) {
       socket.emit('starting', wpServices[clientId].starting)
+    }
+  })
+
+  socket.on('send-message', async (wpClient: string, chatId: string, content: string) => {
+    if (wpServices[wpClient]) {
+      await wpServices[clientId].sendMessage(chatId, content)
     }
   })
 

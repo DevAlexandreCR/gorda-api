@@ -4,15 +4,16 @@ import PlaceRepository from '../../Repositories/PlaceRepository'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
-import { ChatBotMessage } from '../../Types/ChatBotMessage'
+import {ChatBotMessage} from '../../Types/ChatBotMessage'
 import SettingsRepository from '../../Repositories/SettingsRepository'
-import { MessagesEnum } from '../chatBot/MessagesEnum'
-import { ClientDictionary } from '../../Interfaces/ClientDiccionary'
+import {MessagesEnum} from '../chatBot/MessagesEnum'
+import {ClientDictionary} from '../../Interfaces/ClientDiccionary'
 import ChatRepository from '../../Repositories/ChatRepository'
-import { Chat } from '../../Interfaces/Chat'
+import {Chat} from '../../Interfaces/Chat'
 import DateHelper from '../../Helpers/DateHelper'
-import { ClientInterface } from '../../Interfaces/ClientInterface'
-import { WpContactInterface } from '../../Services/whatsapp/interfaces/WpContactInterface'
+import {ClientInterface} from '../../Interfaces/ClientInterface'
+import {WpContactInterface} from '../whatsapp/interfaces/WpContactInterface'
+import {MessageTypes} from '../whatsapp/constants/MessageTypes'
 
 export class Store {
   static instance: Store
@@ -93,8 +94,16 @@ export class Store {
     } else {
       return await ChatRepository.addChat(wpClientId, {
         id: chatId,
+        created_at: DateHelper.unix(),
+        updated_at: DateHelper.unix(),
         archived: false,
-        lastMessage: DateHelper.unix(),
+        lastMessage: {
+          created_at: DateHelper.unix(),
+          body: MessagesEnum.DEFAULT_MESSAGE,
+          fromMe: true,
+          id: chatId,
+          type: MessageTypes.TEXT
+        },
         clientName: profileName,
       })
     }
