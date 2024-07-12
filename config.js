@@ -29,4 +29,5 @@ module.exports = {
   WWEB_VERSION: process.env.WWEB_VERSION || '2.2412.54',
   WAPI_TOKEN: process.env.WAPI_TOKEN || '',
   WAPI_URL: process.env.WAPI_URL || 'https://graph.facebook.com/v19.0/',
+  GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '/root/wp-api/firebaseAccount.json',
 }

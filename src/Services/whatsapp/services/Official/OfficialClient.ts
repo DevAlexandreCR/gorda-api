@@ -30,6 +30,7 @@ export class OfficialClient implements WPClientInterface {
     }
 
     this.store = Store.getInstance()
+    this.store.getChats(wpClient.id)
   }
 
   getState(): Promise<WpStates> {

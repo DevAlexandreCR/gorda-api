@@ -39,7 +39,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
         const wpMessage = new WpMessageAdapter(
           {
             id: message.id,
-            timestamp: message.timestamp,
+            timestamp: typeof message.timestamp === 'string' ? parseInt(message.timestamp) : message.timestamp,
             type: message.type ? message.type : message.location ? 'location' : 'unknown',
             from: message.from,
             isStatus: false,
@@ -70,7 +70,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
 
         await MessageRepository.addMessage(wpClient.id, chat.id, {
           id: wpMessage.id,
-          created_at: wpMessage.timestamp as number,
+          created_at: typeof message.timestamp === 'string' ? parseInt(message.timestamp) : message.timestamp,
           type: message.type ? message.type : message.location ? 'location' : 'unknown',
           body: wpMessage.body,
           location: wpMessage.location ?? null,

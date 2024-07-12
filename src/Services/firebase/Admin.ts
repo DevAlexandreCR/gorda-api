@@ -1,4 +1,4 @@
-import {initializeApp, App, applicationDefault} from 'firebase-admin/app'
+import {initializeApp, App, cert} from 'firebase-admin/app'
 import {Database, getDatabase} from 'firebase-admin/database'
 import {Auth, getAuth} from 'firebase-admin/auth'
 import config from '../../../config'
@@ -13,7 +13,7 @@ export default class Admin {
 
   constructor() {
     this.app = initializeApp({
-      credential: applicationDefault(),
+      credential: cert(config.GOOGLE_APPLICATION_CREDENTIALS),
       projectId: config.FIREBASE_PROJECT_ID,
       databaseURL: config.FIREBASE_DATABASE_URL,
     })

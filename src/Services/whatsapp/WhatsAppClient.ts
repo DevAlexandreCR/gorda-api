@@ -1,31 +1,31 @@
 import * as Sentry from '@sentry/node'
-import { Server as SocketIOServer } from 'socket.io'
+import {Server as SocketIOServer} from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
-import { DataSnapshot } from 'firebase-admin/lib/database'
+import {DataSnapshot} from 'firebase-admin/lib/database'
 import * as Messages from '../chatBot/Messages'
-import { Store } from '../store/Store'
+import {Store} from '../store/Store'
 import config from '../../../config'
-import { WpNotificationType } from '../../Interfaces/WpNotificationType'
+import {WpNotificationType} from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
-import { exit } from 'process'
-import { EmitEvents } from './EmitEvents'
-import { LoadingType } from '../../Interfaces/LoadingType'
+import {EmitEvents} from './EmitEvents'
+import {LoadingType} from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
-import { WpClient } from '../../Interfaces/WpClient'
+import {WpClient} from '../../Interfaces/WpClient'
 import Session from '../../Models/Session'
-import { ServiceInterface } from '../../Interfaces/ServiceInterface'
-import { NotificationType } from '../../Types/NotificationType'
-import { MessagesEnum } from '../chatBot/MessagesEnum'
-import { ChatBotMessage } from '../../Types/ChatBotMessage'
-import { WpStates } from './constants/WpStates'
-import { WpEvents } from './constants/WpEvents'
-import { WPClientInterface } from './interfaces/WPClientInterface'
-import { WpMessageInterface } from './interfaces/WpMessageInterface'
-import { ClientFactory } from './ClientFactory'
-import { WpClients } from './constants/WPClients'
-import { MessageTypes } from './constants/MessageTypes'
+import {ServiceInterface} from '../../Interfaces/ServiceInterface'
+import {NotificationType} from '../../Types/NotificationType'
+import {MessagesEnum} from '../chatBot/MessagesEnum'
+import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import {WpStates} from './constants/WpStates'
+import {WpEvents} from './constants/WpEvents'
+import {WPClientInterface} from './interfaces/WPClientInterface'
+import {WpMessageInterface} from './interfaces/WpMessageInterface'
+import {ClientFactory} from './ClientFactory'
+import {WpClients} from './constants/WPClients'
+import {MessageTypes} from './constants/MessageTypes'
+import {spawn} from 'child_process'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -64,7 +64,9 @@ export class WhatsAppClient {
         this.starting = false
         console.log(e.message)
         Sentry.captureException(e)
-        exit(1)
+        if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
+          return this.restartChromium()
+        }
       })
   }
 
@@ -126,7 +128,9 @@ export class WhatsAppClient {
         console.log('destroy ', this.wpClient.alias, e.message)
         this.socket?.emit(EmitEvents.FAILURE, e.message)
         Sentry.captureException(e)
-        exit(1)
+        if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
+          return this.restartChromium()
+        }
       })
   }
 
@@ -258,9 +262,11 @@ export class WhatsAppClient {
       })
       .catch((e) => {
         console.log('logout: ', this.wpClient.alias, e)
-        if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.FAILURE, e.message)
         Sentry.captureException(e)
-        exit(1)
+        if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.FAILURE, e.message)
+        if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
+          return this.restartChromium()
+        }
       })
   }
 
@@ -335,10 +341,12 @@ export class WhatsAppClient {
 
   async sendMessage(chatId: string, message: string): Promise<void> {
     await this.client.sendMessage(chatId, message).catch((e) => {
-      console.log('sendMessage ' + message, this.wpClient.alias, e)
+      console.log('sendMessage ' + message, this.wpClient.alias, e.message)
       Sentry.captureException(e)
       if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
-      exit(1)
+      if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
+        return this.restartChromium()
+      }
     })
 
     if (this.client.serviceName != WpClients.OFFICIAL) {
@@ -348,5 +356,15 @@ export class WhatsAppClient {
         }, config.ARCHIVE_CHAT_TIMEOUT as number)
       })
     }
+  }
+
+  async restartChromium(): Promise<void> {
+    const chromium = spawn(config.CHROMIUM_PATH, ['--remote-debugging-port=9222'], {
+      stdio: 'ignore',
+      detached: true,
+    })
+    chromium.unref()
+    console.log('restart chromium...')
+    return  this.client.initialize()
   }
 }

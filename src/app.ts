@@ -134,12 +134,3 @@ io.on('connection', async (socket: Socket) => {
     console.log('disconnecting ...', reason)
   })
 })
-
-process.on('exit', async () => {
-  const chromium = spawn(config.CHROMIUM_PATH, ['--remote-debugging-port=9222'], {
-    stdio: 'ignore',
-    detached: true,
-  })
-  chromium.unref()
-  console.log('restart chromium...')
-})
