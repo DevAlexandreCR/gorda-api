@@ -14,7 +14,7 @@ const store = Store.getInstance()
 controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
   const { body } = req
   const entries = body.entry
-  console.log('webhook post', entries)
+  console.log('webhook post', body.toString())
   const responseMessages: Array<string> = ['ok']
   entries.forEach((entry: any) => {
     const changes = entry.changes
