@@ -94,7 +94,7 @@ controller.get('/whatsapp/webhook', async (req: Request, res: Response) => {
   const challenge = req.query['hub.challenge'];
 
   if (mode && token) {
-    if (mode === 'subscribe' && token === config.FIREBASE_APP_ID) {
+    if (mode === 'subscribe' && token === config.FIREBASE_PROJECT_ID) {
       console.log('WEBHOOK_VERIFIED');
       res.status(200).send(challenge);
     } else {
