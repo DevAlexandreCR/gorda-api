@@ -17,8 +17,6 @@ import { WpClient } from './Interfaces/WpClient'
 import { WhatsAppClientDictionary } from './Interfaces/WhatsAppClientDiccionary'
 import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
-import process from 'process'
-import { spawn } from 'child_process'
 import controller from './Api/whatsapp/MessageController'
 import { Store } from './Services/store/Store'
 

@@ -6,6 +6,7 @@ import { Store } from '../../Services/store/Store'
 import MessageRepository from '../../Repositories/MessageRepository'
 import { WpContactAdapter } from '../../Services/whatsapp/services/Official/Adapters/WpContactAdapter'
 import { ClientInterface } from '../../Interfaces/ClientInterface'
+import config from '../../../config'
 
 const controller = Router()
 const store = Store.getInstance()
@@ -83,6 +84,23 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
   })
 
   return res.status(200).json({ messages: responseMessages })
+})
+
+controller.get('/whatsapp/webhook', async (req: Request, res: Response) => {
+  console.log('webhook get', req.query)
+
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode && token) {
+    if (mode === 'subscribe' && token === config.FIREBASE_APP_ID) {
+      console.log('WEBHOOK_VERIFIED');
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
+    }
+  }
 })
 
 export default controller
