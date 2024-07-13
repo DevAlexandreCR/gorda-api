@@ -7,16 +7,14 @@ import { WWebClient } from './services/WWebClient/WWebClient'
 
 export class ClientFactory {
   static build(wpClient: WpClient): WPClientInterface {
+    console.log(wpClient)
     switch (wpClient.service) {
       case WpClients.WHATSAPP_WEB_JS:
         return new WWebClient(wpClient)
-        break
       case WpClients.OFFICIAL:
         return OfficialClient.getInstance(wpClient)
-        break
       case WpClients.BAILEYS:
         return new BaileysClient(wpClient)
-        break
       default:
         throw new Error('Client not found')
     }

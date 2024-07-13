@@ -17,7 +17,7 @@ export class OfficialClient implements WPClientInterface {
   private config: Config
   private status: WpStates
   private eventCallbacks: { [key: string]: Function[] } = {}
-  serviceName = WpClients.OFFICIAL
+  serviceName: WpClients = WpClients.OFFICIAL
   private static instances: { [key: string]: OfficialClient } = {}
   private store: Store
 
