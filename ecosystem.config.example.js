@@ -26,6 +26,8 @@ module.exports = {
       "CANCEL_TIMEOUT": 480000,
       "DISCONNECT_TIMEOUT": 900000,
       "GORDA_API_FUNCTIONS": "http://127.0.0.1:5001/gorda-driver/us-central1/api",
+      "WAPI_TOKEN": "api-token",
+      "WAPI_URL": "https://graph.facebook.com/v20.0/",
     }
   }]
 }
