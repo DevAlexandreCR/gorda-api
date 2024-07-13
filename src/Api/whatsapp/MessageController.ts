@@ -25,6 +25,11 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
         return
       }
       const value = change.value
+      if (value.errors) {
+        console.log('Message error', JSON.stringify(value.errors))
+        responseMessages.push('Message with errors')
+        return
+      }
       const profileName = value.contacts[0]?.profile.name
       const wpClient = store.wpClients[value.metadata.phone_number_id] ?? null
       if (!wpClient) {
