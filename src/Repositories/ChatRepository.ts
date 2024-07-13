@@ -23,7 +23,8 @@ class ChatRepository {
   public async updateChat(wpClientId: string, chatId: string, message: Message): Promise<void> {
     await Firestore.dbChats(wpClientId).doc(chatId).update({
       updated_at: DateHelper.unix(),
-      lastMessage: message
+      lastMessage: message,
+      archived: false,
     } as Partial<Chat>)
     return Promise.resolve()
   }
