@@ -8,6 +8,7 @@ import {WpContactAdapter} from '../../Services/whatsapp/services/Official/Adapte
 import {ClientInterface} from '../../Interfaces/ClientInterface'
 import config from '../../../config'
 import {MessageTypes} from "../../Services/whatsapp/constants/MessageTypes";
+import {MessagesEnum} from "../../Services/chatBot/MessagesEnum";
 
 const controller = Router()
 const store = Store.getInstance()
@@ -95,7 +96,8 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
         wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
 
         if (type !== MessageTypes.TEXT && type !== MessageTypes.LOCATION) {
-          wpClientService.sendMessage(wpMessage.from, 'Por el momento solo se admiten mensajes de texto')
+          const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
+          wpClientService.sendMessage(wpMessage.from, msg.message)
         }
       })
     })
