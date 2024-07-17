@@ -1,12 +1,13 @@
-import { OfficialClient } from '../../Services/whatsapp/services/Official/OfficialClient'
-import { WpMessageAdapter } from '../../Services/whatsapp/services/Official/Adapters/WpMessageAdapter'
-import { Request, Response, Router } from 'express'
-import { WpEvents } from '../../Services/whatsapp/constants/WpEvents'
-import { Store } from '../../Services/store/Store'
+import {OfficialClient} from '../../Services/whatsapp/services/Official/OfficialClient'
+import {WpMessageAdapter} from '../../Services/whatsapp/services/Official/Adapters/WpMessageAdapter'
+import {Request, Response, Router} from 'express'
+import {WpEvents} from '../../Services/whatsapp/constants/WpEvents'
+import {Store} from '../../Services/store/Store'
 import MessageRepository from '../../Repositories/MessageRepository'
-import { WpContactAdapter } from '../../Services/whatsapp/services/Official/Adapters/WpContactAdapter'
-import { ClientInterface } from '../../Interfaces/ClientInterface'
+import {WpContactAdapter} from '../../Services/whatsapp/services/Official/Adapters/WpContactAdapter'
+import {ClientInterface} from '../../Interfaces/ClientInterface'
 import config from '../../../config'
+import {MessageTypes} from "../../Services/whatsapp/constants/MessageTypes";
 
 const controller = Router()
 const store = Store.getInstance()
@@ -49,14 +50,15 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
       const messages = value.messages
 
       messages.forEach(async (message: any) => {
+        const type: MessageTypes =  message.type ? message.type : message.location ? MessageTypes.LOCATION : MessageTypes.UNKNOWN
         const wpMessage = new WpMessageAdapter(
           {
             id: message.id,
             timestamp: typeof message.timestamp === 'string' ? parseInt(message.timestamp) : message.timestamp,
-            type: message.type ? message.type : message.location ? 'location' : 'unknown',
             from: message.from,
+            type: type,
             isStatus: false,
-            body: message.text?.body ?? '',
+            body: message.text?.body ?? type,
             location: message.location
               ? {
                   name: message.location.name,
@@ -91,6 +93,10 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
         })
 
         wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
+
+        if (type !== MessageTypes.TEXT && type !== MessageTypes.LOCATION) {
+          wpClientService.sendMessage(wpMessage.from, 'Por el momento solo se admiten mensajes de texto')
+        }
       })
     })
   })
