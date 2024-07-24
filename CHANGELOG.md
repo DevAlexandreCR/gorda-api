@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--   Make WP Client abstract ([#86](https://github.com/DevAlexandreCR/gorda-api/pull/86))
+# Release Notes for 1.4.x
+
+## [1.4.0 (2024-07-23)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.0...v1.3.7)
+
+### Added
+
+- New Whatsapp Api connection. ([#86](https://github.com/DevAlexandreCR/gorda-api/pull/86))
 
 # Release Notes for 1.3.x
 
