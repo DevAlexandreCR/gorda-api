@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "gorda-driver",
+  "private_key_id": "748c97cd5d14e4d1",
+  "private_key": "-----BEGIN PRIVATE KEY-----P43RRquDPk5QqfCwMZmChcS30gpRXviSx2LxeEZrOVkic+LStcxuew=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase--pm1yq@gorda-.iam..com",
+  "client_id": "11420975",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-pm1yq%40gorda-driver.iam.gserviceaccount.com"
+}

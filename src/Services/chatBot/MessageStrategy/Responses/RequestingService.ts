@@ -1,19 +1,18 @@
-import {ResponseContract} from '../ResponseContract'
-import {MessageTypes} from 'whatsapp-web.js'
+import { ResponseContract } from '../ResponseContract'
 import Session from '../../../../Models/Session'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import * as Messages from '../../Messages'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import Service from '../../../../Models/Service'
-import {WpMessage} from '../../../../Types/WpMessage'
-import {MessagesEnum} from '../../MessagesEnum'
+import { WpMessage } from '../../../../Types/WpMessage'
+import { MessagesEnum } from '../../MessagesEnum'
+import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class RequestingService extends ResponseContract {
-  
   private service: Service
-  
+
   public messageSupported: Array<string> = [MessageTypes.TEXT]
-  
+
   public async processMessage(message: WpMessage): Promise<void> {
     await this.setService()
     const body = message.msg.toLowerCase()
@@ -28,12 +27,12 @@ export class RequestingService extends ResponseContract {
   cancelService(): Promise<void> {
     return this.service.cancel()
   }
-  
+
   async setService(): Promise<void> {
-      if (this.session.service_id) {
-        const service = await ServiceRepository.findServiceById(this.session.service_id)
-        this.service = new Service()
-        Object.assign(this.service, service)
-      }
+    if (this.session.service_id) {
+      const service = await ServiceRepository.findServiceById(this.session.service_id)
+      this.service = new Service()
+      Object.assign(this.service, service)
+    }
   }
 }

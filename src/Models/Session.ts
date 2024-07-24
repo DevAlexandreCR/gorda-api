@@ -1,18 +1,20 @@
-import {SessionInterface} from '../Interfaces/SessionInterface'
+import { SessionInterface } from '../Interfaces/SessionInterface'
 import SessionRepository from '../Repositories/SessionRepository'
-import {PlaceOption} from '../Interfaces/PlaceOption'
+import { PlaceOption } from '../Interfaces/PlaceOption'
 import Place from './Place'
-import {WpMessage} from '../Types/WpMessage'
-import {ResponseContext} from '../Services/chatBot/MessageStrategy/ResponseContext'
-import {Chat, Client, Message, MessageTypes} from 'whatsapp-web.js'
+import { WpMessage } from '../Types/WpMessage'
+import { ResponseContext } from '../Services/chatBot/MessageStrategy/ResponseContext'
 import MessageHelper from '../Helpers/MessageHelper'
-import {WpLocation} from '../Types/WpLocation'
-import {exit} from 'process'
+import { WpLocation } from '../Types/WpLocation'
+import { exit } from 'process'
 import config from '../../config.js'
-import {WpNotifications} from '../Types/WpNotifications'
-import {NotificationType} from '../Types/NotificationType'
-import {getSingleMessage} from '../Services/chatBot/Messages'
-import {MessagesEnum} from '../Services/chatBot/MessagesEnum'
+import { WpNotifications } from '../Types/WpNotifications'
+import { NotificationType } from '../Types/NotificationType'
+import { getSingleMessage } from '../Services/chatBot/Messages'
+import { MessagesEnum } from '../Services/chatBot/MessagesEnum'
+import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
+import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
+import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -25,7 +27,7 @@ export default class Session implements SessionInterface {
   public updated_at: number | null
   public place: Place | null = null
   public messages: Map<string, WpMessage> = new Map()
-  public chat: Chat
+  public chat: WpChatInterface
   public wp_client_id: string
   public notifications: WpNotifications
   private processorTimeout?: NodeJS.Timer
@@ -39,7 +41,7 @@ export default class Session implements SessionInterface {
   static readonly STATUS_SERVICE_IN_PROGRESS = 'SERVICE_IN_PROGRESS'
   static readonly STATUS_COMPLETED = 'COMPLETED'
   static readonly STATUS_ASKING_FOR_NAME = 'ASKING_FOR_NAME'
-  
+
   constructor(chat_id: string) {
     this.chat_id = chat_id
     this.created_at = new Date().getTime()
@@ -49,7 +51,7 @@ export default class Session implements SessionInterface {
       greeting: false,
       assigned: false,
       arrived: false,
-      completed: false
+      completed: false,
     }
   }
 
@@ -62,40 +64,40 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateId(this)
   }
 
-  async addMsg(msg: Message): Promise<void> {
+  async addMsg(msg: WpMessageInterface): Promise<void> {
     const wpMessage: WpMessage = {
       created_at: msg.timestamp,
-      id: msg.id.id,
+      id: msg.id,
       type: msg.type,
       msg: msg.body,
       location: null,
-      processed: false
+      processed: false,
     }
 
     if (msg.location) {
       const loc = msg.location as unknown as WpLocation
       wpMessage.location = {
         name: loc.name ?? MessageHelper.LOCATION_NO_NAME,
-        lat: parseFloat(msg.location.latitude),
-        lng: parseFloat(msg.location.longitude)
+        lat: parseFloat(msg.location.lat.toString()),
+        lng: parseFloat(msg.location.lng.toString()),
       }
       wpMessage.msg = ''
     }
 
     await SessionRepository.addMsg(this.id, wpMessage)
-    .then(async key => {
-      if (wpMessage.type === MessageTypes.LOCATION) {
-        this.messages.set(key, wpMessage)
-        clearTimeout(this.processorTimeout)
-        delete this.processorTimeout
-        const unprocessedMessagesArray = Array.from(this.getUnprocessedMessages().values())
-        await this.processMessage(wpMessage, unprocessedMessagesArray)
-      } else {
-        this.messages.set(key, wpMessage)
-        await this.processUnprocessedMessages()
-      }
-    })
-    .catch(e => console.log(e.message))
+      .then(async (key) => {
+        if (wpMessage.type === MessageTypes.LOCATION) {
+          this.messages.set(key, wpMessage)
+          clearTimeout(this.processorTimeout)
+          delete this.processorTimeout
+          const unprocessedMessagesArray = Array.from(this.getUnprocessedMessages().values())
+          await this.processMessage(wpMessage, unprocessedMessagesArray)
+        } else {
+          this.messages.set(key, wpMessage)
+          await this.processUnprocessedMessages()
+        }
+      })
+      .catch((e) => console.log(e.message))
   }
 
   async processUnprocessedMessages(): Promise<void> {
@@ -103,7 +105,7 @@ export default class Session implements SessionInterface {
     if (unprocessedMessages.size === 1 || (unprocessedMessages.size > 1 && !this.processorTimeout)) {
       this.processorTimeout = setTimeout(() => {
         const unprocessedMessagesArray = Array.from(this.getUnprocessedMessages().values())
-        const text = unprocessedMessagesArray.map(msg => msg.msg).join(' ')
+        const text = unprocessedMessagesArray.map((msg) => msg.msg).join(' ')
         const indexLast = unprocessedMessagesArray.length - 1
         const wpMsg: WpMessage = {
           created_at: unprocessedMessagesArray[indexLast].created_at,
@@ -111,10 +113,10 @@ export default class Session implements SessionInterface {
           type: unprocessedMessagesArray[indexLast].type,
           location: null,
           msg: text,
-          processed: false
+          processed: false,
         }
 
-        unprocessedMessagesArray.forEach(msg => {
+        unprocessedMessagesArray.forEach((msg) => {
           if (msg.location) {
             wpMsg.location = msg.location
             wpMsg.type = MessageTypes.LOCATION
@@ -149,17 +151,17 @@ export default class Session implements SessionInterface {
     this.service_id = serviceID
     await SessionRepository.updateService(this)
   }
-  
+
   async setStatus(status: string): Promise<void> {
     this.status = status
     await SessionRepository.updateStatus(this)
   }
-  
+
   async setPlace(place: Place): Promise<void> {
     this.place = place
     await SessionRepository.updatePlace(this)
   }
-  
+
   async setPlaceOptions(placeOptions: Array<PlaceOption>): Promise<void> {
     this.placeOptions = placeOptions
     await SessionRepository.updatePlaceOptions(this)
@@ -170,7 +172,7 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateNotification(this.id, this.notifications)
   }
 
-  public setChat(chat: Chat): void {
+  public setChat(chat: WpChatInterface): void {
     this.chat = chat
   }
 
@@ -179,34 +181,37 @@ export default class Session implements SessionInterface {
   }
 
   public async sendMessage(content: string): Promise<void> {
-    await this.chat.sendMessage(content).then(msg => {
-      this.chat.archive().catch(e => console.log(e.message))
+    await this.chat.sendMessage(content).then(() => {
+      this.chat.archive().catch((e) => console.log(e.message))
     })
   }
 
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {
     const handler = ResponseContext.getResponse(this.status, this)
     const response = new ResponseContext(handler)
-    await response.processMessage(message).then(async () => {
-      await SessionRepository.setProcessedMsgs(this.id, unprocessedMessages).then(() => {
-        unprocessedMessages.forEach(msg => {
-          msg.processed = true
-          this.messages.set(message.id, msg)
+    await response
+      .processMessage(message)
+      .finally(async () => {
+        await SessionRepository.setProcessedMsgs(this.id, unprocessedMessages).then(() => {
+          unprocessedMessages.forEach((msg) => {
+            msg.processed = true
+            this.messages.set(message.id, msg)
+          })
         })
       })
-    }).catch(async (e) => {
-      console.log('error while processing message', {
-        error: e.message,
-        message: message.msg,
-        stack: e.stack,
-      })
-      const msg = getSingleMessage(MessagesEnum.ERROR_WHILE_PROCESSING)
-      if (msg.enabled) {
-        await this.sendMessage(msg.message).catch( e => {
-          console.log('error while sending error message', e.message)
-          exit(1)
+      .catch(async (e) => {
+        console.log('error while processing message', {
+          error: e.message,
+          message: message.msg,
+          stack: e.stack,
         })
-      }
-    })
+        const msg = getSingleMessage(MessagesEnum.ERROR_WHILE_PROCESSING)
+        if (msg.enabled) {
+          await this.sendMessage(msg.message).catch((e) => {
+            console.log('error while sending error message', e.message)
+            exit(1)
+          })
+        }
+      })
   }
 }
