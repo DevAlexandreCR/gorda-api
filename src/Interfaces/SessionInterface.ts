@@ -1,16 +1,15 @@
 import {PlaceOption} from './PlaceOption'
 import Place from '../Models/Place'
-import {WpMessageMap} from '../Types/WpMessageMap'
 import {WpMessage} from '../Types/WpMessage'
-import {Chat} from 'whatsapp-web.js'
 import {WpNotifications} from '../Types/WpNotifications'
+import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
 
 export interface SessionInterface {
   id: string
   status: string
   placeOptions?: Array<PlaceOption>
   place: Place | null
-  chat: Chat
+  chat: WpChatInterface
   wp_client_id: string
   chat_id: string
   service_id: string | null
