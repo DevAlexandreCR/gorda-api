@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
 # Release Notes for 1.4.x
+
+## [1.4.1 (2024-09-04)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.1...v1.4.0)
+
+### Fixed
+
+- Location Messages in chatbot. ([#88](https://github.com/DevAlexandreCR/gorda-api/pull/88))
 
 ## [1.4.0 (2024-07-23)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.0...v1.3.7)
 
