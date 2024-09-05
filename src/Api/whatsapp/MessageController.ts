@@ -9,6 +9,7 @@ import {ClientInterface} from '../../Interfaces/ClientInterface'
 import config from '../../../config'
 import {MessageTypes} from "../../Services/whatsapp/constants/MessageTypes";
 import {MessagesEnum} from "../../Services/chatBot/MessagesEnum";
+import MessageHelper from "../../Helpers/MessageHelper";
 
 const controller = Router()
 const store = Store.getInstance()
@@ -62,7 +63,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
             body: message.text?.body ?? type,
             location: message.location
               ? {
-                  name: message.location.name,
+                  name: message.location.name ?? MessageHelper.LOCATION_NO_NAME,
                   lat: message.location.latitude,
                   lng: message.location.longitude,
                 }
