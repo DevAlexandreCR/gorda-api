@@ -5,6 +5,7 @@ import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpMessageInterface } from '../../../interfaces/WpMessageInterface'
 import { WpChatAdapter } from './WpChatAdapter'
 import { LocType } from '../../../../../Interfaces/LocType'
+import MessageHelper from "../../../../../Helpers/MessageHelper";
 
 export class WpMessageAdapter implements WpMessageInterface {
   id: string
@@ -22,19 +23,24 @@ export class WpMessageAdapter implements WpMessageInterface {
     this.from = message.from
     this.isStatus = message.isStatus
     this.body = message.body
-    this.location = message.location as unknown as LocType
+    if (message.location) {
+      const loc = message.location as unknown as LocType
+      this.location = {
+        name: loc.name ?? MessageHelper.LOCATION_NO_NAME,
+        lat: parseFloat(message.location.latitude),
+        lng: parseFloat(message.location.longitude),
+      } as LocType
+    }
   }
 
   private getType(type: Type): MessageTypes {
     switch (type) {
       case Type.TEXT:
         return MessageTypes.TEXT
-        break
       case Type.LOCATION:
         return MessageTypes.LOCATION
       default:
         return MessageTypes.UNKNOWN
-        break
     }
   }
 

@@ -1,12 +1,13 @@
-import { Client, LocalAuth } from 'whatsapp-web.js'
-import { WpEvents } from '../../constants/WpEvents'
-import { WpStates } from '../../constants/WpStates'
-import { WPClientInterface } from '../../interfaces/WPClientInterface'
-import { WpChatInterface } from '../../interfaces/WpChatInterface'
+import {Client, LocalAuth, Message} from 'whatsapp-web.js'
+import {WpEvents} from '../../constants/WpEvents'
+import {WpStates} from '../../constants/WpStates'
+import {WPClientInterface} from '../../interfaces/WPClientInterface'
+import {WpChatInterface} from '../../interfaces/WpChatInterface'
 import config from '../../../../../config'
-import { WpClient } from '../../../../Interfaces/WpClient'
-import { WpChatAdapter } from './Adapters/WpChatAdapter'
-import { WpClients } from '../../constants/WPClients'
+import {WpClient} from '../../../../Interfaces/WpClient'
+import {WpChatAdapter} from './Adapters/WpChatAdapter'
+import {WpClients} from '../../constants/WPClients'
+import {WpMessageAdapter} from "./Adapters/WpMessageAdapter";
 
 export class WWebClient implements WPClientInterface {
   private client: Client
@@ -67,7 +68,14 @@ export class WWebClient implements WPClientInterface {
   }
 
   on(event: WpEvents, callback: (...args: any) => void): void {
-    this.client.on(event, callback)
+    if (event === WpEvents.MESSAGE_RECEIVED) {
+      this.client.on(WpEvents.MESSAGE_RECEIVED, (message: Message) => {
+        const msg = new WpMessageAdapter(message)
+        callback(msg)
+      })
+    } else {
+      this.client.on(event, callback)
+    }
   }
 
   async getState(): Promise<WpStates> {
