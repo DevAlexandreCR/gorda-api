@@ -17,7 +17,7 @@ import {MessageTypes} from '../whatsapp/constants/MessageTypes'
 
 export class Store {
   static instance: Store
-  drivers: Set<Driver> = new Set<Driver>()
+  drivers: Map<string, Driver> = new Map()
   places: Set<Place> = new Set<Place>()
   clients: Map<string, Client> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
@@ -26,6 +26,7 @@ export class Store {
 
   private constructor() {
     this.setDrivers()
+    this.updateDrivers()
     this.setPlaces()
     this.setClients()
     this.listenMessages()
@@ -61,7 +62,13 @@ export class Store {
 
   private setDrivers() {
     DriverRepository.getAll((driver) => {
-      this.drivers.add(driver)
+      this.drivers.set(driver.id!, driver)
+    })
+  }
+
+  private updateDrivers() {
+    DriverRepository.updateDriver((driver) => {
+      this.drivers.set(driver.id!, driver)
     })
   }
 
@@ -114,8 +121,7 @@ export class Store {
   }
 
   findDriverById(driverId: string): Driver {
-    const driversArray = Array.from(this.drivers)
-    return driversArray.find((dri) => dri.id === driverId) ?? new Driver()
+    return this.drivers.get(driverId) ?? new Driver()
   }
 
   findClientById(clientId: string): Client | undefined {
