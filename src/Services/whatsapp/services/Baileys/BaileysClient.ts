@@ -27,6 +27,10 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
+import { ClientInterface } from '../../../../Interfaces/ClientInterface'
+import { WpContactAdapter } from './Adapters/WpContactAdapter'
+import { Store as ServiceStore } from '../../../../Services/store/Store'
+import config from '../../../../../config'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -34,6 +38,7 @@ export class BaileysClient implements WPClientInterface {
   private state: AuthenticationState
   private logger: any
   private store: any
+  private serviceStore: ServiceStore = ServiceStore.getInstance()
   static SESSION_PATH = 'storage/sessions/baileys/'
   private retries = 0
   private interval: NodeJS.Timer
@@ -154,7 +159,7 @@ export class BaileysClient implements WPClientInterface {
       }
     })
 
-    this.clientSock.ev.on('messages.upsert', (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
+    this.clientSock.ev.on('messages.upsert', async (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
       if (this.isValidMessage(message.messages[0], message.type)) {
         const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
         this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)

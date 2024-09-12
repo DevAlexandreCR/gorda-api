@@ -4,8 +4,6 @@ import {Request, Response, Router} from 'express'
 import {WpEvents} from '../../Services/whatsapp/constants/WpEvents'
 import {Store} from '../../Services/store/Store'
 import MessageRepository from '../../Repositories/MessageRepository'
-import {WpContactAdapter} from '../../Services/whatsapp/services/Official/Adapters/WpContactAdapter'
-import {ClientInterface} from '../../Interfaces/ClientInterface'
 import config from '../../../config'
 import {MessageTypes} from "../../Services/whatsapp/constants/MessageTypes";
 import {MessagesEnum} from "../../Services/chatBot/MessagesEnum";
@@ -17,7 +15,6 @@ const store = Store.getInstance()
 controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
   const { body } = req
   const entries = body.entry
-  console.log('change', JSON.stringify(entries))
   const responseMessages: Array<string> = ['ok']
   entries.forEach((entry: any) => {
     const changes = entry.changes
@@ -39,7 +36,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
         responseMessages.push('No Messages')
         return
       }
-      const profileName = value.contacts[0]?.profile.name
+      const profileName = value.contacts? value.contacts[0]?.profile.name : undefined
       const wpClient = store.wpClients[value.metadata.phone_number_id] ?? null
       if (!wpClient) {
         console.log('wpClient not found')
@@ -57,7 +54,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
           {
             id: message.id,
             timestamp: typeof message.timestamp === 'string' ? parseInt(message.timestamp) : message.timestamp,
-            from: message.from,
+            from: message.from + '@c.us',
             type: type,
             isStatus: false,
             body: message.text?.body ?? type,
@@ -71,17 +68,6 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
           },
           wpClientService,
         )
-
-        const contact = store.findClientById(wpMessage.from)
-        if (!contact) {
-          const newClient = new WpContactAdapter({
-            id: wpMessage.from,
-            name: profileName ?? 'Usuario',
-            phone: wpMessage.from,
-            photoUrl: '',
-          } as ClientInterface)
-          await store.createClient(newClient)
-        }
 
         const chat = await store.getChatById(wpClient.id, wpMessage.from, profileName)
 
