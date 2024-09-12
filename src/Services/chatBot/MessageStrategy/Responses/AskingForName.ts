@@ -43,13 +43,17 @@ export class AskingForName extends ResponseContract {
   }
 
   async getContact(): Promise<WpContactInterface> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       this.session.chat
         .getContact()
         .then((contact) => {
           resolve(contact)
         })
-        .catch((e) => Sentry.captureException(e))
+        .catch((e) => {
+          console.log('Error getting contact', e)
+          reject(e)
+          Sentry.captureException(e)
+        })
     })
   }
 }
