@@ -115,7 +115,8 @@ export class BaileysClient implements WPClientInterface {
       keepAliveIntervalMs: 30000,
       retryRequestDelayMs: 2000,
       markOnlineOnConnect: true,
-      defaultQueryTimeoutMs: 1000,
+      defaultQueryTimeoutMs: 2000,
+      shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => false,
       getMessage: this.getMessage,
     })
 
@@ -139,7 +140,10 @@ export class BaileysClient implements WPClientInterface {
         if (shouldReconnect) {
           setTimeout(() => this.initialize(), 3000)
         } else {
-          console.log('Not reconnecting, loggedout')
+            this.triggerEvent(WpEvents.DISCONNECTED)
+            clearInterval(this.interval)
+            FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
+            console.log('Not reconnecting, loggedout')
         }
       } else if (connection === 'connecting') {
         this.online = false
