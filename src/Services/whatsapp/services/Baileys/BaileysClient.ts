@@ -154,7 +154,7 @@ export class BaileysClient implements WPClientInterface {
         this.triggerEvent(WpEvents.READY)
         this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
-        this.online
+        this.online = false
         this.triggerEvent(WpEvents.QR_RECEIVED, qr)
       }
 
