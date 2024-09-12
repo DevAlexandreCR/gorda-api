@@ -27,6 +27,6 @@ export class AskingForComment extends ResponseContract {
 
   hasComment(message: WpMessage): boolean {
     const msg = MessageHelper.normalize(message.msg)
-    return msg.length > 3
+    return msg.length >= 2
   }
 }

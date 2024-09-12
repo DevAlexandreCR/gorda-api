@@ -38,6 +38,7 @@ export class BaileysClient implements WPClientInterface {
   private retries = 0
   private interval: NodeJS.Timer
   serviceName: WpClients = WpClients.BAILEYS
+  private online = false
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: 'trace' }) as unknown as Logger
@@ -60,7 +61,7 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getState(): Promise<WpStates> {
-    return Promise.resolve(this.clientSock.authState.creds ? WpStates.CONNECTED : WpStates.UNPAIRED)
+    return Promise.resolve(this.online ? WpStates.CONNECTED : WpStates.UNPAIRED)
   }
 
   getChatById(chatId: string): Promise<WpChatInterface> {
@@ -120,7 +121,7 @@ export class BaileysClient implements WPClientInterface {
     this.clientSock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr, isOnline } = update
 
-      console.log('Connection update: *********')
+      console.log('Connection *****');
       console.table(update)
 
       if (connection === 'close') {
@@ -129,28 +130,40 @@ export class BaileysClient implements WPClientInterface {
           (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
+        this.online = false
         if (shouldReconnect) {
           setTimeout(() => this.initialize(), 3000)
         } else {
           console.log('Not reconnecting, loggedout')
         }
       } else if (connection === 'connecting') {
+        this.online = false
         this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.PAIRING)
       } else if (connection === 'open') {
         console.log('Connected to socket successfully')
+        this.online = true
+        this.triggerEvent(WpEvents.READY)
         this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
         this.triggerEvent(WpEvents.QR_RECEIVED, qr)
-      } else if (isOnline) {
+      }
+
+      if (isOnline) {
         this.triggerEvent(WpEvents.READY)
+        this.online = true
       }
     })
 
     this.clientSock.ev.on('messages.upsert', (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
-      const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
-
-      this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+      if (this.isValidMessage(message.messages[0], message.type)) {
+        const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
+        this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+      }
     })
+  }
+
+  private isValidMessage(message: WAMessage, type: MessageUpsertType): boolean {
+    return !message.key.fromMe && !message.key.remoteJid?.includes('g.us') && !message.broadcast && type === 'notify'
   }
 
   getInfo(): string {

@@ -21,7 +21,7 @@
     "@huggingface/inference": "^2.6.4",
     "@sentry/node": "^7.5.0",
     "@sentry/tracing": "^7.5.0",
-    "@whiskeysockets/baileys": "^6.7.4",
+    "@whiskeysockets/baileys": "^6.7.7",
     "axios": "^1.4.0",
     "dayjs": "^1.11.1",
     "dotenv": "^16.0.0",

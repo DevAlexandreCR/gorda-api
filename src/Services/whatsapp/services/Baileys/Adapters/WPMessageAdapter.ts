@@ -18,10 +18,11 @@ export class WpMessageAdapter implements WpMessageInterface {
     this.id = message.key.id!
     this.timestamp = message.messageTimestamp as number
     this.type = message.message?.conversation ? MessageTypes.TEXT : MessageTypes.UNKNOWN
-    this.isStatus = false
+    this.isStatus = message.broadcast?? false
     this.body = message.message?.conversation || ''
-    this.from = message.key.remoteJid!
+    this.from = message.key.remoteJid!.replace('@s.whatsapp.net', '@c.us')
     if (message.message?.locationMessage) {
+      this.type = MessageTypes.LOCATION
       this.location = {
         lat: message.message.locationMessage.degreesLatitude as number,
         lng: message.message.locationMessage.degreesLongitude as number,
@@ -31,6 +32,6 @@ export class WpMessageAdapter implements WpMessageInterface {
   }
 
   getChat(): Promise<WpChatInterface> {
-    return Promise.resolve(new WpChatAdapter(this.waSocket, this.message.key.remoteJid!))
+    return Promise.resolve(new WpChatAdapter(this.waSocket, this.from))
   }
 }
