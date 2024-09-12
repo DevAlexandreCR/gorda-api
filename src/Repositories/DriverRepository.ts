@@ -23,6 +23,16 @@ class DriverRepository {
       listener(driverTmp)
     })
   }
+
+  /* istanbul ignore next */
+  updateDriver(listener: (driver: Driver) => void): void {
+    DBService.dbDrivers().on('child_changed', (snapshot) => {
+      const driver = snapshot.val() as DriverInterface
+      const driverTmp = new Driver()
+      Object.assign(driverTmp, driver)
+      listener(driverTmp)
+    })
+  }
 	
 	onDriverLocationChanged(listener: (lastUpdated: LastUpdated) => void): void {
 		DBService.dbConnectedDrivers().on('child_changed', (snapshot) => {

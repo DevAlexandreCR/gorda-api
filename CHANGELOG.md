@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.4.x
 
+## [1.4.2 (2024-09-12)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.2...v1.4.1)
+
+### Added
+
+- Implement Baileys ans fix errors. ([#90](https://github.com/DevAlexandreCR/gorda-api/pull/90))
+
 ## [1.4.1 (2024-09-04)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.1...v1.4.0)
 
 ### Fixed

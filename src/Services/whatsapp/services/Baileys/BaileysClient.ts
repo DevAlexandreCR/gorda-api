@@ -27,6 +27,10 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
+import { ClientInterface } from '../../../../Interfaces/ClientInterface'
+import { WpContactAdapter } from './Adapters/WpContactAdapter'
+import { Store as ServiceStore } from '../../../../Services/store/Store'
+import config from '../../../../../config'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -34,10 +38,12 @@ export class BaileysClient implements WPClientInterface {
   private state: AuthenticationState
   private logger: any
   private store: any
+  private serviceStore: ServiceStore = ServiceStore.getInstance()
   static SESSION_PATH = 'storage/sessions/baileys/'
   private retries = 0
   private interval: NodeJS.Timer
   serviceName: WpClients = WpClients.BAILEYS
+  private online = false
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: 'trace' }) as unknown as Logger
@@ -60,7 +66,7 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getState(): Promise<WpStates> {
-    return Promise.resolve(this.clientSock.authState.creds ? WpStates.CONNECTED : WpStates.UNPAIRED)
+    return Promise.resolve(this.online ? WpStates.CONNECTED : WpStates.UNPAIRED)
   }
 
   getChatById(chatId: string): Promise<WpChatInterface> {
@@ -109,7 +115,8 @@ export class BaileysClient implements WPClientInterface {
       keepAliveIntervalMs: 30000,
       retryRequestDelayMs: 2000,
       markOnlineOnConnect: true,
-      defaultQueryTimeoutMs: 1000,
+      defaultQueryTimeoutMs: 2000,
+      shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => false,
       getMessage: this.getMessage,
     })
 
@@ -120,7 +127,7 @@ export class BaileysClient implements WPClientInterface {
     this.clientSock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr, isOnline } = update
 
-      console.log('Connection update: *********')
+      console.log('Connection *****');
       console.table(update)
 
       if (connection === 'close') {
@@ -129,28 +136,44 @@ export class BaileysClient implements WPClientInterface {
           (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
+        this.online = false
         if (shouldReconnect) {
           setTimeout(() => this.initialize(), 3000)
         } else {
-          console.log('Not reconnecting, loggedout')
+            this.triggerEvent(WpEvents.DISCONNECTED)
+            clearInterval(this.interval)
+            FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
+            console.log('Not reconnecting, loggedout')
         }
       } else if (connection === 'connecting') {
+        this.online = false
         this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.PAIRING)
       } else if (connection === 'open') {
         console.log('Connected to socket successfully')
+        this.online = true
+        this.triggerEvent(WpEvents.READY)
         this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
+        this.online = false
         this.triggerEvent(WpEvents.QR_RECEIVED, qr)
-      } else if (isOnline) {
+      }
+
+      if (isOnline) {
         this.triggerEvent(WpEvents.READY)
+        this.online = true
       }
     })
 
-    this.clientSock.ev.on('messages.upsert', (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
-      const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
-
-      this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+    this.clientSock.ev.on('messages.upsert', async (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
+      if (this.isValidMessage(message.messages[0], message.type)) {
+        const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
+        this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+      }
     })
+  }
+
+  private isValidMessage(message: WAMessage, type: MessageUpsertType): boolean {
+    return !message.key.fromMe && !message.key.remoteJid?.includes('g.us') && !message.broadcast && type === 'notify'
   }
 
   getInfo(): string {

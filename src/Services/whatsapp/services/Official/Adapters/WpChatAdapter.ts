@@ -3,6 +3,8 @@ import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpContactAdapter } from './WpContactAdapter'
 import { OfficialClient } from '../OfficialClient'
 import { Store } from '../../../../../Services/store/Store'
+import { ClientInterface } from '../../../../../Interfaces/ClientInterface'
+import config from '../../../../../../config'
 
 export class WpChatAdapter implements WpChatInterface {
   archived: boolean = false
@@ -21,12 +23,17 @@ export class WpChatAdapter implements WpChatInterface {
     return Promise.resolve()
   }
 
-  getContact(): Promise<WpContactInterface> {
+  async getContact(): Promise<WpContactInterface> {
     const contact = this.store.clients.get(this.id)
-    if (contact) {
-      return Promise.resolve(new WpContactAdapter(contact))
+    if (!contact) {
+      return Promise.resolve(new WpContactAdapter({
+        id: this.id,
+        name: 'Usuario',
+        phone: this.id.replace('@c.us', ''),
+        photoUrl: config.DEFAULT_CLIENT_PHOTO_URL,
+      } as ClientInterface))
     } else {
-      throw new Error('Contact not found')
+      return Promise.resolve(new WpContactAdapter(contact))
     }
   }
 }

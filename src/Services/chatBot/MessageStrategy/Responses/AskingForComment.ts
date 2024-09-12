@@ -18,7 +18,9 @@ export class AskingForComment extends ResponseContract {
 
     const place = this.session.place
 
-    if (place) await this.createService(place, comment)
+    if (place) await this.createService(place, comment).then(async () => {
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.SERVICE_CREATED))
+      await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)})
     else {
       await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ERROR_CREATING_SERVICE))
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
@@ -27,6 +29,6 @@ export class AskingForComment extends ResponseContract {
 
   hasComment(message: WpMessage): boolean {
     const msg = MessageHelper.normalize(message.msg)
-    return msg.length > 3
+    return msg.length >= 2
   }
 }
