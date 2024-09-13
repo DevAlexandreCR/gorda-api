@@ -54,7 +54,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
           {
             id: message.id,
             timestamp: typeof message.timestamp === 'string' ? parseInt(message.timestamp) : message.timestamp,
-            from: message.from + '@c.us',
+            from: message.from,
             type: type,
             isStatus: false,
             body: message.text?.body ?? type,
