@@ -27,10 +27,6 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
-import { ClientInterface } from '../../../../Interfaces/ClientInterface'
-import { WpContactAdapter } from './Adapters/WpContactAdapter'
-import { Store as ServiceStore } from '../../../../Services/store/Store'
-import config from '../../../../../config'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -38,12 +34,11 @@ export class BaileysClient implements WPClientInterface {
   private state: AuthenticationState
   private logger: any
   private store: any
-  private serviceStore: ServiceStore = ServiceStore.getInstance()
   static SESSION_PATH = 'storage/sessions/baileys/'
   private retries = 0
   private interval: NodeJS.Timer
   serviceName: WpClients = WpClients.BAILEYS
-  private online = false
+  private status: WpStates = WpStates.UNPAIRED
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: 'trace' }) as unknown as Logger
@@ -66,7 +61,7 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getState(): Promise<WpStates> {
-    return Promise.resolve(this.online ? WpStates.CONNECTED : WpStates.UNPAIRED)
+    return Promise.resolve(this.status)
   }
 
   getChatById(chatId: string): Promise<WpChatInterface> {
@@ -136,31 +131,40 @@ export class BaileysClient implements WPClientInterface {
           (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
-        this.online = false
+        this.status = WpStates.UNPAIRED
         if (shouldReconnect) {
           setTimeout(() => this.initialize(), 3000)
         } else {
-            this.triggerEvent(WpEvents.DISCONNECTED)
-            clearInterval(this.interval)
-            FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
-            console.log('Not reconnecting, loggedout')
+          if ((lastDisconnect?.error as Boom)?.output.statusCode === DisconnectReason.restartRequired) { 
+            console.log('Restart required')
+            this.status = WpStates.OPENING
+            this.initialize()
+          }
+          this.triggerEvent(WpEvents.DISCONNECTED)
+          clearInterval(this.interval)
+          FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
+          console.log('Not reconnecting, loggedout')
         }
       } else if (connection === 'connecting') {
-        this.online = false
-        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.PAIRING)
+        this.status = WpStates.OPENING
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
       } else if (connection === 'open') {
         console.log('Connected to socket successfully')
-        this.online = true
+        this.status = WpStates.CONNECTED
         this.triggerEvent(WpEvents.READY)
         this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
-        this.online = false
-        this.triggerEvent(WpEvents.QR_RECEIVED, qr)
+        if (this.status === WpStates.CONNECTED) {
+          console.log('QR Received when already connected, skipping')
+        } else {
+          this.triggerEvent(WpEvents.QR_RECEIVED, qr)
+          this.status = WpStates.OPENING
+        }
       }
 
       if (isOnline) {
         this.triggerEvent(WpEvents.READY)
-        this.online = true
+        this.status = WpStates.CONNECTED
       }
     })
 
