@@ -45,11 +45,7 @@ export class BaileysClient implements WPClientInterface {
   }
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
-    await this.clientSock.sendMessage(phoneNumber, { text: message }).catch((e) => {
-      this.status = WpStates.OPENING
-      this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
-      setTimeout(() => this.initialize(), 3000)
-    })
+    await this.clientSock.sendMessage(phoneNumber, { text: message })
   }
 
   on(event: WpEvents, callback: (...arg: any) => void): void {

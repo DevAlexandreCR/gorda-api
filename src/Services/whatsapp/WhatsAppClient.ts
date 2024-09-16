@@ -348,6 +348,8 @@ export class WhatsAppClient {
       if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
       if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
         return this.restartChromium()
+      } else {
+        throw e
       }
     })
 
