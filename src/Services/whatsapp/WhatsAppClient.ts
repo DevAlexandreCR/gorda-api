@@ -121,7 +121,9 @@ export class WhatsAppClient {
 
   onDisconnected = async (reason: string | WpStates): Promise<void> => {
     console.log('Client disconnected ', this.wpClient.alias, reason)
-    await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+    if (!this.deleting) {
+      await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+    }
     if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.DISCONNECTED, reason)
     if (reason === EmitEvents.NAVIGATION)
       await this.client.logout().catch((e) => {

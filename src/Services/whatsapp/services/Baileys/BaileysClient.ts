@@ -41,11 +41,15 @@ export class BaileysClient implements WPClientInterface {
   private status: WpStates = WpStates.UNPAIRED
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: 'trace' }) as unknown as Logger
+    this.logger = P({ level: 'error' }) as unknown as Logger
   }
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
-    await this.clientSock.sendMessage(phoneNumber, { text: message })
+    await this.clientSock.sendMessage(phoneNumber, { text: message }).catch((e) => {
+      this.status = WpStates.OPENING
+      this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
+      setTimeout(() => this.initialize(), 3000)
+    })
   }
 
   on(event: WpEvents, callback: (...arg: any) => void): void {
@@ -126,20 +130,17 @@ export class BaileysClient implements WPClientInterface {
       console.table(update)
 
       if (connection === 'close') {
-        console.log('Connection closed')
         const shouldReconnect =
           (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
         this.status = WpStates.UNPAIRED
-        if (shouldReconnect) {
+        if (shouldReconnect || (lastDisconnect?.error as Boom)?.output.statusCode === DisconnectReason.restartRequired) {
+          console.log('Restart required')
+          this.status = WpStates.OPENING
+          this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
           setTimeout(() => this.initialize(), 3000)
         } else {
-          if ((lastDisconnect?.error as Boom)?.output.statusCode === DisconnectReason.restartRequired) { 
-            console.log('Restart required')
-            this.status = WpStates.OPENING
-            this.initialize()
-          }
           this.triggerEvent(WpEvents.DISCONNECTED)
           clearInterval(this.interval)
           FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
