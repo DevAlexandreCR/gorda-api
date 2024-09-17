@@ -39,6 +39,7 @@ export class BaileysClient implements WPClientInterface {
   private interval: NodeJS.Timer
   serviceName: WpClients = WpClients.BAILEYS
   private status: WpStates = WpStates.UNPAIRED
+  private QR: string|null = null
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: 'error' }) as unknown as Logger
@@ -61,6 +62,9 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getState(): Promise<WpStates> {
+    if (this.status === WpStates.OPENING && this.QR) {
+      setTimeout(() => this.triggerEvent(WpEvents.QR_RECEIVED, this.QR), 2000)
+    }
     return Promise.resolve(this.status)
   }
 
@@ -126,6 +130,7 @@ export class BaileysClient implements WPClientInterface {
       console.table(update)
 
       if (connection === 'close') {
+        this.QR = null
         const shouldReconnect =
           (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
@@ -146,11 +151,13 @@ export class BaileysClient implements WPClientInterface {
         this.status = WpStates.OPENING
         this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
       } else if (connection === 'open') {
+        this.QR = null
         console.log('Connected to socket successfully')
         this.status = WpStates.CONNECTED
         this.triggerEvent(WpEvents.READY)
         this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
+        this.QR = qr
         if (this.status === WpStates.CONNECTED) {
           console.log('QR Received when already connected, skipping')
         } else {
@@ -160,7 +167,7 @@ export class BaileysClient implements WPClientInterface {
       }
 
       if (isOnline) {
-        this.triggerEvent(WpEvents.READY)
+        this.QR = null
         this.status = WpStates.CONNECTED
       }
     })
@@ -178,7 +185,7 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getInfo(): string {
-    return this.clientSock.user?.name || ''
+    return this.clientSock?.user?.name || ''
   }
 
   private triggerEvent(event: WpEvents, ...args: any[]): void {
