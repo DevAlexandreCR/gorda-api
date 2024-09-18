@@ -27,6 +27,7 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
+import config from '../../../../../config'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -42,7 +43,7 @@ export class BaileysClient implements WPClientInterface {
   private QR: string|null = null
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: 'error' }) as unknown as Logger
+    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'debug' }) as unknown as Logger
   }
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
@@ -87,6 +88,9 @@ export class BaileysClient implements WPClientInterface {
   }
 
   async initialize(): Promise<void> {
+    if (this.status === WpStates.CONNECTED) {
+      return Promise.resolve()
+    }
     this.retries++
     const { state, saveCreds } = await useMultiFileAuthState(BaileysClient.SESSION_PATH + this.wpClient.id)
     this.state = {
@@ -153,6 +157,7 @@ export class BaileysClient implements WPClientInterface {
         this.QR = null
         console.log('Connected to socket successfully')
         this.status = WpStates.CONNECTED
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.CONNECTED)
         this.triggerEvent(WpEvents.READY)
         this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
