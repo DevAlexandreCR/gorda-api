@@ -115,7 +115,6 @@ export class BaileysClient implements WPClientInterface {
       retryRequestDelayMs: 2000,
       markOnlineOnConnect: true,
       defaultQueryTimeoutMs: 2000,
-      shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => false,
       getMessage: this.getMessage,
     })
 
