@@ -101,7 +101,7 @@ export class WhatsAppClient {
   }
 
   onMessageReceived = async (msg: WpMessageInterface): Promise<void> => {
-    console.log('message received', msg.from, msg.type, msg.body)
+    console.log('message received', this.wpClient.alias, msg.type, msg.from, msg.body.substring(0, 50))
     if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
   }
 
@@ -343,13 +343,11 @@ export class WhatsAppClient {
 
   async sendMessage(chatId: string, message: string): Promise<void> {
     await this.client.sendMessage(chatId, message).catch((e) => {
-      console.log('sendMessage ' + message, this.wpClient.alias, e.message)
+      console.warn('sendMessage Error' + message, this.wpClient.alias, e.message)
       Sentry.captureException(e)
       if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
       if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
         return this.restartChromium()
-      } else {
-        throw e
       }
     })
 
