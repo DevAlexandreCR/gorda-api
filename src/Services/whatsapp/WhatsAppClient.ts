@@ -345,7 +345,7 @@ export class WhatsAppClient {
     await this.client.sendMessage(chatId, message).catch((e) => {
       console.warn('sendMessage Error' + message, this.wpClient.alias, e.message, chatId)
       Sentry.captureException(e)
-      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
+      // if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
       if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
         return this.restartChromium()
       }
