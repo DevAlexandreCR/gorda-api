@@ -343,7 +343,7 @@ export class WhatsAppClient {
 
   async sendMessage(chatId: string, message: string): Promise<void> {
     await this.client.sendMessage(chatId, message).catch((e) => {
-      console.warn('sendMessage Error' + message, this.wpClient.alias, e.message, chatId)
+      console.log('sendMessage Error' + message.substring(0, 20), this.wpClient.alias, chatId, JSON.stringify(e))
       Sentry.captureException(e)
       // if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
       if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
