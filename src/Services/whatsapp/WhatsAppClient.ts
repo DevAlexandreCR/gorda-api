@@ -79,6 +79,7 @@ export class WhatsAppClient {
   }
 
   onReady = (): void => {
+    WpNotificationRepository.offNotifications(this.wpClient.id)
     this.chatBot = new ChatBot(this.client, this.wpClient.id)
     this.chatBot.sync()
     WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned)
@@ -127,6 +128,7 @@ export class WhatsAppClient {
     if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.DISCONNECTED, reason)
     if (reason === EmitEvents.NAVIGATION)
       await this.client.logout().catch((e) => {
+        WpNotificationRepository.offNotifications(this.wpClient.id)
         console.log('destroy ', this.wpClient.alias, e.message)
         this.socket?.emit(EmitEvents.FAILURE, e.message)
         Sentry.captureException(e)
@@ -260,6 +262,7 @@ export class WhatsAppClient {
       .logout()
       .then(async () => {
         console.log('logout successfully', this.wpClient.alias)
+        WpNotificationRepository.offNotifications(this.wpClient.id)
         if (this.socket) this.socket.to(this.wpClient.id).emit('destroy')
       })
       .catch((e) => {
