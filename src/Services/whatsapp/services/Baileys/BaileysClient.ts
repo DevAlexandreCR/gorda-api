@@ -113,12 +113,14 @@ export class BaileysClient implements WPClientInterface {
       browser: Browsers.ubuntu('Chrome'),
       printQRInTerminal: false,
       mobile: false,
-      msgRetryCounterCache: new NodeCache({ stdTTL: 60, checkperiod: 120 }),
-      maxMsgRetryCount: 2,
-      keepAliveIntervalMs: 30000,
-      retryRequestDelayMs: 2000,
+      msgRetryCounterCache: new NodeCache({ stdTTL: 60, checkperiod: 60 }),
+      maxMsgRetryCount: 3,
+      keepAliveIntervalMs: 15000,
+      retryRequestDelayMs: 1500,
       markOnlineOnConnect: true,
-      defaultQueryTimeoutMs: 2000,
+      defaultQueryTimeoutMs: 3000,
+      connectTimeoutMs: 20000,
+      syncFullHistory: true,
       getMessage: this.getMessage,
     })
 
@@ -129,7 +131,7 @@ export class BaileysClient implements WPClientInterface {
     this.clientSock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr, isOnline } = update
 
-      console.log('Connection *****');
+      console.log('***** Connection *****');
       console.table(update)
 
       if (connection === 'close') {
@@ -158,8 +160,6 @@ export class BaileysClient implements WPClientInterface {
         console.log('Connected to socket successfully')
         this.status = WpStates.CONNECTED
         this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.CONNECTED)
-        this.triggerEvent(WpEvents.READY)
-        this.triggerEvent(WpEvents.AUTHENTICATED)
       } else if (qr) {
         this.QR = qr
         if (this.status === WpStates.CONNECTED) {
@@ -173,6 +173,9 @@ export class BaileysClient implements WPClientInterface {
       if (isOnline) {
         this.QR = null
         this.status = WpStates.CONNECTED
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.CONNECTED)
+        this.triggerEvent(WpEvents.READY)
+        this.triggerEvent(WpEvents.AUTHENTICATED)
       }
     })
 
