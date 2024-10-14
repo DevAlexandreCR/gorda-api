@@ -20,6 +20,8 @@ import {
   WAMessage,
   MessageUpsertType,
   proto,
+  isJidBroadcast,
+  isJidNewsletter,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import P, { Logger } from 'pino'
@@ -43,7 +45,7 @@ export class BaileysClient implements WPClientInterface {
   private QR: string|null = null
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'debug' }) as unknown as Logger
+    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
   }
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
@@ -84,7 +86,7 @@ export class BaileysClient implements WPClientInterface {
   private initCache(): void {
     this.interval = setInterval(() => {
       this.store.writeToFile(BaileysClient.SESSION_PATH + this.wpClient.id + '/store.json')
-    }, 10000)
+    }, 10_000)
   }
 
   async initialize(): Promise<void> {
@@ -118,6 +120,7 @@ export class BaileysClient implements WPClientInterface {
       keepAliveIntervalMs: 15000,
       retryRequestDelayMs: 1500,
       markOnlineOnConnect: true,
+      shouldIgnoreJid: (jid?: string) => !jid || isJidBroadcast(jid) || isJidNewsletter(jid),
       defaultQueryTimeoutMs: 3000,
       connectTimeoutMs: 20000,
       syncFullHistory: true,
