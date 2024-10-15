@@ -99,12 +99,13 @@ io.on('connection', async (socket: Socket) => {
         })
   })
 
-  socket.on('reset', async () => {
-    console.log('reset was removed')
-  })
-
   socket.on('get-state', async () => {
     if (wpServices[clientId]) wpServices[clientId].getState()
+  })
+  
+  socket.on('reset', async () => {
+    console.log('restarting by user: ', clientId)
+    process.exit(0)
   })
 
   socket.on('destroy', async () => {
