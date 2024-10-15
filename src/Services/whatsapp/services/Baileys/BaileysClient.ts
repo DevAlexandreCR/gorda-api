@@ -205,11 +205,13 @@ export class BaileysClient implements WPClientInterface {
   }
 
   private async getMessage(key: WAMessageKey): Promise<WAMessageContent | undefined> {
-    if (!this.store) { 
+    try {
+      const msg = await this.store.loadMessage(key.remoteJid!, key.id!)
+      return msg?.message || undefined
+    } catch (error) {
+      console.log('Error getting message', error)
       console.log('Store not initialized, reinitalizing app')
       process.exit(1)
     }
-    const msg = await this.store.loadMessage(key.remoteJid!, key.id!)
-    return msg?.message || undefined
   }
 }
