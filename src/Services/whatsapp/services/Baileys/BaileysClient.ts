@@ -209,8 +209,6 @@ export class BaileysClient implements WPClientInterface {
       return msg?.message || undefined
     } catch (error) {
       console.log('Error getting message', error)
-      console.log('Store not initialized, reinitalizing app')
-      process.exit(1)
     }
   }
 }
