@@ -46,6 +46,7 @@ export class BaileysClient implements WPClientInterface {
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
+    this.store = makeInMemoryStore({ logger: this.logger })
   }
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
@@ -103,8 +104,6 @@ export class BaileysClient implements WPClientInterface {
     if (this.retries == 1) {
       this.initCache()
     }
-
-    this.store = makeInMemoryStore({ logger: this.logger })
 
     const { version } = await fetchLatestBaileysVersion()
 
