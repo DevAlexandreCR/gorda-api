@@ -54,6 +54,14 @@ class WpNotificationRepository {
       .limitToLast(3)
       .on('child_added', onArrived)
   }
+
+  public offNotifications(wpClient: string): void {
+    Database.dbWpNotifications().child('arrived').orderByChild('wp_client_id').equalTo(wpClient).off()
+    Database.dbWpNotifications().child('new').orderByChild('wp_client_id').equalTo(wpClient).off()
+    Database.dbWpNotifications().child('terminated').orderByChild('wp_client_id').equalTo(wpClient).off()
+    Database.dbWpNotifications().child('canceled').orderByChild('wp_client_id').equalTo(wpClient).off()
+    Database.dbWpNotifications().child('assigned').orderByChild('wp_client_id').equalTo(wpClient).off()
+  }
 }
 
 export default new WpNotificationRepository()

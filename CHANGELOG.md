@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.4.x
 
+## [1.4.4 (2024-10-14)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.4...v1.4.3)
+
+### Added
+
+- Restart button from frontend. ([#92](https://github.com/DevAlexandreCR/gorda-api/pull/92))
+
+## [1.4.3 (2024-09-15)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.3...v1.4.2)
+
+### Fixed
+
+- Fix errors on connection Baileys. ([#90](https://github.com/DevAlexandreCR/gorda-api/pull/90))
+
 ## [1.4.2 (2024-09-12)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.2...v1.4.1)
 
 ### Added

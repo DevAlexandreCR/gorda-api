@@ -69,7 +69,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
           wpClientService,
         )
 
-        const chat = await store.getChatById(wpClient.id, wpMessage.from, profileName)
+        const chat = await store.getChatById(wpClient.id, message.from, profileName)
 
         await MessageRepository.addMessage(wpClient.id, chat.id, {
           id: wpMessage.id,

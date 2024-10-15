@@ -20,6 +20,8 @@ import {
   WAMessage,
   MessageUpsertType,
   proto,
+  isJidBroadcast,
+  isJidNewsletter,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import P, { Logger } from 'pino'
@@ -27,9 +29,6 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
-import { ClientInterface } from '../../../../Interfaces/ClientInterface'
-import { WpContactAdapter } from './Adapters/WpContactAdapter'
-import { Store as ServiceStore } from '../../../../Services/store/Store'
 import config from '../../../../../config'
 
 export class BaileysClient implements WPClientInterface {
@@ -38,15 +37,16 @@ export class BaileysClient implements WPClientInterface {
   private state: AuthenticationState
   private logger: any
   private store: any
-  private serviceStore: ServiceStore = ServiceStore.getInstance()
   static SESSION_PATH = 'storage/sessions/baileys/'
   private retries = 0
   private interval: NodeJS.Timer
   serviceName: WpClients = WpClients.BAILEYS
-  private online = false
+  private status: WpStates = WpStates.UNPAIRED
+  private QR: string|null = null
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: 'trace' }) as unknown as Logger
+    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
+    this.store = makeInMemoryStore({ logger: this.logger })
   }
 
   async sendMessage(phoneNumber: string, message: string): Promise<void> {
@@ -66,7 +66,10 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getState(): Promise<WpStates> {
-    return Promise.resolve(this.online ? WpStates.CONNECTED : WpStates.UNPAIRED)
+    if (this.status === WpStates.OPENING && this.QR) {
+      setTimeout(() => this.triggerEvent(WpEvents.QR_RECEIVED, this.QR), 2000)
+    }
+    return Promise.resolve(this.status)
   }
 
   getChatById(chatId: string): Promise<WpChatInterface> {
@@ -84,10 +87,13 @@ export class BaileysClient implements WPClientInterface {
   private initCache(): void {
     this.interval = setInterval(() => {
       this.store.writeToFile(BaileysClient.SESSION_PATH + this.wpClient.id + '/store.json')
-    }, 10000)
+    }, 10_000)
   }
 
   async initialize(): Promise<void> {
+    if (this.status === WpStates.CONNECTED) {
+      return Promise.resolve()
+    }
     this.retries++
     const { state, saveCreds } = await useMultiFileAuthState(BaileysClient.SESSION_PATH + this.wpClient.id)
     this.state = {
@@ -99,8 +105,6 @@ export class BaileysClient implements WPClientInterface {
       this.initCache()
     }
 
-    this.store = makeInMemoryStore({ logger: this.logger })
-
     const { version } = await fetchLatestBaileysVersion()
 
     this.clientSock = makeWASocket({
@@ -110,13 +114,15 @@ export class BaileysClient implements WPClientInterface {
       browser: Browsers.ubuntu('Chrome'),
       printQRInTerminal: false,
       mobile: false,
-      msgRetryCounterCache: new NodeCache({ stdTTL: 60, checkperiod: 120 }),
-      maxMsgRetryCount: 2,
-      keepAliveIntervalMs: 30000,
-      retryRequestDelayMs: 2000,
+      msgRetryCounterCache: new NodeCache({ stdTTL: 60, checkperiod: 60 }),
+      maxMsgRetryCount: 3,
+      keepAliveIntervalMs: 15000,
+      retryRequestDelayMs: 1500,
       markOnlineOnConnect: true,
-      defaultQueryTimeoutMs: 2000,
-      shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => false,
+      shouldIgnoreJid: (jid?: string) => !jid || isJidBroadcast(jid) || isJidNewsletter(jid),
+      defaultQueryTimeoutMs: 3000,
+      connectTimeoutMs: 20000,
+      syncFullHistory: true,
       getMessage: this.getMessage,
     })
 
@@ -127,40 +133,51 @@ export class BaileysClient implements WPClientInterface {
     this.clientSock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr, isOnline } = update
 
-      console.log('Connection *****');
+      console.log('***** Connection *****');
       console.table(update)
 
       if (connection === 'close') {
-        console.log('Connection closed')
+        this.QR = null
         const shouldReconnect =
           (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
-        this.online = false
-        if (shouldReconnect) {
+        this.status = WpStates.UNPAIRED
+        if (shouldReconnect || (lastDisconnect?.error as Boom)?.output.statusCode === DisconnectReason.restartRequired) {
+          console.log('Restart required')
+          this.status = WpStates.OPENING
+          this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
           setTimeout(() => this.initialize(), 3000)
         } else {
-            this.triggerEvent(WpEvents.DISCONNECTED)
-            clearInterval(this.interval)
-            FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
-            console.log('Not reconnecting, loggedout')
+          this.triggerEvent(WpEvents.DISCONNECTED)
+          clearInterval(this.interval)
+          FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
+          console.log('Not reconnecting, loggedout')
         }
       } else if (connection === 'connecting') {
-        this.online = false
-        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.PAIRING)
+        this.status = WpStates.OPENING
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
       } else if (connection === 'open') {
+        this.QR = null
         console.log('Connected to socket successfully')
-        this.online = true
-        this.triggerEvent(WpEvents.READY)
-        this.triggerEvent(WpEvents.AUTHENTICATED)
+        this.status = WpStates.CONNECTED
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.CONNECTED)
       } else if (qr) {
-        this.online = false
-        this.triggerEvent(WpEvents.QR_RECEIVED, qr)
+        this.QR = qr
+        if (this.status === WpStates.CONNECTED) {
+          console.log('QR Received when already connected, skipping')
+        } else {
+          this.triggerEvent(WpEvents.QR_RECEIVED, qr)
+          this.status = WpStates.OPENING
+        }
       }
 
       if (isOnline) {
+        this.QR = null
+        this.status = WpStates.CONNECTED
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.CONNECTED)
         this.triggerEvent(WpEvents.READY)
-        this.online = true
+        this.triggerEvent(WpEvents.AUTHENTICATED)
       }
     })
 
@@ -177,7 +194,7 @@ export class BaileysClient implements WPClientInterface {
   }
 
   getInfo(): string {
-    return this.clientSock.user?.name || ''
+    return this.clientSock?.user?.name || ''
   }
 
   private triggerEvent(event: WpEvents, ...args: any[]): void {
@@ -187,7 +204,11 @@ export class BaileysClient implements WPClientInterface {
   }
 
   private async getMessage(key: WAMessageKey): Promise<WAMessageContent | undefined> {
-    const msg = await this.store.loadMessage(key.remoteJid!, key.id!)
-    return msg?.message || undefined
+    try {
+      const msg = await this.store.loadMessage(key.remoteJid!, key.id!)
+      return msg?.message || undefined
+    } catch (error) {
+      console.log('Error getting message', error)
+    }
   }
 }

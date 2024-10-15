@@ -79,6 +79,7 @@ export class WhatsAppClient {
   }
 
   onReady = (): void => {
+    WpNotificationRepository.offNotifications(this.wpClient.id)
     this.chatBot = new ChatBot(this.client, this.wpClient.id)
     this.chatBot.sync()
     WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned)
@@ -101,7 +102,7 @@ export class WhatsAppClient {
   }
 
   onMessageReceived = async (msg: WpMessageInterface): Promise<void> => {
-    console.log('message received', msg.from, msg.type, msg.body)
+    console.log('message received', this.wpClient.alias, msg.type, msg.from, msg.body.substring(0, 50))
     if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
   }
 
@@ -121,10 +122,13 @@ export class WhatsAppClient {
 
   onDisconnected = async (reason: string | WpStates): Promise<void> => {
     console.log('Client disconnected ', this.wpClient.alias, reason)
-    await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+    if (!this.deleting) {
+      await SettingsRepository.enableWpNotifications(this.wpClient.id, false)
+    }
     if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.DISCONNECTED, reason)
     if (reason === EmitEvents.NAVIGATION)
       await this.client.logout().catch((e) => {
+        WpNotificationRepository.offNotifications(this.wpClient.id)
         console.log('destroy ', this.wpClient.alias, e.message)
         this.socket?.emit(EmitEvents.FAILURE, e.message)
         Sentry.captureException(e)
@@ -185,7 +189,7 @@ export class WhatsAppClient {
         await WpNotificationRepository.deleteNotification('assigned', snapshot.key ?? '')
       }
     } else {
-      console.error('can not send message cause driver id is not set')
+      console.error('can not send message cause driver id is not set', notification, this.wpClient)
     }
   }
 
@@ -258,6 +262,7 @@ export class WhatsAppClient {
       .logout()
       .then(async () => {
         console.log('logout successfully', this.wpClient.alias)
+        WpNotificationRepository.offNotifications(this.wpClient.id)
         if (this.socket) this.socket.to(this.wpClient.id).emit('destroy')
       })
       .catch((e) => {
@@ -341,9 +346,9 @@ export class WhatsAppClient {
 
   async sendMessage(chatId: string, message: string): Promise<void> {
     await this.client.sendMessage(chatId, message).catch((e) => {
-      console.log('sendMessage ' + message, this.wpClient.alias, e.message)
+      console.log('sendMessage Error' + message.substring(0, 20), this.wpClient.alias, chatId, JSON.stringify(e))
       Sentry.captureException(e)
-      if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
+      // if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
       if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
         return this.restartChromium()
       }
