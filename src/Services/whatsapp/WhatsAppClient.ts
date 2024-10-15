@@ -189,7 +189,7 @@ export class WhatsAppClient {
         await WpNotificationRepository.deleteNotification('assigned', snapshot.key ?? '')
       }
     } else {
-      console.error('can not send message cause driver id is not set')
+      console.error('can not send message cause driver id is not set', notification, this.wpClient)
     }
   }
 
