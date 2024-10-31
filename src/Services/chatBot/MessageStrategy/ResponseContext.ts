@@ -44,7 +44,7 @@ export class ResponseContext {
     if (!this.response.supportMessage(message)) {
       const msg = getSingleMessage(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
       if (msg.enabled) {
-        return this.response.session.sendMessage(msg.message).then(() => {
+        return this.response.session.sendMessage(msg).then(() => {
           console.log('Message not supported')
         })
       }
