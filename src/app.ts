@@ -20,6 +20,7 @@ import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/whatsapp/MessageController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
+import { MessagesEnum } from 'Services/chatBot/MessagesEnum'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -124,9 +125,16 @@ io.on('connection', async (socket: Socket) => {
     }
   })
 
-  socket.on('send-message', async (wpClient: string, chatId: string, content: ChatBotMessage) => {
+  socket.on('send-message', async (wpClient: string, chatId: string, content: string) => {
     if (wpServices[wpClient]) {
-      await wpServices[clientId].sendMessage(chatId, content)
+      const message: ChatBotMessage = {
+        id: MessagesEnum.MESSAGE_FROM_ADMIN,
+        message: content,
+        name: MessagesEnum.MESSAGE_FROM_ADMIN,
+        enabled: true,
+        description: 'Mensaje enviado desde el panel de control',
+      }
+      await wpServices[clientId].sendMessage(chatId, message)
     }
   })
 
