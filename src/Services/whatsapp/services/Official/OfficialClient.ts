@@ -16,6 +16,7 @@ import { ApiMessage } from './Constants/ApiMessage'
 import { Interactive } from './Constants/Interactive'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
+import { MsgTypes } from './Constants/MsgTypes'
 
 export class OfficialClient implements WPClientInterface {
   private config: Config
@@ -66,7 +67,7 @@ export class OfficialClient implements WPClientInterface {
 
   async initialize(): Promise<void> {
     const msg: ChatBotMessage = {
-      id: 'init',
+      id: MessagesEnum.GREETING,
       message: 'Prueba de inicialización de whatsapp',
       name: 'Bot',
       enabled: true,
@@ -84,7 +85,7 @@ export class OfficialClient implements WPClientInterface {
     switch (message.id) {
       case MessagesEnum.GREETING:
          interactive = {
-            type: 'location_request_message',
+            type: MsgTypes.location,
             body: {
             text: message.message,
             },
@@ -92,9 +93,14 @@ export class OfficialClient implements WPClientInterface {
             name: 'send_location',
             }
          } as Interactive
+        break
       default:
         interactive = false
+        break
     }
+
+    console.log('Interactive', interactive, message);
+    
 
     return interactive
   }
