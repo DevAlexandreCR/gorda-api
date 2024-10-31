@@ -20,7 +20,7 @@ import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/whatsapp/MessageController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
-import { MessagesEnum } from 'Services/chatBot/MessagesEnum'
+import { MessagesEnum } from './Services/chatBot/MessagesEnum'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
