@@ -19,6 +19,7 @@ import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/whatsapp/MessageController'
 import { Store } from './Services/store/Store'
+import { ChatBotMessage } from './Types/ChatBotMessage'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -123,7 +124,7 @@ io.on('connection', async (socket: Socket) => {
     }
   })
 
-  socket.on('send-message', async (wpClient: string, chatId: string, content: string) => {
+  socket.on('send-message', async (wpClient: string, chatId: string, content: ChatBotMessage) => {
     if (wpServices[wpClient]) {
       await wpServices[clientId].sendMessage(chatId, content)
     }

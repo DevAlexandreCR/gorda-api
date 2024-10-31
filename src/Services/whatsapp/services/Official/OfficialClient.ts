@@ -12,6 +12,11 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import MessageRepository from '../../../../Repositories/MessageRepository'
 import { MessageTypes } from '../../constants/MessageTypes'
 import DateHelper from '../../../../Helpers/DateHelper'
+import { ApiMessage } from './Constants/ApiMessage'
+import { Interactive } from './Constants/Interactive'
+import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
+import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
+import { MsgTypes } from './Constants/MsgTypes'
 
 export class OfficialClient implements WPClientInterface {
   private config: Config
@@ -61,23 +66,56 @@ export class OfficialClient implements WPClientInterface {
   }
 
   async initialize(): Promise<void> {
-    return await this.sendMessage('573103794656', 'Prueba de inicialización de whatsapp').then(() => {
+    const msg: ChatBotMessage = {
+      id: MessagesEnum.GREETING,
+      message: 'Prueba de inicialización de whatsapp',
+      name: 'Bot',
+      enabled: true,
+      description: 'Mensaje de prueba',
+    }
+    return await this.sendMessage('573103794656', msg).then(() => {
       this.status = WpStates.CONNECTED
       this.triggerEvent(WpEvents.AUTHENTICATED)
       this.triggerEvent(WpEvents.READY)
     })
   }
 
-  async sendMessage(phoneNumber: string, message: string): Promise<void> {
+  private getInteractive(message: ChatBotMessage): Interactive | false {
+    let interactive: Interactive | false
+    switch (message.id) {
+      case MessagesEnum.GREETING:
+         interactive = {
+            type: MsgTypes.location,
+            body: {
+            text: message.message,
+            },
+            action: {
+            name: 'send_location',
+            }
+         } as Interactive
+        break
+      default:
+        interactive = false
+        break
+    }
+
+    return interactive
+  }
+
+  async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     const phone = phoneNumber.replace('@c.us', '')
     return new Promise<void>(async (resolve, reject) => {
-      const data = {
+      const interactive = this.getInteractive(message)
+      let data: ApiMessage = {
         messaging_product: this.config.messagingProduct,
         to: phone,
-        type: 'text',
+        type: interactive? 'INTERACTIVE' : 'TEXT',
         text: {
-          body: message,
-        },
+          body: message.message,
+        }
+      }
+      if (interactive) {
+        data = { ...data, interactive }
       }
 
       const client = this.store.findClientById(phone)
@@ -98,7 +136,7 @@ export class OfficialClient implements WPClientInterface {
             id: msgId,
             created_at: DateHelper.unix(),
             type: MessageTypes.TEXT,
-            body: message,
+            body: message.message,
             fromMe: true,
           })
           resolve()

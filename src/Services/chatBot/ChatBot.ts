@@ -100,7 +100,7 @@ export default class ChatBot {
 
   findSessionByChatId(chatId: string): Session|null {
     for (const [_, session] of this.sessions.entries()) {
-      if (session.chat_id === chatId && this.isSessionActive(session)) {
+      if (session.chat_id === chatId && this.isSessionActive(session) && session.wp_client_id === this.wpClientId) {
         return session
       }
     }

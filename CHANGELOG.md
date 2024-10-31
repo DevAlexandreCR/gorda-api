@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.4.x
 
+## [1.4.5 (2024-10-30)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.5...v1.4.4)
+
+### Added
+
+- Add location button to interactive message. ([#94](https://github.com/DevAlexandreCR/gorda-api/pull/94)
+
 ## [1.4.4 (2024-10-14)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.4...v1.4.3)
 
 ### Added

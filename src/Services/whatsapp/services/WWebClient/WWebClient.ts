@@ -8,6 +8,7 @@ import {WpClient} from '../../../../Interfaces/WpClient'
 import {WpChatAdapter} from './Adapters/WpChatAdapter'
 import {WpClients} from '../../constants/WPClients'
 import {WpMessageAdapter} from "./Adapters/WpMessageAdapter";
+import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 
 export class WWebClient implements WPClientInterface {
   private client: Client
@@ -56,9 +57,9 @@ export class WWebClient implements WPClientInterface {
     return this.client.initialize()
   }
 
-  async sendMessage(phoneNumber: string, message: string): Promise<void> {
+  async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     this.client
-      .sendMessage(phoneNumber, message)
+      .sendMessage(phoneNumber, message.message)
       .then(() => {
         Promise.resolve()
       })
@@ -86,7 +87,7 @@ export class WWebClient implements WPClientInterface {
   async getChatById(chatId: string): Promise<WpChatInterface> {
     const chat = await this.client.getChatById(chatId)
 
-    return new WpChatAdapter(chat)
+    return Promise.resolve(new WpChatAdapter(chat))
   }
 
   logout(): Promise<void> {
