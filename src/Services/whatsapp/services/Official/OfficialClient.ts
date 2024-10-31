@@ -99,9 +99,6 @@ export class OfficialClient implements WPClientInterface {
         break
     }
 
-    console.log('Interactive', interactive, message);
-    
-
     return interactive
   }
 
@@ -123,9 +120,6 @@ export class OfficialClient implements WPClientInterface {
 
       const client = this.store.findClientById(phone)
       const chat = await this.store.getChatById(this.wpClient.id, client?.id ?? phone, client?.name)
-
-      console.log('Sending message', data);
-      
 
       axios
         .post(this.config.apiUrl, data, {
