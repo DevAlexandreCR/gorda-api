@@ -80,18 +80,23 @@ export class OfficialClient implements WPClientInterface {
   }
 
   private getInteractive(message: ChatBotMessage): Interactive | false {
-    if (message.id === MessagesEnum.GREETING) {
-      return {
-        type: 'location_request_message',
-        body: {
-          text: message.message,
-        },
-        action: {
-          name: 'send_location',
-        }
-      } as Interactive
+    let interactive: Interactive | false
+    switch (message.id) {
+      case MessagesEnum.GREETING:
+         interactive = {
+            type: 'location_request_message',
+            body: {
+            text: message.message,
+            },
+            action: {
+            name: 'send_location',
+            }
+         } as Interactive
+      default:
+        interactive = false
     }
-    return false
+
+    return interactive
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {

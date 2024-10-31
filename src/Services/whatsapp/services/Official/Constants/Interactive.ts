@@ -4,8 +4,19 @@ export type Interactive = {
         text: string
     },
     action: {
-        name: string
+        name?: string,
+        buttons?: Array<{
+            type: 'reply',
+            reply?: {
+                id: string,
+                title: string
+            }
+        }>
     },
+    header?: {
+        type: 'text' | 'image' | 'video' | 'document',
+        text: string
+    }
     footer?: {
         text: string
     }
