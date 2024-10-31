@@ -34,7 +34,7 @@ export abstract class ResponseContract {
 
   async sendMessage(message: ChatBotMessage): Promise<void> {
     if (message.enabled) {
-      await this.retryPromise<void>(this.session.sendMessage(message.message), 3).catch((e) => {
+      await this.retryPromise<void>(this.session.sendMessage(message), 3).catch((e) => {
         Sentry.captureException(e)
         exit(1)
       })

@@ -2,6 +2,7 @@ import { Chat } from 'whatsapp-web.js'
 import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpContactInterface } from '../../../interfaces/WpContactInterface'
 import { WpContactAdapter } from './WpContactAdapter'
+import { ChatBotMessage } from '../../../../../Types/ChatBotMessage'
 
 export class WpChatAdapter implements WpChatInterface {
   id: string
@@ -11,8 +12,8 @@ export class WpChatAdapter implements WpChatInterface {
     this.id = chat.id._serialized
   }
 
-  async sendMessage(message: string): Promise<void> {
-    await this.chat.sendMessage(message)
+  async sendMessage(message: ChatBotMessage): Promise<void> {
+    await this.chat.sendMessage(message.message)
 
     return Promise.resolve()
   }

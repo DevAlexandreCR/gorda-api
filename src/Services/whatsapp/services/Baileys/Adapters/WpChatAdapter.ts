@@ -5,6 +5,7 @@ import { WpContactAdapter } from './WpContactAdapter'
 import { Store } from '../../../../../Services/store/Store'
 import config from '../../../../../../config'
 import { ClientInterface } from '../../../../../Interfaces/ClientInterface'
+import { ChatBotMessage } from '../../../../../Types/ChatBotMessage'
 
 export class WpChatAdapter implements WpChatInterface {
   archived: boolean = false
@@ -14,8 +15,8 @@ export class WpChatAdapter implements WpChatInterface {
     this.store = Store.getInstance()
   }
 
-  async sendMessage(message: string): Promise<void> {
-    await this.waSocket.sendMessage(this.id, { text: message })
+  async sendMessage(message: ChatBotMessage): Promise<void> {
+    await this.waSocket.sendMessage(this.id, { text: message.message })
     return Promise.resolve()
   }
 

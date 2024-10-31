@@ -30,6 +30,7 @@ import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
 import config from '../../../../../config'
+import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -49,8 +50,8 @@ export class BaileysClient implements WPClientInterface {
     this.store = makeInMemoryStore({ logger: this.logger })
   }
 
-  async sendMessage(phoneNumber: string, message: string): Promise<void> {
-    await this.clientSock.sendMessage(phoneNumber, { text: message })
+  async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
+    await this.clientSock.sendMessage(phoneNumber, { text: message.message })
   }
 
   on(event: WpEvents, callback: (...arg: any) => void): void {

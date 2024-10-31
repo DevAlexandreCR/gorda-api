@@ -5,6 +5,7 @@ import { OfficialClient } from '../OfficialClient'
 import { Store } from '../../../../../Services/store/Store'
 import { ClientInterface } from '../../../../../Interfaces/ClientInterface'
 import config from '../../../../../../config'
+import { ChatBotMessage } from '../../../../../Types/ChatBotMessage'
 
 export class WpChatAdapter implements WpChatInterface {
   archived: boolean = false
@@ -14,7 +15,7 @@ export class WpChatAdapter implements WpChatInterface {
     this.store = Store.getInstance()
   }
 
-  sendMessage(message: string): Promise<void> {
+  sendMessage(message: ChatBotMessage): Promise<void> {
     return this.client.sendMessage(this.id, message)
   }
 

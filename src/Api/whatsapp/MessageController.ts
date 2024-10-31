@@ -84,7 +84,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
 
         if (type !== MessageTypes.TEXT && type !== MessageTypes.LOCATION) {
           const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
-          wpClientService.sendMessage(wpMessage.from, msg.message)
+          wpClientService.sendMessage(wpMessage.from, msg)
         }
       })
     })

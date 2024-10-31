@@ -15,6 +15,7 @@ import { MessagesEnum } from '../Services/chatBot/MessagesEnum'
 import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
 import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
 import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
+import { ChatBotMessage } from '../Types/ChatBotMessage'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -180,7 +181,7 @@ export default class Session implements SessionInterface {
     this.wp_client_id = wpClientId
   }
 
-  public async sendMessage(content: string): Promise<void> {
+  public async sendMessage(content: ChatBotMessage): Promise<void> {
     await this.chat.sendMessage(content).then(() => {
       this.chat.archive().catch((e) => console.log(e.message))
     })
@@ -207,7 +208,7 @@ export default class Session implements SessionInterface {
         })
         const msg = getSingleMessage(MessagesEnum.ERROR_WHILE_PROCESSING)
         if (msg.enabled) {
-          await this.sendMessage(msg.message).catch((e) => {
+          await this.sendMessage(msg).catch((e) => {
             console.log('error while sending error message', e.message)
             exit(1)
           })
