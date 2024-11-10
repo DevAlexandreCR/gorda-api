@@ -18,6 +18,7 @@ import { WhatsAppClientDictionary } from './Interfaces/WhatsAppClientDiccionary'
 import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/whatsapp/MessageController'
+import polygonController from './Api/Polygons/PolygonController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
@@ -43,6 +44,7 @@ app.use(Sentry.Handlers.errorHandler())
 app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(controller)
+app.use(polygonController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
@@ -54,21 +56,22 @@ io.attach(server, { cors: { origin: true } })
 io.attach(serverSSL, { cors: { origin: true } })
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
-  store.getWpClients((clients: ClientDictionary) => {
-    Object.values(clients).forEach((client: WpClient) => {
-      if (!wpServices[client.id]) {
-        const wpService = new WhatsAppClient(client)
-        wpService.setWpClient(client)
-        wpService.initClient()
-        wpServices[client.id] = wpService
-      } else {
-        wpServices[client.id].setWpClient(client)
-      }
-    })
-  })
-  const removeDrivers = new RemoveConnectedDrivers()
-  removeDrivers.execute()
-  schedule.execute()
+  store.getBranches()
+  // store.getWpClients((clients: ClientDictionary) => {
+  //   Object.values(clients).forEach((client: WpClient) => {
+  //     if (!wpServices[client.id]) {
+  //       const wpService = new WhatsAppClient(client)
+  //       wpService.setWpClient(client)
+  //       wpService.initClient()
+  //       wpServices[client.id] = wpService
+  //     } else {
+  //       wpServices[client.id].setWpClient(client)
+  //     }
+  //   })
+  // })
+  // const removeDrivers = new RemoveConnectedDrivers()
+  // removeDrivers.execute()
+  // schedule.execute()
 })
 serverSSL.listen(443, async () => {
   console.log('listen: ', 443)

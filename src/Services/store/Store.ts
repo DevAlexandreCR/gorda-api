@@ -14,6 +14,7 @@ import DateHelper from '../../Helpers/DateHelper'
 import {ClientInterface} from '../../Interfaces/ClientInterface'
 import {WpContactInterface} from '../whatsapp/interfaces/WpContactInterface'
 import {MessageTypes} from '../whatsapp/constants/MessageTypes'
+import { Branch } from '../../Interfaces/Branch'
 
 export class Store {
   static instance: Store
@@ -23,6 +24,7 @@ export class Store {
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
   wpChats: Map<string, Chat> = new Map()
+  branches: Map<string, Branch> = new Map()
 
   private constructor() {
     this.setDrivers()
@@ -145,6 +147,14 @@ export class Store {
     const placesArray = Array.from(this.places)
     return placesArray.find((pla) => {
       return pla.key === placeId
+    })
+  }
+
+  getBranches(): void {
+    SettingsRepository.getBranches((branches) => {
+      branches.forEach((branch) => {
+        this.branches.set(branch.id, branch)
+      })
     })
   }
 }
