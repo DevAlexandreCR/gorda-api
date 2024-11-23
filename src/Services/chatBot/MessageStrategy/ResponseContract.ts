@@ -142,14 +142,15 @@ export abstract class ResponseContract {
   }
 
   protected async findContainingPolygon(latlng: LatLng): Promise<City | null> {
+    let city: City | null = null
     this.store.polygons.forEach((polygon) => {
       const geoPoint = point([latlng.lat, latlng.lng])
-
       if (booleanPointInPolygon(geoPoint, polygon)) {
-        if (polygon.properties) return Promise.resolve(this.store.findCityById(polygon.properties.name))
-        else return Promise.resolve(null)
+        if (polygon.properties) {
+          city = this.store.findCityById(polygon.properties.name)?? null
+        }
       }
     })
-    return Promise.resolve(null)
+    return city
   }
 }

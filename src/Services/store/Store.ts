@@ -163,9 +163,15 @@ export class Store {
         Array.from(branch.cities).forEach(([id, city]) => {
           this.cities.set(city.id, city)
           const coordinates: GeoJSON.Position[] = []
-          Array.from(city.polygon.values()).forEach((latLng: LatLng) => {
-            coordinates.push([latLng.lat, latLng.lng])
+
+          if (city.polygon.length == 0) return
+          
+          Array.from(city.polygon.values()).forEach((latLng: LatLng) => {            
+            coordinates.push([latLng.lng, latLng.lat])
           })
+          if (coordinates[0] !== coordinates[coordinates.length - 1]) {
+            coordinates.push(coordinates[0]);
+          }
           this.polygons.push(polygon([coordinates], { name: city.id }))
         })
       })
