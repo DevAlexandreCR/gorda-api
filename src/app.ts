@@ -57,21 +57,21 @@ io.attach(serverSSL, { cors: { origin: true } })
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
   store.getBranches()
-  // store.getWpClients((clients: ClientDictionary) => {
-  //   Object.values(clients).forEach((client: WpClient) => {
-  //     if (!wpServices[client.id]) {
-  //       const wpService = new WhatsAppClient(client)
-  //       wpService.setWpClient(client)
-  //       wpService.initClient()
-  //       wpServices[client.id] = wpService
-  //     } else {
-  //       wpServices[client.id].setWpClient(client)
-  //     }
-  //   })
-  // })
-  // const removeDrivers = new RemoveConnectedDrivers()
-  // removeDrivers.execute()
-  // schedule.execute()
+  store.getWpClients((clients: ClientDictionary) => {
+    Object.values(clients).forEach((client: WpClient) => {
+      if (!wpServices[client.id]) {
+        const wpService = new WhatsAppClient(client)
+        wpService.setWpClient(client)
+        wpService.initClient()
+        wpServices[client.id] = wpService
+      } else {
+        wpServices[client.id].setWpClient(client)
+      }
+    })
+  })
+  const removeDrivers = new RemoveConnectedDrivers()
+  removeDrivers.execute()
+  schedule.execute()
 })
 serverSSL.listen(443, async () => {
   console.log('listen: ', 443)

@@ -15,6 +15,10 @@ import {ClientInterface} from '../../Interfaces/ClientInterface'
 import {WpContactInterface} from '../whatsapp/interfaces/WpContactInterface'
 import {MessageTypes} from '../whatsapp/constants/MessageTypes'
 import { Branch } from '../../Interfaces/Branch'
+import { City } from '../../Interfaces/City'
+import { polygon } from '@turf/turf'
+import { LatLng } from '../../Interfaces/LatLng'
+import { Feature, Polygon, Position } from 'geojson'
 
 export class Store {
   static instance: Store
@@ -25,6 +29,8 @@ export class Store {
   wpClients: ClientDictionary = {}
   wpChats: Map<string, Chat> = new Map()
   branches: Map<string, Branch> = new Map()
+  cities: Map<string, City> = new Map()
+  polygons: Array<Feature<Polygon>> = new Array()
 
   private constructor() {
     this.setDrivers()
@@ -154,7 +160,29 @@ export class Store {
     SettingsRepository.getBranches((branches) => {
       branches.forEach((branch) => {
         this.branches.set(branch.id, branch)
+        Array.from(branch.cities).forEach(([id, city]) => {
+          this.cities.set(city.id, city)
+          const coordinates: GeoJSON.Position[] = []
+          Array.from(city.polygon.values()).forEach((latLng: LatLng) => {
+            coordinates.push([latLng.lat, latLng.lng])
+          })
+          this.polygons.push(polygon([coordinates], { name: city.id }))
+        })
       })
     })
+  }
+
+  findCityById(cityId: string): City | undefined {
+    return this.cities.get(cityId)
+  }
+
+  findCountryByCity(cityId: string): string {
+    let country = ''
+    this.branches.forEach((branch) => {
+      if (branch.cities.has(cityId)) {
+        country = branch.id
+      }
+    })
+    return country
   }
 }

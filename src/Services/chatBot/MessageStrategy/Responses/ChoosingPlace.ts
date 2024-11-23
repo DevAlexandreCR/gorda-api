@@ -11,7 +11,8 @@ export class ChoosingPlace extends ResponseContract {
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isLocation(message) && message.location) {
-      const place = this.getPlaceFromLocation(message.location)
+      const place = await this.getPlaceFromLocation(message.location)
+      if (!place) return
       return this.sendMessage(Messages.requestingService(place.name)).then(async () => {
         await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
         await this.session.setPlace(place)

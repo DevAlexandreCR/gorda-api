@@ -18,12 +18,7 @@ export class AskingForComment extends ResponseContract {
 
     const place = this.session.place
 
-    console.log('place', place);
-
     if (place) {
-      const geoPoint = {
-        
-      }
       await this.createService(place, comment).then(async () => {
         await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)
       })

@@ -13,6 +13,9 @@ import { exit } from 'process'
 import { ChatBotMessage } from '../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../MessagesEnum'
 import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
+import { City } from '../../../Interfaces/City'
+import {booleanPointInPolygon, point, polygon} from '@turf/turf'	
+import { LatLng } from '../../../Interfaces/LatLng'
 
 export abstract class ResponseContract {
   protected store: Store = Store.getInstance()
@@ -83,13 +86,23 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
 
-  getPlaceFromLocation(location: WpLocation): Place {
+  async getPlaceFromLocation(location: WpLocation): Promise<Place|false> {
     const place = new Place()
-    place.lat = location.lat
-    place.lng = location.lng
-    place.name = location.name || MessageHelper.LOCATION_NO_NAME
+    const latlng: LatLng = { lat: location.lat, lng: location.lng }
+    const city = await this.findContainingPolygon(latlng)
+    if (city) {
+      place.lat = location.lat
+      place.lng = location.lng
+      place.name = location.name || MessageHelper.LOCATION_NO_NAME
+      place.city = city.id
+      place.country = this.store.findCountryByCity(city.id)
 
-    return place
+      return place
+    } else {
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.NON_COVERED_AREA))
+      await this.session.setStatus(Session.STATUS_COMPLETED)
+      return false
+    }
   }
 
   getPlaceFromMessage(message: string): Array<Place> {
@@ -126,5 +139,17 @@ export abstract class ResponseContract {
       }
       attempt(0)
     })
+  }
+
+  protected async findContainingPolygon(latlng: LatLng): Promise<City | null> {
+    this.store.polygons.forEach((polygon) => {
+      const geoPoint = point([latlng.lat, latlng.lng])
+
+      if (booleanPointInPolygon(geoPoint, polygon)) {
+        if (polygon.properties) return Promise.resolve(this.store.findCityById(polygon.properties.name))
+        else return Promise.resolve(null)
+      }
+    })
+    return Promise.resolve(null)
   }
 }
