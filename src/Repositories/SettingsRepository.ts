@@ -4,6 +4,9 @@ import { WpClient } from '../Interfaces/WpClient'
 import { ChatBotMessage } from '../Types/ChatBotMessage'
 import Firestore from '../Services/firebase/Firestore'
 import { MessagesEnum } from '../Services/chatBot/MessagesEnum'
+import { Branch } from '../Interfaces/Branch'
+import { LatLng } from '../Interfaces/LatLng'
+import { City } from '../Interfaces/City'
 
 class SettingsRepository {
   /* istanbul ignore next */
@@ -44,6 +47,37 @@ class SettingsRepository {
       })
       listener(msgs)
     })
+  }
+
+  /* istanbul ignore next */
+  getBranches(listener: (branches: Map<string, Branch>) => void): void {
+    Database.dbBranches().on('value', (snapshot) => {
+      const branches: Map<string, Branch> = new Map()
+      snapshot.forEach((data) => {
+        const branchData = data.val()
+        const branch: Branch = {
+          id: branchData.id,
+          calling_code: branchData.calling_code,
+          currency_code: branchData.currency_code,
+          country: branchData.country,
+          cities: new Map(),
+        }
+        if (!branchData.cities) return
+        Object.entries<City>(branchData.cities).forEach(([id, city]) => {
+          if (!city.polygon) {
+            city.polygon = []
+          }
+          branch.cities.set(id, city)
+        })
+        branches.set(branchData.id, branch)
+      })
+      listener(branches)
+    })
+  }
+
+  /* istanbul ignore next */
+  async setCoordinates(branchId: string, cityId: string, coordinates: Array<LatLng>): Promise<void> {
+    return Database.dbBranches().child(branchId).child('cities').child(cityId).child('polygon').set(coordinates)
   }
 }
 export default new SettingsRepository()

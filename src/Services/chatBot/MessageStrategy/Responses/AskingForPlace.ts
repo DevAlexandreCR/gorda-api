@@ -12,7 +12,8 @@ export class AskingForPlace extends ResponseContract {
   public async processMessage(message: WpMessage): Promise<void> {
     if (!this.session.place) {
       if (this.isLocation(message) && message.location) {
-        const place = this.getPlaceFromLocation(message.location)
+        const place = await this.getPlaceFromLocation(message.location)
+        if (!place) return
         if (place.name !== MessageHelper.LOCATION_NO_NAME) {
           await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
             await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
@@ -38,6 +39,9 @@ export class AskingForPlace extends ResponseContract {
       } else {
         await this.sendMessage(Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND))
       }
+    } else {
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
+      this.session.processMessage(message, [])
     }
   }
 }

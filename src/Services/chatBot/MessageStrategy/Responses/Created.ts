@@ -14,7 +14,8 @@ export class Created extends ResponseContract {
     if (this.clientExists(this.session.chat_id)) await this.validateKey(message)
     else {
       if (this.isLocation(message) && message.location) {
-        const place = this.getPlaceFromLocation(message.location)
+        const place = await this.getPlaceFromLocation(message.location)
+        if (!place) return
         await this.session.setPlace(place)
       }
       await this.session.setStatus(Session.STATUS_ASKING_FOR_NAME)

@@ -5,4 +5,6 @@ export default class Place implements PlaceInterface {
     lat: number
     lng: number
     key: string
+    country: string
+    city: string
 }
