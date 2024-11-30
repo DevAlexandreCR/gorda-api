@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# Release Notes for 1.5.x
+
+## [1.5.0 (2024-11-30)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.0...v1.4.5)
+
+### Added
+
+- Add get city from location. ([#96](https://github.com/DevAlexandreCR/gorda-api/pull/96)
+
 # Release Notes for 1.4.x
 
 ## [1.4.5 (2024-10-30)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.4.5...v1.4.4)
