@@ -3,4 +3,6 @@ export interface PlaceInterface {
   name: string
   lat: number
   lng: number
+  country: string
+  city: string
 }

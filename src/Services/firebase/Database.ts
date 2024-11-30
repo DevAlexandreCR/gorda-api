@@ -18,6 +18,10 @@ class DatabaseService {
 	
 	public dbWpClients(): Reference {
 		return this.db.ref('settings/wp_clients/')
+  }
+  
+  public dbBranches(): Reference {
+		return this.db.ref('settings/branches/')
 	}
   
   public dbDrivers(): Reference {

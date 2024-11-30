@@ -18,8 +18,10 @@ import { WhatsAppClientDictionary } from './Interfaces/WhatsAppClientDiccionary'
 import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/whatsapp/MessageController'
+import polygonController from './Api/Polygons/PolygonController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
+import { MessagesEnum } from './Services/chatBot/MessagesEnum'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -42,6 +44,7 @@ app.use(Sentry.Handlers.errorHandler())
 app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(controller)
+app.use(polygonController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
@@ -53,6 +56,7 @@ io.attach(server, { cors: { origin: true } })
 io.attach(serverSSL, { cors: { origin: true } })
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
+  store.getBranches()
   store.getWpClients((clients: ClientDictionary) => {
     Object.values(clients).forEach((client: WpClient) => {
       if (!wpServices[client.id]) {
@@ -124,9 +128,16 @@ io.on('connection', async (socket: Socket) => {
     }
   })
 
-  socket.on('send-message', async (wpClient: string, chatId: string, content: ChatBotMessage) => {
+  socket.on('send-message', async (wpClient: string, chatId: string, content: string) => {
     if (wpServices[wpClient]) {
-      await wpServices[clientId].sendMessage(chatId, content)
+      const message: ChatBotMessage = {
+        id: MessagesEnum.MESSAGE_FROM_ADMIN,
+        message: content,
+        name: MessagesEnum.MESSAGE_FROM_ADMIN,
+        enabled: true,
+        description: 'Mensaje enviado desde el panel de control',
+      }
+      await wpServices[clientId].sendMessage(chatId, message)
     }
   })
 
