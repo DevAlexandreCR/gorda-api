@@ -46,7 +46,7 @@ export class BaileysClient implements WPClientInterface {
   private QR: string|null = null
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'error' }) as unknown as Logger
+    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
     this.store = makeInMemoryStore({ logger: this.logger })
   }
 
