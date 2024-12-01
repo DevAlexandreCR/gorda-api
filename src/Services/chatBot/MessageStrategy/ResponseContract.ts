@@ -14,7 +14,6 @@ import { ChatBotMessage } from '../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../MessagesEnum'
 import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { City } from '../../../Interfaces/City'
-import {booleanPointInPolygon, point, polygon} from '@turf/turf'	
 import { LatLng } from '../../../Interfaces/LatLng'
 
 export abstract class ResponseContract {
@@ -143,14 +142,15 @@ export abstract class ResponseContract {
 
   protected async findContainingPolygon(latlng: LatLng): Promise<City | null> {
     let city: City | null = null
-    this.store.polygons.forEach((polygon) => {
-      const geoPoint = point([latlng.lat, latlng.lng])
-      if (booleanPointInPolygon(geoPoint, polygon)) {
-        if (polygon.properties) {
-          city = this.store.findCityById(polygon.properties.name)?? null
-        }
-      }
-    })
+    city = this.store.findCityById('popayan')?? null
+    // this.store.polygons.forEach((polygon) => {
+    //   const geoPoint = point([latlng.lat, latlng.lng])
+    //   if (booleanPointInPolygon(geoPoint, polygon)) {
+    //     if (polygon.properties) {
+    //       city = this.store.findCityById(polygon.properties.name)?? null
+    //     }
+    //   }
+    // })
     return city
   }
 }

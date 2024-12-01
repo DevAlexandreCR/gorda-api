@@ -16,7 +16,6 @@ import {WpContactInterface} from '../whatsapp/interfaces/WpContactInterface'
 import {MessageTypes} from '../whatsapp/constants/MessageTypes'
 import { Branch } from '../../Interfaces/Branch'
 import { City } from '../../Interfaces/City'
-import { polygon } from '@turf/turf'
 import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
 
@@ -170,7 +169,7 @@ export class Store {
             coordinates.push([latLng.lng, latLng.lat])
           })
 
-          this.polygons.push(polygon([coordinates], { name: city.id }))
+          // this.polygons.push(polygon([coordinates], { name: city.id }))
         })
       })
     })
