@@ -3,7 +3,6 @@
   "version": "1.5.0",
   "description": "WhatsApp chatbot to gorda admin",
   "main": "src/app.ts",
-  "type": "module",
   "scripts": {
     "build": "tsc -p . && cp -r src/.well-known build/src/.well-known",
     "serve": "tsc && node build/src/app.js",
