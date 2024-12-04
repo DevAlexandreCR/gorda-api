@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.5.x
 
+## [1.5.1 (2024-12-02)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.1...v1.5.1)
+
+### Added
+
+- Cron to set dynamic min fee.
+
 ## [1.5.0 (2024-11-30)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.0...v1.4.5)
 
 ### Added
