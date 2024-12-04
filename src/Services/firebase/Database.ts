@@ -39,6 +39,10 @@ class DatabaseService {
   public dbClients(): Reference {
     return this.db.ref('clients/')
   }
+
+  public dbRideFees(): Reference {
+    return this.db.ref('settings/ride_fees/')
+  }
 }
 
 export default new DatabaseService()

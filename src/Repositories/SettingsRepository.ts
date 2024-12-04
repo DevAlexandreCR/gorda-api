@@ -7,6 +7,8 @@ import { MessagesEnum } from '../Services/chatBot/MessagesEnum'
 import { Branch } from '../Interfaces/Branch'
 import { LatLng } from '../Interfaces/LatLng'
 import { City } from '../Interfaces/City'
+import { RideFeeInterface } from '../Types/RideFeeInterface'
+import { DataSnapshot } from 'firebase-admin/database'
 
 class SettingsRepository {
   /* istanbul ignore next */
@@ -72,6 +74,17 @@ class SettingsRepository {
         branches.set(branchData.id, branch)
       })
       listener(branches)
+    })
+  }
+
+  async getFees(): Promise<RideFeeInterface> {
+    const snapshot: DataSnapshot = await Database.dbRideFees().once('value')
+    return <RideFeeInterface>snapshot.val()
+  }
+
+  async setMinFee(fee: number): Promise<void> {
+    return Database.dbRideFees().child('fees_minimum').set(fee).catch((error) => {
+      console.error('Error setting min fee', error)
     })
   }
 
