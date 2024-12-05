@@ -7,7 +7,7 @@ class Schedule {
   execute(): void {
 		cron.schedule('10 0 * * *', populateMetrics)
     cron.schedule('*/30 * * * *', updateSessionAbandoned)
-    cron.schedule('5 6,18 * * *', setDynamicMinFee)
+    cron.schedule('0 * * * *', setDynamicMinFee)
   }
 }
 
