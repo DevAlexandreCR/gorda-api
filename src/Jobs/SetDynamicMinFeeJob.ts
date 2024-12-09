@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 export async function setDynamicMinFee(): Promise<void> {
     const fees: RideFeeInterface = await SettingsRepository.getFees()
     
-    const now = dayjs()
+    const now = dayjs().tz('America/Bogota')
     const isDay = now.hour() >= 6 && now.hour() < 18
     const isNigth = now.hour() >= 18 || now.hour() < 6
     const isSunday = now.day() === 0
