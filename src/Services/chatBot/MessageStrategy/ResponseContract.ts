@@ -76,10 +76,10 @@ export abstract class ResponseContract {
         .then(async () => {
           await this.session.setStatus(Session.STATUS_REQUESTING_SERVICE)
         })
-        .catch(async (e) => {
-          console.error(e.message)
+        .catch(async (e: Error) => {
+          console.error('error creating service', this.session.chat_id, e.message, e.stack)
           await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ERROR_CREATING_SERVICE))
-          await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+          await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)
         })
 
     return Promise.resolve(service.id)
