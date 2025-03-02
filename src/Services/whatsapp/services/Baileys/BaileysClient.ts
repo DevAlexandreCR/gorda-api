@@ -51,7 +51,9 @@ export class BaileysClient implements WPClientInterface {
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
-    await this.clientSock.sendMessage(phoneNumber, { text: message.message })
+    await this.clientSock.sendMessage(phoneNumber, { text: message.message }).catch((error) => {
+      console.log('Error sending message baileys', error)
+    })
   }
 
   on(event: WpEvents, callback: (...arg: any) => void): void {
