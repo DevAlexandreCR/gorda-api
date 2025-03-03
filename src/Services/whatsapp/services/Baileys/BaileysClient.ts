@@ -55,7 +55,8 @@ export class BaileysClient implements WPClientInterface {
     this.msgQueue.addQueue(this.QUEUE_NAME)
     this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
       const { phoneNumber, message } = data
-      await delay(Math.random() * (10000 - 3000) + 3000)
+      const waitTime = Math.random() * (5000 - 2000) + 2000
+      await delay(waitTime)
       await this.clientSock.sendMessage(phoneNumber, { text: message.message })
     })
   }
