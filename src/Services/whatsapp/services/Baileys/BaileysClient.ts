@@ -22,6 +22,7 @@ import {
   proto,
   isJidBroadcast,
   isJidNewsletter,
+  delay,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import P, { Logger } from 'pino'
@@ -31,6 +32,7 @@ import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
 import config from '../../../../../config'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
+import QueueService from '../../../queue/QueueService'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -44,16 +46,23 @@ export class BaileysClient implements WPClientInterface {
   serviceName: WpClients = WpClients.BAILEYS
   private status: WpStates = WpStates.UNPAIRED
   private QR: string|null = null
+  private msgQueue = QueueService.getInstance()
+  private QUEUE_NAME = WpClients.BAILEYS + '-msg-queue'
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
     this.store = makeInMemoryStore({ logger: this.logger })
+    this.msgQueue.addQueue(this.QUEUE_NAME)
+    this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
+      const { phoneNumber, message } = data
+      const waitTime = Math.random() * (5000 - 2000) + 2000
+      await delay(waitTime)
+      await this.clientSock.sendMessage(phoneNumber, { text: message.message })
+    })
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
-    await this.clientSock.sendMessage(phoneNumber, { text: message.message }).catch((error) => {
-      console.log('Error sending message baileys', error)
-    })
+    this.msgQueue.add(this.QUEUE_NAME, { phoneNumber, message })
   }
 
   on(event: WpEvents, callback: (...arg: any) => void): void {

@@ -17,6 +17,7 @@ import { Interactive } from './Constants/Interactive'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
 import { MsgTypes } from './Constants/MsgTypes'
+import QueueService from '../../../queue/QueueService'
 
 export class OfficialClient implements WPClientInterface {
   private config: Config
@@ -25,6 +26,8 @@ export class OfficialClient implements WPClientInterface {
   serviceName: WpClients = WpClients.OFFICIAL
   private static instances: { [key: string]: OfficialClient } = {}
   private store: Store
+  private msgQueue:QueueService = QueueService.getInstance()
+  private QUEUE_NAME = WpClients.OFFICIAL + '-msg-queue'
 
   constructor(private wpClient: WpClient) {
     this.config = {
@@ -36,6 +39,12 @@ export class OfficialClient implements WPClientInterface {
 
     this.store = Store.getInstance()
     this.store.getChats(wpClient.id)
+    this.msgQueue.addQueue(this.QUEUE_NAME)
+    this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
+      const { phoneNumber, message } = data
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await this.text(phoneNumber, message)
+    })
   }
 
   getState(): Promise<WpStates> {
@@ -103,6 +112,10 @@ export class OfficialClient implements WPClientInterface {
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
+    this.msgQueue.add(this.QUEUE_NAME, { phoneNumber, message })
+  }
+
+  async text(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     const phone = phoneNumber.replace('@c.us', '')
     return new Promise<void>(async (resolve, reject) => {
       const interactive = this.getInteractive(message)

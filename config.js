@@ -30,4 +30,6 @@ module.exports = {
   WAPI_TOKEN: process.env.WAPI_TOKEN || '',
   WAPI_URL: process.env.WAPI_URL || 'https://graph.facebook.com/v20.0/',
   GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '/root/wp-api/firebaseAccount.json',
+  REDIS_HOST: process.env.REDIS_HOST || 'localhost',
+  REDIS_PORT: process.env.REDIS_PORT || 6379,
 }
