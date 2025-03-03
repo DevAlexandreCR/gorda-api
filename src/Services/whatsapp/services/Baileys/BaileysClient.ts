@@ -50,7 +50,7 @@ export class BaileysClient implements WPClientInterface {
   private QUEUE_NAME = WpClients.BAILEYS + '-msg-queue'
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'error' }) as unknown as Logger
+    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
     this.store = makeInMemoryStore({ logger: this.logger })
     this.msgQueue.addQueue(this.QUEUE_NAME)
     this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
