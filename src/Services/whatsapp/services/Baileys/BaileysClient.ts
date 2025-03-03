@@ -22,6 +22,7 @@ import {
   proto,
   isJidBroadcast,
   isJidNewsletter,
+  delay,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import P, { Logger } from 'pino'
@@ -31,8 +32,7 @@ import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
 import config from '../../../../../config'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
-import { Queue, Worker, Job, delay } from 'bullmq'
-import { log } from 'console'
+import QueueService from '../../../queue/QueueService'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
@@ -46,27 +46,18 @@ export class BaileysClient implements WPClientInterface {
   serviceName: WpClients = WpClients.BAILEYS
   private status: WpStates = WpStates.UNPAIRED
   private QR: string|null = null
-  private msgQueue: Queue
-  private worker: Worker
+  private msgQueue = QueueService.getInstance()
   private QUEUE_NAME = 'wp-msg-queue'
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'error' }) as unknown as Logger
     this.store = makeInMemoryStore({ logger: this.logger })
-    this.msgQueue = new Queue(this.QUEUE_NAME, {
-      connection: {
-        host: config.REDIS_HOST,
-        port: config.REDIS_PORT as number,
-      },
-    })
-    this.worker = new Worker(this.QUEUE_NAME, async (job: Job) => {
-      const { phoneNumber, message } = job.data
+    this.msgQueue.addQueue(this.QUEUE_NAME)
+    this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
+      const { phoneNumber, message } = data
       await delay(Math.random() * (10000 - 3000) + 3000)
       await this.clientSock.sendMessage(phoneNumber, { text: message.message })
-    }, { connection: {
-      host: config.REDIS_HOST,
-      port: config.REDIS_PORT as number,
-    }})
+    })
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
