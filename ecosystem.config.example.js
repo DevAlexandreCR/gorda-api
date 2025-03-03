@@ -28,6 +28,8 @@ module.exports = {
       "GORDA_API_FUNCTIONS": "http://127.0.0.1:5001/gorda-driver/us-central1/api",
       "WAPI_TOKEN": "api-token",
       "WAPI_URL": "https://graph.facebook.com/v20.0/",
+      "REDIS_HOST": "localhost",
+      "REDIS_PORT": 6379,
     }
   }]
 }
