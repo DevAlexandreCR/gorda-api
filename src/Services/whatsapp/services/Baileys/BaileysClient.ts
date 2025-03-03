@@ -47,7 +47,7 @@ export class BaileysClient implements WPClientInterface {
   private status: WpStates = WpStates.UNPAIRED
   private QR: string|null = null
   private msgQueue = QueueService.getInstance()
-  private QUEUE_NAME = 'wp-msg-queue'
+  private QUEUE_NAME = WpClients.BAILEYS + '-msg-queue'
 
   constructor(private wpClient: WpClient) {
     this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'error' }) as unknown as Logger
