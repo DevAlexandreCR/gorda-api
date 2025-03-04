@@ -151,11 +151,11 @@ export class BaileysClient implements WPClientInterface {
       if (connection === 'close') {
         this.QR = null
         const shouldReconnect =
-          (lastDisconnect?.error as Boom)?.output.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
+          (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
         console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
         this.status = WpStates.UNPAIRED
-        if (shouldReconnect || (lastDisconnect?.error as Boom)?.output.statusCode === DisconnectReason.restartRequired) {
+        if (shouldReconnect || (lastDisconnect?.error as Boom)?.output?.statusCode === DisconnectReason.restartRequired) {
           console.log('Restart required')
           this.status = WpStates.OPENING
           this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
