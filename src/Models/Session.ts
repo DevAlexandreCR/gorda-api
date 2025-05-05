@@ -190,6 +190,7 @@ export default class Session implements SessionInterface {
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {
     const handler = ResponseContext.getResponse(this.status, this)
     const response = new ResponseContext(handler)
+    
     await response
       .processMessage(message)
       .finally(async () => {
