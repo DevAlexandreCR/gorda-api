@@ -32,9 +32,7 @@ export class Agreement extends ResponseContract {
     const comment = MessageHelper.getCommentFromAgreement(message.msg)
     if (place) {
       await this.session.setPlace(place)
-      await this.createService(place, comment).then((serviceId: string) => {
-        this.sendMessage(Messages.cancelService(serviceId))
-      })
+      await this.createService(place, comment)
     } else {
       await this.sendMessage(Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE))
     }

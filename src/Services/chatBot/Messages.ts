@@ -12,7 +12,6 @@ export function getSingleMessage(messagesEnum: MessagesEnum): ChatBotMessage {
   return store.findMessageById(messagesEnum)
 }
 
-
 const locale = Locale.getInstance()
 const store = Store.getInstance()
 
@@ -23,8 +22,11 @@ export const requestingService = (placeName: string): ChatBotMessage => {
   return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
 }
 
-export const cancelService = (serviceID: string): ChatBotMessage => {
-  return getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
+export const completedService = (): ChatBotMessage => {
+  const message = store.findMessageById(MessagesEnum.SERVICE_COMPLETED)
+  const placeholdersMap = new Map<Placeholders, string>()
+  placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
+  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
 }
 export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): ChatBotMessage => {
   const error = 'No reconocimos ninguna opción válida, '

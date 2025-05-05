@@ -219,7 +219,7 @@ export class WhatsAppClient {
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    const msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+    const msg = Messages.completedService()
     if (msg.enabled) {
       await this.sendMessage(notification.client_id, msg).then(() => {
         WpNotificationRepository.deleteNotification(Service.STATUS_TERMINATED, snapshot.key ?? '')
@@ -319,7 +319,7 @@ export class WhatsAppClient {
         await session.setStatus(Session.STATUS_COMPLETED)
         if (!session.notifications.completed) {
           await session.setNotification(NotificationType.completed)
-          msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+          msg = Messages.completedService()
           message = msg
           mustSend = msg.enabled && !this.wpClient.wpNotifications
         }
