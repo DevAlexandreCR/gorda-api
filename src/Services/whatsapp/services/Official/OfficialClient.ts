@@ -99,9 +99,7 @@ export class OfficialClient implements WPClientInterface {
 
   async text(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     const phone = phoneNumber.replace('@c.us', '')
-    return new Promise<void>(async (resolve, reject) => {
-      console.log('Sending message to', message);
-      
+    return new Promise<void>(async (resolve, reject) => {      
       const interactive = this.getInteractive(message)
       let data: ApiMessage = {
         messaging_product: this.config.messagingProduct,
@@ -112,7 +110,11 @@ export class OfficialClient implements WPClientInterface {
         }
       }
       if (interactive) {
-        interactive.name = message.name
+        if (interactive.type === 'location_request_message') {
+          interactive.action =  {
+            name: message.name
+          }
+        }
         data = { ...data, interactive }
       }
 
