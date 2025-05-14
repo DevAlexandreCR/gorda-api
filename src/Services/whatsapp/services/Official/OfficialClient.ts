@@ -110,11 +110,6 @@ export class OfficialClient implements WPClientInterface {
         }
       }
       if (interactive) {
-        if (interactive.type === 'location_request_message') {
-          interactive.action =  {
-            name: message.name
-          }
-        }
         data = { ...data, interactive }
       }
 
