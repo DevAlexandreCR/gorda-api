@@ -39,6 +39,7 @@ class SettingsRepository {
           description: data.description,
           message: data.message,
           enabled: data.enabled,
+          intereactive: data.intereactive ? data.intereactive : null,
         }
         const messageEnumValue: MessagesEnum | undefined = Object.values(MessagesEnum).find((value) => value === doc.id)
         if (messageEnumValue) {

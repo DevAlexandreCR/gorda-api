@@ -16,7 +16,6 @@ import { ApiMessage } from './Constants/ApiMessage'
 import { Interactive } from './Constants/Interactive'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
-import { MsgTypes } from './Constants/MsgTypes'
 import QueueService from '../../../queue/QueueService'
 
 export class OfficialClient implements WPClientInterface {
@@ -81,6 +80,7 @@ export class OfficialClient implements WPClientInterface {
       name: 'Bot',
       enabled: true,
       description: 'Mensaje de prueba',
+      intereactive: null,
     }
     return await this.sendMessage('573103794656', msg).then(() => {
       this.status = WpStates.CONNECTED
@@ -90,25 +90,7 @@ export class OfficialClient implements WPClientInterface {
   }
 
   private getInteractive(message: ChatBotMessage): Interactive | false {
-    let interactive: Interactive | false
-    switch (message.id) {
-      case MessagesEnum.GREETING:
-         interactive = {
-            type: MsgTypes.location,
-            body: {
-            text: message.message,
-            },
-            action: {
-            name: 'send_location',
-            }
-         } as Interactive
-        break
-      default:
-        interactive = false
-        break
-    }
-
-    return interactive
+    return message.intereactive ?? false
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {

@@ -107,6 +107,8 @@ controller.get('/whatsapp/webhook', async (req: Request, res: Response) => {
     } else {
       res.sendStatus(403);
     }
+  } else {
+    res.sendStatus(422);
   }
 })
 
