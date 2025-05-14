@@ -6,5 +6,5 @@ export type ChatBotMessage = {
   description: string
   message: string
   enabled: boolean
-  intereactive: Interactive | null
+  interactive: Interactive | null
 }

@@ -80,7 +80,7 @@ export class OfficialClient implements WPClientInterface {
       name: 'Bot',
       enabled: true,
       description: 'Mensaje de prueba',
-      intereactive: null,
+      interactive: null,
     }
     return await this.sendMessage('573103794656', msg).then(() => {
       this.status = WpStates.CONNECTED
@@ -90,7 +90,7 @@ export class OfficialClient implements WPClientInterface {
   }
 
   private getInteractive(message: ChatBotMessage): Interactive | false {
-    return message.intereactive ?? false
+    return message.interactive ?? false
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
@@ -100,6 +100,8 @@ export class OfficialClient implements WPClientInterface {
   async text(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     const phone = phoneNumber.replace('@c.us', '')
     return new Promise<void>(async (resolve, reject) => {
+      console.log('Sending message to', message);
+      
       const interactive = this.getInteractive(message)
       let data: ApiMessage = {
         messaging_product: this.config.messagingProduct,
@@ -110,6 +112,7 @@ export class OfficialClient implements WPClientInterface {
         }
       }
       if (interactive) {
+        interactive.name = message.name
         data = { ...data, interactive }
       }
 

@@ -136,7 +136,7 @@ io.on('connection', async (socket: Socket) => {
         name: MessagesEnum.MESSAGE_FROM_ADMIN,
         enabled: true,
         description: 'Mensaje enviado desde el panel de control',
-        intereactive: null,
+        interactive: null,
       }
       await wpServices[clientId].sendMessage(chatId, message)
     }

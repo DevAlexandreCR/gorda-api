@@ -9,6 +9,7 @@ import { LatLng } from '../Interfaces/LatLng'
 import { City } from '../Interfaces/City'
 import { RideFeeInterface } from '../Types/RideFeeInterface'
 import { DataSnapshot } from 'firebase-admin/database'
+import { Interactive } from '../Services/whatsapp/services/Official/Constants/Interactive'
 
 class SettingsRepository {
   /* istanbul ignore next */
@@ -33,13 +34,15 @@ class SettingsRepository {
       const msgs = new Map<MessagesEnum, ChatBotMessage>()
       snapshot.forEach((doc) => {
         const data = doc.data()
+        const interactive = data.interactive as Interactive | null
+        
         const chatBotMessage: ChatBotMessage = {
           id: data.id,
           name: data.name,
           description: data.description,
           message: data.message,
           enabled: data.enabled,
-          intereactive: data.intereactive ? data.intereactive : null,
+          interactive: interactive,
         }
         const messageEnumValue: MessagesEnum | undefined = Object.values(MessagesEnum).find((value) => value === doc.id)
         if (messageEnumValue) {
