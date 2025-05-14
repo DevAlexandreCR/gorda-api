@@ -4,9 +4,8 @@ import {Locale} from '../../Helpers/Locale'
 import {PlaceOption} from '../../Interfaces/PlaceOption'
 import {Store} from '../store/Store'
 import {MessagesEnum} from './MessagesEnum'
-import {Placeholders, replacePlaceholders} from './Placeholders'
+import {getPlaceholders, Placeholders, replacePlaceholders} from './Placeholders'
 import {ChatBotMessage} from '../../Types/ChatBotMessage'
-import config from '../../../config'
 
 export function getSingleMessage(messagesEnum: MessagesEnum): ChatBotMessage {
   return store.findMessageById(messagesEnum)
@@ -16,17 +15,15 @@ const locale = Locale.getInstance()
 const store = Store.getInstance()
 
 export const requestingService = (placeName: string): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
+  const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.PLACE, placeName)
   const message = store.findMessageById(MessagesEnum.REQUESTING_SERVICE)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, placeholdersMap)
 }
 
 export const completedService = (): ChatBotMessage => {
   const message = store.findMessageById(MessagesEnum.SERVICE_COMPLETED)
-  const placeholdersMap = new Map<Placeholders, string>()
-  placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, getPlaceholders())
 }
 export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): ChatBotMessage => {
   const error = 'No reconocimos ninguna opción válida, '
@@ -45,26 +42,25 @@ export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = 
 }
 
 export const serviceAssigned = (vehicle: Vehicle): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
+  const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.PLATE, MessageHelper.truncatePlate(vehicle.plate))
   placeholdersMap.set(Placeholders.COLOR, locale.__('colors.' + vehicle.color.name))
   const message = store.findMessageById(MessagesEnum.SERVICE_ASSIGNED)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, placeholdersMap)
 }
 
 export const greeting = (name: string): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
+  const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.USERNAME, name)
   const message = store.findMessageById(MessagesEnum.GREETING)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, placeholdersMap)
 }
 
 const newClientGreeting = (name: string): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
+  const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.USERNAME, name)
-  placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
   const message = store.findMessageById(MessagesEnum.GREETING_NEW_USERS)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, placeholdersMap)
 }
 
 export const greetingNews = (name: string): ChatBotMessage => {
@@ -72,23 +68,21 @@ export const greetingNews = (name: string): ChatBotMessage => {
 }
 
 export const newClientAskPlaceName = (name: string): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
+  const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.USERNAME, name)
   const message = store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_PLACE)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, placeholdersMap)
 }
 
 export const newClientAskForComment = (name: string, place: string): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
+  const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.PLACE, place)
   placeholdersMap.set(Placeholders.USERNAME, name)
   const message = store.findMessageById(MessagesEnum.NEW_USER_ASK_FOR_COMMENT)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, placeholdersMap)
 }
 
 export const serviceInProgress = (): ChatBotMessage => {
-  const placeholdersMap = new Map<Placeholders, string>()
-  placeholdersMap.set(Placeholders.PQR_NUMBER, config.PQR_NUMBER)
   const message = store.findMessageById(MessagesEnum.SERVICE_IN_PROGRESS)
-  return {...message, message: replacePlaceholders(message.message, placeholdersMap)}
+  return replacePlaceholders(message, getPlaceholders())
 }
