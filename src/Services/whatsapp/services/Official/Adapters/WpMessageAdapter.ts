@@ -14,7 +14,7 @@ export class WpMessageAdapter implements WpMessageInterface {
   isStatus: boolean
   body: string
   location: LocType
-  interactiveReply: InteractiveReply | null
+  interactiveReply: InteractiveReply | null = null
 
   constructor(
     message: {
@@ -39,7 +39,7 @@ export class WpMessageAdapter implements WpMessageInterface {
       this.location = message.location
     }
     if (message.interactiveReply) {
-      this.interactiveReply = message.interactiveReply
+      this.interactiveReply = message.interactiveReply?? null
     }
   }
 

@@ -108,7 +108,7 @@ export class WhatsAppClient {
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
     const session = this.chatBot.findSessionByChatId(msg.from)
-    if (session && (msg.type === MessageTypes.LOCATION || msg.type === MessageTypes.TEXT)) return true
+    if (session && this.isMessageTypeSupported(msg.type)) return true
     if (this.wpClient.assistant) return msg.type === MessageTypes.LOCATION
     if (this.wpClient.chatBot) {
       return (
@@ -118,6 +118,14 @@ export class WhatsAppClient {
     }
 
     return false
+  }
+
+  isMessageTypeSupported(msgType: MessageTypes): boolean {
+    return (
+      msgType === MessageTypes.TEXT ||
+      msgType === MessageTypes.LOCATION ||
+      msgType === MessageTypes.INTERACTIVE
+    )
   }
 
   onDisconnected = async (reason: string | WpStates): Promise<void> => {

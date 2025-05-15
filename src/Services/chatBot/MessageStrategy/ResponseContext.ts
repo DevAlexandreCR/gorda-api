@@ -40,7 +40,7 @@ export class ResponseContext {
     return responses[status]
   }
   
-  public async processMessage(message: WpMessage): Promise<void> {
+  public async processMessage(message: WpMessage): Promise<void> {    
     if (!this.response.supportMessage(message)) {
       const msg = getSingleMessage(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
       if (msg.enabled) {

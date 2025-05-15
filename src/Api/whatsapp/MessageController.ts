@@ -18,7 +18,6 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
   const responseMessages: Array<string> = ['ok']
   entries.forEach((entry: any) => {
     const changes = entry.changes
-    console.log('webhook post:', JSON.stringify(changes));
 
     changes.forEach((change: any) => {
       if (change.field !== 'messages') {
@@ -67,10 +66,14 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
                   lng: message.location.longitude,
                 }
               : undefined,
-            interactiveReply: message.interactiveReply?? null,
+            interactiveReply: message.interactive?? null,
           },
           wpClientService,
         )
+
+        if (wpMessage.interactiveReply) {
+          wpMessage.body = wpMessage.interactiveReply.button_reply?.id ?? wpMessage.body
+        }
 
         const chat = await store.getChatById(wpClient.id, message.from, profileName)
 
