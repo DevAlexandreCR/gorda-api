@@ -40,10 +40,10 @@ export function replacePlaceholders(input: ChatBotMessage, placeholders: Map<Pla
   input.message = result
 
   if (input.interactive) {
-    let interactive = input.interactive.body?.text
+    let interactive = input.interactive.body?.text ?? ''
     placeholders.forEach((value, key) => {
       const regex = new RegExp('\\[\\[' + key + '\\]\\]', 'g')
-      interactive = result.replace(regex, value)
+      interactive = interactive.replace(regex, value)
     })
     if (input.interactive.body && interactive !== undefined) {
       input.interactive.body.text = interactive
