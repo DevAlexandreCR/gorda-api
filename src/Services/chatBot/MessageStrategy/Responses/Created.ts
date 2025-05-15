@@ -6,9 +6,12 @@ import { WpMessage } from '../../../../Types/WpMessage'
 import { NotificationType } from '../../../../Types/NotificationType'
 import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
+import MessageHelper from '../../../../Helpers/MessageHelper'
+import ClientRepository from '../../../../Repositories/ClientRepository'
+import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
 
 export class Created extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.clientExists(this.session.chat_id)) await this.validateKey(message)
@@ -18,10 +21,31 @@ export class Created extends ResponseContract {
         if (!place) return
         await this.session.setPlace(place)
       }
-      await this.session.setStatus(Session.STATUS_ASKING_FOR_NAME)
-      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_NAME))
+      await this.createClient(message.id, 'Usuario')
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION))
     }
   }
+
+  private async createClient(messageId: string, name: string): Promise<void> {
+      const contact = await this.getContact()
+      contact.pushname = MessageHelper.normalizeName(name)
+      this.currentClient = await ClientRepository.create(contact)
+    }
+  
+    async getContact(): Promise<WpContactInterface> {
+      return new Promise((resolve, reject) => {
+        this.session.chat
+          .getContact()
+          .then((contact) => {
+            resolve(contact)
+          })
+          .catch((e) => {
+            console.log('Error getting contact', e)
+            reject(e)
+          })
+      })
+    }
 
   async validateKey(message: WpMessage): Promise<void> {
     if (this.isLocation(message)) {

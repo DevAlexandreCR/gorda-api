@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.5.x
 
+### Added
+
+- Add support to interactive messages. [#100](https://github.com/DevAlexandreCR/gorda-api/pull/100)
+
 ## [1.5.2 (2025-03-03)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.2...v1.5.1)
 
 ### Added

@@ -16,7 +16,7 @@ export type Interactive = {
     header?: {
         type: 'text' | 'image' | 'video' | 'document',
         text: string
-    }
+    },
     footer?: {
         text: string
     }

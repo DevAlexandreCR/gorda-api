@@ -7,7 +7,7 @@ import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class AskingForComment extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     this.setCurrentClient(this.session.chat_id)
