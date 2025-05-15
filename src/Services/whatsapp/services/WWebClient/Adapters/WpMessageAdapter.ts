@@ -6,6 +6,7 @@ import { WpMessageInterface } from '../../../interfaces/WpMessageInterface'
 import { WpChatAdapter } from './WpChatAdapter'
 import { LocType } from '../../../../../Interfaces/LocType'
 import MessageHelper from "../../../../../Helpers/MessageHelper";
+import { InteractiveReply } from '../../Official/Constants/InteractiveReply'
 
 export class WpMessageAdapter implements WpMessageInterface {
   id: string
@@ -15,6 +16,7 @@ export class WpMessageAdapter implements WpMessageInterface {
   isStatus: boolean
   body: string
   location: LocType
+  interactiveReply = null
 
   constructor(private message: Message) {
     this.id = message.id.id

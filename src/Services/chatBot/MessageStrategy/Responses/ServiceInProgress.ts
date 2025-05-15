@@ -9,7 +9,7 @@ import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class ServiceInProgress extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
   private service: Service
 
   public async processMessage(message: WpMessage): Promise<void> {

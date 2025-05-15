@@ -11,7 +11,7 @@ import ClientRepository from '../../../../Repositories/ClientRepository'
 import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
 
 export class Created extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.clientExists(this.session.chat_id)) await this.validateKey(message)

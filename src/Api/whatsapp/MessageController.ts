@@ -14,10 +14,12 @@ const store = Store.getInstance()
 
 controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
   const { body } = req
-  const entries = body.entry
+  const entries = body.entry  
   const responseMessages: Array<string> = ['ok']
   entries.forEach((entry: any) => {
     const changes = entry.changes
+    console.log('webhook post:', JSON.stringify(changes));
+
     changes.forEach((change: any) => {
       if (change.field !== 'messages') {
         console.log('no message notification')
@@ -65,6 +67,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
                   lng: message.location.longitude,
                 }
               : undefined,
+            interactiveReply: message.interactiveReply?? null,
           },
           wpClientService,
         )
@@ -78,11 +81,13 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
           body: wpMessage.body,
           location: wpMessage.location ?? null,
           fromMe: false,
+          interactiveReply: wpMessage.interactiveReply,
+          interactive: null,
         })
 
         wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
 
-        if (type !== MessageTypes.TEXT && type !== MessageTypes.LOCATION) {
+        if (type !== MessageTypes.TEXT && type !== MessageTypes.LOCATION && type !== MessageTypes.INTERACTIVE) {
           const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
           wpClientService.sendMessage(wpMessage.from, msg)
         }

@@ -133,6 +133,8 @@ export class OfficialClient implements WPClientInterface {
             type: MessageTypes.TEXT,
             body: message.message,
             fromMe: true,
+            interactive: message.interactive,
+            interactiveReply: null,
           })
           resolve()
         })

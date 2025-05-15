@@ -116,7 +116,9 @@ export class Store {
           body: MessagesEnum.DEFAULT_MESSAGE,
           fromMe: true,
           id: chatId,
-          type: MessageTypes.TEXT
+          type: MessageTypes.TEXT,
+          interactive: null,
+          interactiveReply: null,
         },
         clientName: profileName,
       })

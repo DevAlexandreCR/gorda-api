@@ -73,6 +73,8 @@ export default class Session implements SessionInterface {
       msg: msg.body,
       location: null,
       processed: false,
+      interactiveReply: msg.interactiveReply,
+      interactive: null,
     }
 
     if (msg.location) {
@@ -83,6 +85,8 @@ export default class Session implements SessionInterface {
         lng: parseFloat(msg.location.lng.toString()),
       }
       wpMessage.msg = ''
+    } else if (msg.type === MessageTypes.INTERACTIVE) {
+      wpMessage.msg = msg.interactiveReply?.button_reply?.id ?? ''
     }
 
     await SessionRepository.addMsg(this.id, wpMessage)
@@ -115,6 +119,8 @@ export default class Session implements SessionInterface {
           location: null,
           msg: text,
           processed: false,
+          interactiveReply: unprocessedMessagesArray[indexLast].interactiveReply,
+          interactive: null,
         }
 
         unprocessedMessagesArray.forEach((msg) => {

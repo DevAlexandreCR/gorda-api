@@ -4,6 +4,7 @@ import { WpMessageInterface } from '../../../interfaces/WpMessageInterface'
 import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpChatAdapter } from './WpChatAdapter'
 import { OfficialClient } from '../OfficialClient'
+import { InteractiveReply } from '../Constants/InteractiveReply'
 
 export class WpMessageAdapter implements WpMessageInterface {
   id: string
@@ -13,6 +14,7 @@ export class WpMessageAdapter implements WpMessageInterface {
   isStatus: boolean
   body: string
   location: LocType
+  interactiveReply: InteractiveReply | null
 
   constructor(
     message: {
@@ -22,7 +24,8 @@ export class WpMessageAdapter implements WpMessageInterface {
       from: string
       isStatus: boolean
       body: string
-      location?: LocType
+      location?: LocType,
+      interactiveReply: InteractiveReply | null
     },
     private client: OfficialClient,
   ) {
@@ -34,6 +37,9 @@ export class WpMessageAdapter implements WpMessageInterface {
     this.body = message.body
     if (message.location) {
       this.location = message.location
+    }
+    if (message.interactiveReply) {
+      this.interactiveReply = message.interactiveReply
     }
   }
 

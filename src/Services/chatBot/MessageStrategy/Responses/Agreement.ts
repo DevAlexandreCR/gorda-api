@@ -11,7 +11,7 @@ import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class Agreement extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
   static readonly AGREEMENT = 'convenio'
 
   public async processMessage(message: WpMessage): Promise<void> {
