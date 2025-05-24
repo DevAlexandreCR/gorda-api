@@ -1,8 +1,8 @@
 import { Router } from "express"
 import { Buffer } from 'buffer'
 import { parseStringPromise } from 'xml2js'
-import { LatLng } from "../../Interfaces/LatLng"
-import SettingsRepository from "../../Repositories/SettingsRepository"
+import { LatLng } from "../../../Interfaces/LatLng"
+import SettingsRepository from "../../../Repositories/SettingsRepository"
 
 const controller = Router()
 

@@ -1,13 +1,13 @@
-import {OfficialClient} from '../../Services/whatsapp/services/Official/OfficialClient'
-import {WpMessageAdapter} from '../../Services/whatsapp/services/Official/Adapters/WpMessageAdapter'
+import {OfficialClient} from '../../../Services/whatsapp/services/Official/OfficialClient'
+import {WpMessageAdapter} from '../../../Services/whatsapp/services/Official/Adapters/WpMessageAdapter'
 import {Request, Response, Router} from 'express'
-import {WpEvents} from '../../Services/whatsapp/constants/WpEvents'
-import {Store} from '../../Services/store/Store'
-import MessageRepository from '../../Repositories/MessageRepository'
-import config from '../../../config'
-import {MessageTypes} from "../../Services/whatsapp/constants/MessageTypes";
-import {MessagesEnum} from "../../Services/chatBot/MessagesEnum";
-import MessageHelper from "../../Helpers/MessageHelper";
+import {WpEvents} from '../../../Services/whatsapp/constants/WpEvents'
+import {Store} from '../../../Services/store/Store'
+import MessageRepository from '../../../Repositories/MessageRepository'
+import config from '../../../../config'
+import {MessageTypes} from "../../../Services/whatsapp/constants/MessageTypes";
+import {MessagesEnum} from "../../../Services/chatBot/MessagesEnum";
+import MessageHelper from "../../../Helpers/MessageHelper";
 
 const controller = Router()
 const store = Store.getInstance()
