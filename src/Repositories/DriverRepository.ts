@@ -48,6 +48,18 @@ class DriverRepository {
 	removeDriver(driverId: string): Promise<void> {
 		return DBService.dbConnectedDrivers().child(driverId).remove()
 	}
+
+  getToken(driverId: string): Promise<string | null> {
+    return DBService.dbTokens().child(driverId).once('value')
+      .then((snapshot) => {
+        const token = snapshot.val()
+        return token ? token : null
+      })
+      .catch((error) => {
+        console.error('Error fetching driver token:', error)
+        return null
+      })
+  }
 }
 
 export default new DriverRepository()
