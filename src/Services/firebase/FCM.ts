@@ -6,10 +6,6 @@ class FCM {
   public sendNotificationTo(token: string, payload: FCMNotification) {
     return Admin.getInstance().fcm.send({
       token: token,
-      notification: {
-        title: payload.title || 'New Message',
-        body: payload.body || 'You have a new message',
-      },
       data: payload.data || {},
     })
   }
@@ -17,10 +13,6 @@ class FCM {
   public sendDifusionNotification(topic: string, payload: FCMNotification) {
     return Admin.getInstance().fcm.send({
       topic: topic,
-      notification: {
-        title: payload.title || 'New Message',
-        body: payload.body || 'You have a new message',
-      },
       data: payload.data || {},
     })
   }

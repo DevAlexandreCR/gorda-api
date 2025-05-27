@@ -3,6 +3,7 @@ import { Store } from "../../../Services/store/Store"
 import DriverRepository from "../../../Repositories/DriverRepository"
 import FCM from "../../../Services/firebase/FCM"
 import { FCMNotification } from "../../../Types/FCMNotifications"
+import { title } from "process"
 
 const controller = Router()
 const store = Store.getInstance()
@@ -38,7 +39,12 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
         FCM.sendDifusionNotification('drivers', {
             title: message.title || 'New Message',
             body: message.body || 'You have a new message',
-            data: message.data || {},
+            data: {
+                ...message.data,
+                title: message.title || 'New Message',
+                body: message.body || 'You have a new message',
+                type: 'alert'
+            },
         }).then(() => {
             return res.status(200).json({ message: 'Notification sent to all drivers' })
         }).catch((error) => {
@@ -59,7 +65,12 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
         await FCM.sendNotificationTo(token, {
             title: message.title || 'New Message',
             body: message.body || 'You have a new message',
-            data: message.data || {},
+            data: {
+                ...message.data,
+                title: message.title || 'New Message',
+                body: message.body || 'You have a new message',
+                type: 'alert'
+            },
         }).then(() => {
             return res.status(200).json({ message: `Notification sent to driver ${name}` })
         }).catch((error) => {
