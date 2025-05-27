@@ -21,6 +21,19 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
         return res.status(400).json({ error: '"message" must be an object with "title" and "body" as strings' })
     }
 
+    if (message.data && typeof message.data === 'object') {
+        for (const key in message.data) {
+            if (
+                typeof key !== 'string' ||
+                typeof message.data[key] !== 'string'
+            ) {
+                return res.status(422).json({ error: '"message.data" must be an object with string keys and string values' })
+            }
+        }
+    } else if (message.data !== undefined) {
+        return res.status(422).json({ error: '"message.data" must be an object with string keys and string values' })
+    }
+
     if (!to) {
         FCM.sendDifusionNotification('drivers', {
             title: message.title || 'New Message',
