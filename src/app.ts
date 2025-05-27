@@ -19,6 +19,7 @@ import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/Controllers/Whatsapp/MessageController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
+import NotificationController from './Api/Controllers/Notifications/NotificationController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
@@ -45,6 +46,7 @@ app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(controller)
 app.use(polygonController)
+app.use(NotificationController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
