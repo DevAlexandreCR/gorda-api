@@ -10,7 +10,7 @@ import { MessagesEnum } from '../../MessagesEnum'
 import { WpContactInterface } from '../../../whatsapp/interfaces/WpContactInterface'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 export class AskingForName extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isChat(message)) {

@@ -11,7 +11,7 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 export class RequestingService extends ResponseContract {
   private service: Service
 
-  public messageSupported: Array<string> = [MessageTypes.TEXT]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     await this.setService()

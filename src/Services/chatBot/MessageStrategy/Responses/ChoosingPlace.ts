@@ -7,7 +7,7 @@ import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class ChoosingPlace extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isLocation(message) && message.location) {

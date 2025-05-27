@@ -102,13 +102,13 @@ export class WhatsAppClient {
   }
 
   onMessageReceived = async (msg: WpMessageInterface): Promise<void> => {
-    console.log('message received', this.wpClient.alias, msg.type, msg.from, msg.body.substring(0, 50))
+    console.log('Message received', this.wpClient.alias, msg.type, msg.from, msg.body.substring(0, 50))
     if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
   }
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
     const session = this.chatBot.findSessionByChatId(msg.from)
-    if (session && (msg.type === MessageTypes.LOCATION || msg.type === MessageTypes.TEXT)) return true
+    if (session && this.isMessageTypeSupported(msg.type)) return true
     if (this.wpClient.assistant) return msg.type === MessageTypes.LOCATION
     if (this.wpClient.chatBot) {
       return (
@@ -118,6 +118,14 @@ export class WhatsAppClient {
     }
 
     return false
+  }
+
+  isMessageTypeSupported(msgType: MessageTypes): boolean {
+    return (
+      msgType === MessageTypes.TEXT ||
+      msgType === MessageTypes.LOCATION ||
+      msgType === MessageTypes.INTERACTIVE
+    )
   }
 
   onDisconnected = async (reason: string | WpStates): Promise<void> => {
@@ -219,7 +227,7 @@ export class WhatsAppClient {
 
   serviceTerminated = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
-    const msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+    const msg = Messages.completedService()
     if (msg.enabled) {
       await this.sendMessage(notification.client_id, msg).then(() => {
         WpNotificationRepository.deleteNotification(Service.STATUS_TERMINATED, snapshot.key ?? '')
@@ -319,7 +327,7 @@ export class WhatsAppClient {
         await session.setStatus(Session.STATUS_COMPLETED)
         if (!session.notifications.completed) {
           await session.setNotification(NotificationType.completed)
-          msg = Messages.getSingleMessage(MessagesEnum.SERVICE_COMPLETED)
+          msg = Messages.completedService()
           message = msg
           mustSend = msg.enabled && !this.wpClient.wpNotifications
         }

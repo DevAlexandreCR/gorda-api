@@ -4,6 +4,7 @@ import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpMessageInterface } from '../../../interfaces/WpMessageInterface'
 import { WAMessage, WASocket, WAProto } from '@whiskeysockets/baileys'
 import { WpChatAdapter } from './WpChatAdapter'
+import { InteractiveReply } from '../../Official/Constants/InteractiveReply'
 
 export class WpMessageAdapter implements WpMessageInterface {
   id: string
@@ -13,6 +14,7 @@ export class WpMessageAdapter implements WpMessageInterface {
   isStatus: boolean
   body: string
   location: LocType
+  interactiveReply = null
 
   constructor(private message: WAMessage, private waSocket: WASocket) {
     this.id = message.key.id!

@@ -17,11 +17,13 @@ import { WpClient } from './Interfaces/WpClient'
 import { WhatsAppClientDictionary } from './Interfaces/WhatsAppClientDiccionary'
 import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
-import controller from './Api/whatsapp/MessageController'
-import polygonController from './Api/Polygons/PolygonController'
+import controller from './Api/Controllers/Whatsapp/MessageController'
+import polygonController from './Api/Controllers/Polygons/PolygonController'
+import NotificationController from './Api/Controllers/Notifications/NotificationController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
+import cors from 'cors'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -38,6 +40,11 @@ Sentry.init({
   tracesSampleRate: 0.8,
 })
 
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}))
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
@@ -45,6 +52,7 @@ app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(controller)
 app.use(polygonController)
+app.use(NotificationController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
@@ -136,6 +144,7 @@ io.on('connection', async (socket: Socket) => {
         name: MessagesEnum.MESSAGE_FROM_ADMIN,
         enabled: true,
         description: 'Mensaje enviado desde el panel de control',
+        interactive: null,
       }
       await wpServices[clientId].sendMessage(chatId, message)
     }
