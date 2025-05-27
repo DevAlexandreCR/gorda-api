@@ -23,6 +23,7 @@ import NotificationController from './Api/Controllers/Notifications/Notification
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
+import cors from 'cors'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -39,6 +40,11 @@ Sentry.init({
   tracesSampleRate: 0.8,
 })
 
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}))
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
