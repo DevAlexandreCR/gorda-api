@@ -26,6 +26,8 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
             title: message.title || 'New Message',
             body: message.body || 'You have a new message',
             data: message.data || {},
+        }).then(() => {
+            return res.status(200).json({ message: 'Notification sent to all drivers' })
         }).catch((error) => {
             console.error('Error sending notification to drivers:', error)
             return res.status(500).json({ error: 'Error sending notification to drivers' })
@@ -45,13 +47,13 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
             title: message.title || 'New Message',
             body: message.body || 'You have a new message',
             data: message.data || {},
+        }).then(() => {
+            return res.status(200).json({ message: `Notification sent to driver ${name}` })
         }).catch((error) => {
             console.error(`Error sending notification to driver ${name} (${id}):`, error)
             return res.status(500).json({ error: `Error sending notification to driver ${name}` })
         })
     }
-
-    return res.sendStatus(200)
 })
 
 export default controller
