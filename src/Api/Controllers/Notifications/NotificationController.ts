@@ -2,6 +2,7 @@ import { Request, Response, Router } from "express"
 import { Store } from "../../../Services/store/Store"
 import DriverRepository from "../../../Repositories/DriverRepository"
 import FCM from "../../../Services/firebase/FCM"
+import { FCMNotification } from "../../../Types/FCMNotifications"
 
 const controller = Router()
 const store = Store.getInstance()
@@ -9,15 +10,22 @@ const store = Store.getInstance()
 controller.post('/messages/drivers', async (req: Request, res: Response) => {
     const { body } = req
     const to = body.to
-    const message = body.message
+    const message = body.message as FCMNotification
     if (to !== null && typeof to !== 'string') {
         return res.status(400).json({ error: '"to" must be null or a string' })
+    }
+
+    if (!message || typeof message !== 'object' || !message.title || !message.body ||
+        typeof message.title !== 'string' || typeof message.body !== 'string'
+    ) {
+        return res.status(400).json({ error: '"message" must be an object with "title" and "body" as strings' })
     }
 
     if (!to) {
         FCM.sendDifusionNotification('drivers', {
             title: message.title || 'New Message',
             body: message.body || 'You have a new message',
+            data: message.data || {},
         }).catch((error) => {
             console.error('Error sending notification to drivers:', error)
             return res.status(500).json({ error: 'Error sending notification to drivers' })
@@ -36,6 +44,7 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
         await FCM.sendNotificationTo(token, {
             title: message.title || 'New Message',
             body: message.body || 'You have a new message',
+            data: message.data || {},
         }).catch((error) => {
             console.error(`Error sending notification to driver ${name} (${id}):`, error)
             return res.status(500).json({ error: `Error sending notification to driver ${name}` })
