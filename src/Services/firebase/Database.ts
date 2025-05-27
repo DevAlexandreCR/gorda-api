@@ -40,6 +40,10 @@ class DatabaseService {
     return this.db.ref('clients/')
   }
 
+  public dbTokens(): Reference {
+    return this.db.ref('tokens/')
+  }
+
   public dbRideFees(): Reference {
     return this.db.ref('settings/ride_fees/')
   }
