@@ -138,16 +138,18 @@ export class Store {
   }
 
   findMessageById(msgId: MessagesEnum): ChatBotMessage {
-    return (
-      this.messages.get(msgId) ??
-      ({
-        id: MessagesEnum.DEFAULT_MESSAGE,
-        name: MessagesEnum.DEFAULT_MESSAGE,
-        description: MessagesEnum.DEFAULT_MESSAGE,
-        message: MessagesEnum.DEFAULT_MESSAGE,
-        enabled: true,
-      } as ChatBotMessage)
-    )
+    const exists = this.messages.has(msgId)
+    if (!exists) {
+      return  { ...this.messages.get(msgId) } as ChatBotMessage 
+    } else {
+      return {
+          id: MessagesEnum.DEFAULT_MESSAGE,
+          name: MessagesEnum.DEFAULT_MESSAGE,
+          description: MessagesEnum.DEFAULT_MESSAGE,
+          message: MessagesEnum.DEFAULT_MESSAGE,
+          enabled: true,
+        } as ChatBotMessage
+    }
   }
 
   findPlaceById(placeId: string): Place | undefined {
