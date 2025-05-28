@@ -19,7 +19,7 @@ placeholdersMap.set(Placeholders.PLACE, '')
 placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
 
 export const getPlaceholders = (): Map<Placeholders, string> => {
-  return placeholdersMap
+  return new Map(placeholdersMap)
 }
 export const getPlaceholder = (placeholder: Placeholders): string => {
   const value = placeholdersMap.get(placeholder)
