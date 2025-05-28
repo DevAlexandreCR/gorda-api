@@ -17,6 +17,7 @@ placeholdersMap.set(Placeholders.USERNAME, '')
 placeholdersMap.set(Placeholders.PQR_NUMBER, config.PQR_NUMBER)
 placeholdersMap.set(Placeholders.PLACE, '')
 placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
+Object.freeze(placeholdersMap)
 
 export const getPlaceholders = (): Map<Placeholders, string> => {
   return new Map(placeholdersMap)
