@@ -139,7 +139,7 @@ export class Store {
 
   findMessageById(msgId: MessagesEnum): ChatBotMessage {
     const exists = this.messages.has(msgId)
-    if (!exists) {
+    if (exists) {
       return  { ...this.messages.get(msgId) } as ChatBotMessage 
     } else {
       return {
