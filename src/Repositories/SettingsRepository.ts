@@ -92,6 +92,12 @@ class SettingsRepository {
     })
   }
 
+  async setMultiplier(fee: number): Promise<void> {
+    return Database.dbRideFees().child('fee_multiplier').set(fee).catch((error) => {
+      console.error('Error setting multiplier fee', error)
+    })
+  }
+
   /* istanbul ignore next */
   async setCoordinates(branchId: string, cityId: string, coordinates: Array<LatLng>): Promise<void> {
     return Database.dbBranches().child(branchId).child('cities').child(cityId).child('polygon').set(coordinates)
