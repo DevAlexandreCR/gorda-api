@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.5.x
 
+## [1.5.4 (2025-07-09)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.4...v1.5.3)
+
+### Added
+
+- Add dynamic multiplier update. [#102](https://github.com/DevAlexandreCR/gorda-api/pull/102)
+
 ## [1.5.3 (2025-05-27)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.3...v1.5.2)
 
 ### Added
