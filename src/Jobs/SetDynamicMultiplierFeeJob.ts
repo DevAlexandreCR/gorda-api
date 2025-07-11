@@ -28,7 +28,7 @@ export async function setDynamicMultiplierFee(): Promise<void> {
         }
     }
     
-    fees.dynamic_multipliers.forEach(async element => {
+    fees.dynamic_multipliers?.forEach(async element => {
         const today = now.format('YYYY-MM-DD')
         const start = dayjs.tz(`${today} ${element.timeRanges.start}`, 'YYYY-MM-DD HH:mm', 'America/Bogota')
         const end = dayjs.tz(`${today} ${element.timeRanges.end}`, 'YYYY-MM-DD HH:mm', 'America/Bogota')
