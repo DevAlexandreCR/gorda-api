@@ -23,7 +23,7 @@ export class Created extends ResponseContract {
       }
       await this.createClient(message.id, 'Usuario')
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION))
+      await this.sendMessage(Messages.greeting(this.currentClient.name))
     }
   }
 
