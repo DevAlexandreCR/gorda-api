@@ -6,6 +6,7 @@ import {Store} from '../store/Store'
 import {MessagesEnum} from './MessagesEnum'
 import {getPlaceholders, Placeholders, replacePlaceholders} from './Placeholders'
 import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import config from '../../../config'
 
 export function getSingleMessage(messagesEnum: MessagesEnum): ChatBotMessage {
   return store.findMessageById(messagesEnum)
@@ -23,7 +24,9 @@ export const requestingService = (placeName: string): ChatBotMessage => {
 
 export const completedService = (): ChatBotMessage => {
   const message = store.findMessageById(MessagesEnum.SERVICE_COMPLETED)
-  return replacePlaceholders(message, getPlaceholders())
+  const placeholdersMap = getPlaceholders()
+  placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
+  return replacePlaceholders(message, placeholdersMap)
 }
 export const sendPlaceOptions = (options: Array<PlaceOption>, resend: boolean = false): ChatBotMessage => {
   const error = 'No reconocimos ninguna opción válida, '
