@@ -39,8 +39,11 @@ export class Created extends ResponseContract {
         msg.message = response.message.body
       } else {
         await this.createClient(message.id, response.name || 'Usuario')
-        msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION)
+        msg = Messages.greeting(this.currentClient.name)
         msg.message = response.message.body
+        if (message.interactive && message.interactive.body) {
+          message.interactive.body.text = response.message.body
+        }
       }
 
       await this.sendMessage(msg)
