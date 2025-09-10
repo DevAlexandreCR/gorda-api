@@ -4,16 +4,16 @@ import PlaceRepository from '../../Repositories/PlaceRepository'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
-import {ChatBotMessage} from '../../Types/ChatBotMessage'
+import { ChatBotMessage } from '../../Types/ChatBotMessage'
 import SettingsRepository from '../../Repositories/SettingsRepository'
-import {MessagesEnum} from '../chatBot/MessagesEnum'
-import {ClientDictionary} from '../../Interfaces/ClientDiccionary'
+import { MessagesEnum } from '../chatBot/MessagesEnum'
+import { ClientDictionary } from '../../Interfaces/ClientDiccionary'
 import ChatRepository from '../../Repositories/ChatRepository'
-import {Chat} from '../../Interfaces/Chat'
+import { Chat } from '../../Interfaces/Chat'
 import DateHelper from '../../Helpers/DateHelper'
-import {ClientInterface} from '../../Interfaces/ClientInterface'
-import {WpContactInterface} from '../whatsapp/interfaces/WpContactInterface'
-import {MessageTypes} from '../whatsapp/constants/MessageTypes'
+import { ClientInterface } from '../../Interfaces/ClientInterface'
+import { WpContactInterface } from '../whatsapp/interfaces/WpContactInterface'
+import { MessageTypes } from '../whatsapp/constants/MessageTypes'
 import { Branch } from '../../Interfaces/Branch'
 import { City } from '../../Interfaces/City'
 import { LatLng } from '../../Interfaces/LatLng'
@@ -59,7 +59,7 @@ export class Store {
       },
       (clientId) => {
         if (clientId) this.clients.delete(clientId)
-      },
+      }
     )
   }
 
@@ -100,7 +100,11 @@ export class Store {
     })
   }
 
-  async getChatById(wpClientId: string, chatId: string, profileName: string = 'Usuario'): Promise<Chat> {
+  async getChatById(
+    wpClientId: string,
+    chatId: string,
+    profileName: string = 'Usuario'
+  ): Promise<Chat> {
     const chat = this.wpChats.get(chatId)
 
     if (chat) {
@@ -140,15 +144,15 @@ export class Store {
   findMessageById(msgId: MessagesEnum): ChatBotMessage {
     const exists = this.messages.has(msgId)
     if (exists) {
-      return  { ...this.messages.get(msgId) } as ChatBotMessage 
+      return { ...this.messages.get(msgId) } as ChatBotMessage
     } else {
       return {
-          id: MessagesEnum.DEFAULT_MESSAGE,
-          name: MessagesEnum.DEFAULT_MESSAGE,
-          description: MessagesEnum.DEFAULT_MESSAGE,
-          message: MessagesEnum.DEFAULT_MESSAGE,
-          enabled: true,
-        } as ChatBotMessage
+        id: MessagesEnum.DEFAULT_MESSAGE,
+        name: MessagesEnum.DEFAULT_MESSAGE,
+        description: MessagesEnum.DEFAULT_MESSAGE,
+        message: MessagesEnum.DEFAULT_MESSAGE,
+        enabled: true,
+      } as ChatBotMessage
     }
   }
 
@@ -168,8 +172,8 @@ export class Store {
           const coordinates: GeoJSON.Position[] = []
 
           if (city.polygon.length == 0) return
-          
-          Array.from(city.polygon.values()).forEach((latLng: LatLng) => {            
+
+          Array.from(city.polygon.values()).forEach((latLng: LatLng) => {
             coordinates.push([latLng.lng, latLng.lat])
           })
 

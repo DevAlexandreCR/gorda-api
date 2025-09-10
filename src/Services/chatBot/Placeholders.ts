@@ -1,5 +1,5 @@
-import { ChatBotMessage } from "../../Types/ChatBotMessage"
-import config from "../../../config"
+import { ChatBotMessage } from '../../Types/ChatBotMessage'
+import config from '../../../config'
 
 export enum Placeholders {
   PLATE = 'PLATE',
@@ -32,7 +32,10 @@ export const getPlaceholder = (placeholder: Placeholders): string => {
   return value
 }
 
-export function replacePlaceholders(input: ChatBotMessage, placeholders: Map<Placeholders, string>): ChatBotMessage {
+export function replacePlaceholders(
+  input: ChatBotMessage,
+  placeholders: Map<Placeholders, string>
+): ChatBotMessage {
   let result = input.message
   placeholders.forEach((value, key) => {
     const regex = new RegExp('\\[\\[' + key + '\\]\\]', 'g')

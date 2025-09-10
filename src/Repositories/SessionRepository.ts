@@ -76,7 +76,10 @@ class SessionRepository {
     return session
   }
 
-  public async updateNotification(sessionId: string, notifications: WpNotifications): Promise<void> {
+  public async updateNotification(
+    sessionId: string,
+    notifications: WpNotifications
+  ): Promise<void> {
     await Firestore.dbSessions().doc(sessionId).update({
       notifications: notifications,
     })
@@ -105,7 +108,10 @@ class SessionRepository {
     return sessions
   }
 
-  public sessionActiveListener(wpClientId: string, listener: (type: string, session: Session) => void): void {
+  public sessionActiveListener(
+    wpClientId: string,
+    listener: (type: string, session: Session) => void
+  ): void {
     Firestore.dbSessions()
       .where('status', 'not-in', [Session.STATUS_COMPLETED])
       .where('wp_client_id', '==', wpClientId)

@@ -1,3 +1,3 @@
 export type DriverUpdates = {
-	[driverId: string]: number;
+  [driverId: string]: number
 }

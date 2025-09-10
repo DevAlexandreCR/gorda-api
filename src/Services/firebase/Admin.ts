@@ -1,9 +1,9 @@
-import {initializeApp, App, cert} from 'firebase-admin/app'
-import {Database, getDatabase} from 'firebase-admin/database'
-import {Auth, getAuth} from 'firebase-admin/auth'
+import { initializeApp, App, cert } from 'firebase-admin/app'
+import { Database, getDatabase } from 'firebase-admin/database'
+import { Auth, getAuth } from 'firebase-admin/auth'
 import config from '../../../config'
-import {Firestore, getFirestore} from 'firebase-admin/firestore'
-import {getMessaging, Messaging} from 'firebase-admin/messaging'
+import { Firestore, getFirestore } from 'firebase-admin/firestore'
+import { getMessaging, Messaging } from 'firebase-admin/messaging'
 
 export default class Admin {
   public static instance: Admin
@@ -27,7 +27,7 @@ export default class Admin {
       this.db.useEmulator(config.DATABASE_EMULATOR_HOST, config.DATABASE_EMULATOR_PORT as number)
     }
   }
-  
+
   public static getInstance(): Admin {
     if (!Admin.instance) {
       Admin.instance = new Admin()

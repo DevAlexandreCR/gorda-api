@@ -1,5 +1,5 @@
 import Place from '../Models/Place'
-import {Metadata} from './Metadata'
+import { Metadata } from './Metadata'
 
 export interface ServiceInterface {
   id: string | null

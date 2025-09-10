@@ -35,16 +35,21 @@ let wpServices: WhatsAppClientDictionary = {}
 
 Sentry.init({
   dsn: config.SENTRY_DSN,
-  integrations: [new Sentry.Integrations.Http({ tracing: true }), new Tracing.Integrations.Express({ app })],
+  integrations: [
+    new Sentry.Integrations.Http({ tracing: true }),
+    new Tracing.Integrations.Express({ app }),
+  ],
 
   tracesSampleRate: 0.8,
 })
 
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
-}))
+app.use(
+  cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  })
+)
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
@@ -115,7 +120,7 @@ io.on('connection', async (socket: Socket) => {
   socket.on('get-state', async () => {
     if (wpServices[clientId]) wpServices[clientId].getState()
   })
-  
+
   socket.on('reset', async () => {
     console.log('restarting by user: ', clientId)
     process.exit(0)

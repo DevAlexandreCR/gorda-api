@@ -8,7 +8,10 @@ import { WpContactInterface } from '../Services/whatsapp/interfaces/WpContactInt
 
 class ClientRepository {
   /* istanbul ignore next */
-  onClient(AddListener: (client: Client) => void, deleteListener: (clientId: string | false) => void): void {
+  onClient(
+    AddListener: (client: Client) => void,
+    deleteListener: (clientId: string | false) => void
+  ): void {
     DBService.dbClients().on('child_added', (snapshot) => {
       const client = snapshot.val() as ClientInterface
       const clientTmp = new Client()

@@ -1,16 +1,15 @@
 import DBService from '../Services/firebase/Database'
-import {PlaceInterface} from '../Interfaces/PlaceInterface'
+import { PlaceInterface } from '../Interfaces/PlaceInterface'
 import Place from '../Models/Place'
 
 class PlaceRepository {
-
-/* istanbul ignore next */
-  getAll(listener: (place: Place)=> void): void {
+  /* istanbul ignore next */
+  getAll(listener: (place: Place) => void): void {
     DBService.dbPlaces().on('child_added', (snapshot) => {
       const place = snapshot.val() as PlaceInterface
-      const placeTmp = new Place
+      const placeTmp = new Place()
       Object.assign(placeTmp, place)
-      placeTmp.key = snapshot.key?? ''
+      placeTmp.key = snapshot.key ?? ''
       listener(placeTmp)
     })
   }

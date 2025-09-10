@@ -24,10 +24,10 @@ export class WpMessageAdapter implements WpMessageInterface {
       from: string
       isStatus: boolean
       body: string
-      location?: LocType,
+      location?: LocType
       interactiveReply: InteractiveReply | null
     },
-    private client: OfficialClient,
+    private client: OfficialClient
   ) {
     this.id = message.id
     this.timestamp = message.timestamp
@@ -39,7 +39,7 @@ export class WpMessageAdapter implements WpMessageInterface {
       this.location = message.location
     }
     if (message.interactiveReply) {
-      this.interactiveReply = message.interactiveReply?? null
+      this.interactiveReply = message.interactiveReply ?? null
     }
   }
 

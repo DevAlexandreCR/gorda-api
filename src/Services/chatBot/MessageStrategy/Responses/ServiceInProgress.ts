@@ -15,14 +15,17 @@ export class ServiceInProgress extends ResponseContract {
   public async processMessage(message: WpMessage): Promise<void> {
     await this.setService()
 
-    if (this.service.metadata && this.service.metadata.arrived_at) await this.sendMessage(Messages.serviceInProgress())
+    if (this.service.metadata && this.service.metadata.arrived_at)
+      await this.sendMessage(Messages.serviceInProgress())
     else {
       const body = message.msg.toLowerCase()
       if (body.includes(MessageHelper.CANCEL)) {
         await this.cancelService()
         await this.session.setStatus(Session.STATUS_COMPLETED)
       } else {
-        await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_WAIT_DRIVER))
+        await this.sendMessage(
+          Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_WAIT_DRIVER)
+        )
       }
     }
   }

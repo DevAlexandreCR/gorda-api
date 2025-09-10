@@ -12,7 +12,7 @@ export default {
     plate: 'Placa',
     color: 'Color',
     soat_exp: 'Soat',
-    tec_exp: 'Tecno-mecánica'
+    tec_exp: 'Tecno-mecánica',
   },
   forms: {
     edit: 'Editar información del conductor',
@@ -20,7 +20,7 @@ export default {
     create_vehicle: 'Información del vehículo',
     create_driver: 'Información del conductor',
     upload: 'Cargar foto de perfil',
-    upload_vehicle: 'Cargar foto del vehículo'
+    upload_vehicle: 'Cargar foto del vehículo',
   },
   vehicle: {
     brand: 'Marca',
@@ -28,7 +28,7 @@ export default {
     plate: 'Placas',
     color: 'Color',
     soat_exp: 'Soat',
-    tec_exp: 'Tecno-mecánica'
+    tec_exp: 'Tecno-mecánica',
   },
   placeholders: {
     docType: 'Tipo de documento',
@@ -40,6 +40,6 @@ export default {
     photo_vehicle: 'Seleccione foto del vehículo',
     color: 'Seleccione el color del vehículo',
     soat_exp: 'Seleccione vencimiento del soat',
-    tec_exp: 'Seleccione vencimiento de la tecno-mecánica'
-  }
+    tec_exp: 'Seleccione vencimiento de la tecno-mecánica',
+  },
 }

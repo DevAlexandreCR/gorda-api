@@ -7,7 +7,11 @@ import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class AskingForPlace extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION, MessageTypes.INTERACTIVE]
+  public messageSupported: Array<string> = [
+    MessageTypes.TEXT,
+    MessageTypes.LOCATION,
+    MessageTypes.INTERACTIVE,
+  ]
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (!this.session.place) {
@@ -20,7 +24,9 @@ export class AskingForPlace extends ResponseContract {
             await this.session.setPlace(place)
           })
         } else {
-          await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION_NAME)).then(async () => {
+          await this.sendMessage(
+            Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION_NAME)
+          ).then(async () => {
             await this.session.setPlace(place)
           })
         }

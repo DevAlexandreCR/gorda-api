@@ -12,7 +12,7 @@ export default {
     plate: 'Licence number',
     color: 'Color',
     soat_exp: 'Soat',
-    tec_exp: 'Techno'
+    tec_exp: 'Techno',
   },
   forms: {
     edit: 'Edit driver information',
@@ -20,7 +20,7 @@ export default {
     create_vehicle: 'Vehicle information',
     create_driver: 'Driver information',
     upload: 'Upload photo profile',
-    upload_vehicle: 'Upload photo vehicle'
+    upload_vehicle: 'Upload photo vehicle',
   },
   vehicle: {
     brand: 'Brand',
@@ -28,7 +28,7 @@ export default {
     plate: 'Licence plate number',
     color: 'Color',
     soat_exp: 'Soat',
-    tec_exp: 'Techno'
+    tec_exp: 'Techno',
   },
   placeholders: {
     password: 'Password',
@@ -42,6 +42,6 @@ export default {
     photo_vehicle: 'Choose photo vehicle',
     color: 'Choose color vehicle',
     soat_exp: 'Choose Soat expiration',
-    tec_exp: 'Choose Techno expiration'
-  }
+    tec_exp: 'Choose Techno expiration',
+  },
 }

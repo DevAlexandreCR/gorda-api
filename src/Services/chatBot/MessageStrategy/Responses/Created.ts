@@ -11,7 +11,11 @@ import ClientRepository from '../../../../Repositories/ClientRepository'
 import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
 
 export class Created extends ResponseContract {
-  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.LOCATION, MessageTypes.INTERACTIVE]
+  public messageSupported: Array<string> = [
+    MessageTypes.TEXT,
+    MessageTypes.LOCATION,
+    MessageTypes.INTERACTIVE,
+  ]
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.clientExists(this.session.chat_id)) await this.validateKey(message)
@@ -28,24 +32,24 @@ export class Created extends ResponseContract {
   }
 
   private async createClient(messageId: string, name: string): Promise<void> {
-      const contact = await this.getContact()
-      contact.pushname = MessageHelper.normalizeName(name)
-      this.currentClient = await ClientRepository.create(contact)
-    }
-  
-    async getContact(): Promise<WpContactInterface> {
-      return new Promise((resolve, reject) => {
-        this.session.chat
-          .getContact()
-          .then((contact) => {
-            resolve(contact)
-          })
-          .catch((e) => {
-            console.log('Error getting contact', e)
-            reject(e)
-          })
-      })
-    }
+    const contact = await this.getContact()
+    contact.pushname = MessageHelper.normalizeName(name)
+    this.currentClient = await ClientRepository.create(contact)
+  }
+
+  async getContact(): Promise<WpContactInterface> {
+    return new Promise((resolve, reject) => {
+      this.session.chat
+        .getContact()
+        .then((contact) => {
+          resolve(contact)
+        })
+        .catch((e) => {
+          console.log('Error getting contact', e)
+          reject(e)
+        })
+    })
+  }
 
   async validateKey(message: WpMessage): Promise<void> {
     if (this.isLocation(message)) {

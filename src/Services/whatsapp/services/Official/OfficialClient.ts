@@ -25,7 +25,7 @@ export class OfficialClient implements WPClientInterface {
   serviceName: WpClients = WpClients.OFFICIAL
   private static instances: { [key: string]: OfficialClient } = {}
   private store: Store
-  private msgQueue:QueueService = QueueService.getInstance()
+  private msgQueue: QueueService = QueueService.getInstance()
   private QUEUE_NAME = WpClients.OFFICIAL + '-msg-queue'
 
   constructor(private wpClient: WpClient) {
@@ -99,15 +99,15 @@ export class OfficialClient implements WPClientInterface {
 
   async text(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     const phone = phoneNumber.replace('@c.us', '')
-    return new Promise<void>(async (resolve, reject) => {      
+    return new Promise<void>(async (resolve, reject) => {
       const interactive = this.getInteractive(message)
       let data: ApiMessage = {
         messaging_product: this.config.messagingProduct,
         to: phone,
-        type: interactive? 'INTERACTIVE' : 'TEXT',
+        type: interactive ? 'INTERACTIVE' : 'TEXT',
         text: {
           body: message.message,
-        }
+        },
       }
       if (interactive) {
         data = { ...data, interactive }

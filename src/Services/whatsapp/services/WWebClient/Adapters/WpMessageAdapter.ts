@@ -5,7 +5,7 @@ import { WpChatInterface } from '../../../interfaces/WpChatInterface'
 import { WpMessageInterface } from '../../../interfaces/WpMessageInterface'
 import { WpChatAdapter } from './WpChatAdapter'
 import { LocType } from '../../../../../Interfaces/LocType'
-import MessageHelper from "../../../../../Helpers/MessageHelper";
+import MessageHelper from '../../../../../Helpers/MessageHelper'
 import { InteractiveReply } from '../../Official/Constants/InteractiveReply'
 
 export class WpMessageAdapter implements WpMessageInterface {

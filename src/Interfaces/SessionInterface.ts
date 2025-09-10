@@ -1,7 +1,7 @@
-import {PlaceOption} from './PlaceOption'
+import { PlaceOption } from './PlaceOption'
 import Place from '../Models/Place'
-import {WpMessage} from '../Types/WpMessage'
-import {WpNotifications} from '../Types/WpNotifications'
+import { WpMessage } from '../Types/WpMessage'
+import { WpNotifications } from '../Types/WpNotifications'
 import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
 
 export interface SessionInterface {

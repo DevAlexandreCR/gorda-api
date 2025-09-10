@@ -5,17 +5,18 @@ export default class MessageHelper {
   static KEYS = ['servicio', 'movil']
 
   public static normalize(str: string) {
-    return str.normalize("NFD")
+    return str
+      .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-zA-Z0-9 ]/g, '')
-      .toLowerCase().trim()
+      .toLowerCase()
+      .trim()
   }
   public static isPlaceName(str: string): boolean {
     const nameRegex = /^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$/
-    const locationRegex = /^[0-9a-zA-Z\s,'-]*$/;
+    const locationRegex = /^[0-9a-zA-Z\s,'-]*$/
     return nameRegex.test(str) || locationRegex.test(str)
   }
-
 
   public static hasKey(message: string): boolean {
     return message.includes(this.KEYS[0]) || message.includes(this.KEYS[1])
@@ -27,13 +28,22 @@ export default class MessageHelper {
 
   public static getPlace(message: string): string {
     message = MessageHelper.normalize(message)
-    const keyRemoved = message.replace(
-        /(.?)+(servicio|movil)+([para, el, la, los, el, las, a, en]*)/,
-        '').trim()
-    const place =  keyRemoved.replace(new RegExp('(barrio|centro comercial|cc |hospital|urbanizacion' +
-        'condominio|unidad|conjunto|conjunto residencial|restaurante|colegio|)'), '').trim()
+    const keyRemoved = message
+      .replace(/(.?)+(servicio|movil)+([para, el, la, los, el, las, a, en]*)/, '')
+      .trim()
+    const place = keyRemoved
+      .replace(
+        new RegExp(
+          '(barrio|centro comercial|cc |hospital|urbanizacion' +
+            'condominio|unidad|conjunto|conjunto residencial|restaurante|colegio|)'
+        ),
+        ''
+      )
+      .trim()
 
-    return place.replace(new RegExp('(por favor|gracias|si es tan amable|muchas gracias|porfa)'), '').trim()
+    return place
+      .replace(new RegExp('(por favor|gracias|si es tan amable|muchas gracias|porfa)'), '')
+      .trim()
   }
 
   public static getServiceIdFromCancel(message: string): string {
@@ -46,7 +56,7 @@ export default class MessageHelper {
     message = MessageHelper.normalize(message)
     const placeReg = message.match(/(?<=convenio).*/)
 
-    return placeReg? placeReg[0] : ''
+    return placeReg ? placeReg[0] : ''
   }
 
   public static getCommentFromAgreement(message: string): string {
@@ -54,13 +64,13 @@ export default class MessageHelper {
     const commentReg = message.match(/(?<=movil|servicio )(.*)(?= convenio )/)
     let comment = 'convenio '
 
-    return commentReg? comment += commentReg[0] : comment
+    return commentReg ? (comment += commentReg[0]) : comment
   }
 
   static normalizeName(name: string): string {
     const parts = name.split(' ')
     let normalizedName = ''
-    parts.forEach(part => {
+    parts.forEach((part) => {
       normalizedName += part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() + ' '
     })
 

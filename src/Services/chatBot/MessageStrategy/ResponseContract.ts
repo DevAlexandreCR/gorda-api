@@ -85,7 +85,7 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
 
-  async getPlaceFromLocation(location: WpLocation): Promise<Place|false> {
+  async getPlaceFromLocation(location: WpLocation): Promise<Place | false> {
     const place = new Place()
     const latlng: LatLng = { lat: location.lat, lng: location.lng }
     const city = await this.findContainingPolygon(latlng)
@@ -142,7 +142,7 @@ export abstract class ResponseContract {
 
   protected async findContainingPolygon(latlng: LatLng): Promise<City | null> {
     let city: City | null = null
-    city = this.store.findCityById('popayan')?? null
+    city = this.store.findCityById('popayan') ?? null
     // this.store.polygons.forEach((polygon) => {
     //   const geoPoint = point([latlng.lat, latlng.lng])
     //   if (booleanPointInPolygon(geoPoint, polygon)) {

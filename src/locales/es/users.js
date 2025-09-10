@@ -15,7 +15,8 @@ export default {
   create_new_account: 'Ingresa tus datos',
   create_account: 'Regístrate',
   go_back: 'Volver',
-  forbidden: 'Lo sentimos, su acceso está denegado por razones de seguridad de nuestro servidor y también de nuestros datos sensibles.\n\n Por favor inicia sesión con otra cuenta',
+  forbidden:
+    'Lo sentimos, su acceso está denegado por razones de seguridad de nuestro servidor y también de nuestros datos sensibles.\n\n Por favor inicia sesión con otra cuenta',
   fields: {
     name: 'Nombre',
     email: 'Correo electrónico',
@@ -23,17 +24,17 @@ export default {
     confirm_password: 'Confirma tu contraseña',
     phone: 'Teléfono',
     roles: 'Roles',
-    admin: 'Administrador', 
-    operator: 'Operador'
+    admin: 'Administrador',
+    operator: 'Operador',
   },
   platform_settings: 'Configuraciones',
   forms: {
     edit: 'Editar información del usuario',
     upload: 'Subir foto de perfil',
-    select_img: 'Seleccione una imagen del archivo'
+    select_img: 'Seleccione una imagen del archivo',
   },
   messages: {
     enabled: 'El usuario ha sido habilitado!',
-    disabled: 'El usuario ha sido inhabilitado!'
-  }
+    disabled: 'El usuario ha sido inhabilitado!',
+  },
 }

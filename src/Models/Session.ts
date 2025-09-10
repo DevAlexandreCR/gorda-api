@@ -107,7 +107,10 @@ export default class Session implements SessionInterface {
 
   async processUnprocessedMessages(): Promise<void> {
     let unprocessedMessages = this.getUnprocessedMessages()
-    if (unprocessedMessages.size === 1 || (unprocessedMessages.size > 1 && !this.processorTimeout)) {
+    if (
+      unprocessedMessages.size === 1 ||
+      (unprocessedMessages.size > 1 && !this.processorTimeout)
+    ) {
       this.processorTimeout = setTimeout(() => {
         const unprocessedMessagesArray = Array.from(this.getUnprocessedMessages().values())
         const text = unprocessedMessagesArray.map((msg) => msg.msg).join(' ')
@@ -196,7 +199,7 @@ export default class Session implements SessionInterface {
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {
     const handler = ResponseContext.getResponse(this.status, this)
     const response = new ResponseContext(handler)
-    
+
     await response
       .processMessage(message)
       .finally(async () => {

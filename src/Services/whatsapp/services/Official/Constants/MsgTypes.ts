@@ -1,4 +1,4 @@
 export enum MsgTypes {
-    text = 'text',
-    location = 'location_request_message',
+  text = 'text',
+  location = 'location_request_message',
 }
