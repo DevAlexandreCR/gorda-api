@@ -6,7 +6,10 @@
   "scripts": {
     "build": "tsc -p . && cp -r src/.well-known build/src/.well-known",
     "serve": "tsc && node build/src/app.js",
-    "watch": "nodemon src/app.ts --ignore 'storage/'"
+    "watch": "nodemon src/app.ts --ignore 'storage/'",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
+    "format:all": "prettier --write \"./**/*.{ts,js,json}\" --ignore-path .gitignore"
   },
   "keywords": [
     "chat",
@@ -47,6 +50,7 @@
     "@types/socket.io": "^3.0.2",
     "@types/xml2js": "^0.4.14",
     "nodemon": "^2.0.15",
+    "prettier": "^3.6.2",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.2"
   }
