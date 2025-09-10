@@ -1,5 +1,5 @@
-const path = require("path");
-require('dotenv').config({path: path.join(__dirname, '.env')});
+const path = require("path")
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 
 module.exports = {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -32,4 +32,6 @@ module.exports = {
   GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '/root/wp-api/firebaseAccount.json',
   REDIS_HOST: process.env.REDIS_HOST || 'localhost',
   REDIS_PORT: process.env.REDIS_PORT || 6379,
+  AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
+  AI_SERVICE_API_KEY: process.env.AI_SERVICE_API_KEY || 'admin-token',
 }
