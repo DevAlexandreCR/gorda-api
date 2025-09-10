@@ -9,6 +9,9 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import ClientRepository from '../../../../Repositories/ClientRepository'
 import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
+import { GordaChatBot } from '../../../../Services/chatBot/ai/Services/GordaChatBot'
+import { MessageHandler } from '../../../chatBot/ai/MessageHandler'
+import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 
 export class Created extends ResponseContract {
   public messageSupported: Array<string> = [
@@ -25,9 +28,23 @@ export class Created extends ResponseContract {
         if (!place) return
         await this.session.setPlace(place)
       }
-      await this.createClient(message.id, 'Usuario')
-      await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
-      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION))
+      const ia = new MessageHandler(new GordaChatBot())
+
+      const response = await ia.handleMessage(message.msg)
+
+      let msg: ChatBotMessage
+
+      if (response.session_status == Session.STATUS_CREATED) {
+        msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
+        msg.message = response.message.body
+      } else {
+        await this.createClient(message.id, response.name || 'Usuario')
+        msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION)
+        msg.message = response.message.body
+      }
+
+      await this.sendMessage(msg)
+      await this.session.setStatus(response.session_status)
     }
   }
 
