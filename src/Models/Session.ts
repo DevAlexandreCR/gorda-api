@@ -43,6 +43,7 @@ export default class Session implements SessionInterface {
   static readonly STATUS_SERVICE_IN_PROGRESS = SessionStatuses.SERVICE_IN_PROGRESS
   static readonly STATUS_COMPLETED = SessionStatuses.COMPLETED
   static readonly STATUS_ASKING_FOR_NAME = SessionStatuses.ASKING_FOR_NAME
+  static readonly STATUS_SUPPORT = SessionStatuses.SUPPORT
 
   constructor(chat_id: string) {
     this.chat_id = chat_id
