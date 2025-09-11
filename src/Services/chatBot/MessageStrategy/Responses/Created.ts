@@ -34,16 +34,16 @@ export class Created extends ResponseContract {
 
       let msg: ChatBotMessage
 
-      if (response.session_status == Session.STATUS_CREATED) {
-        msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
-        msg.message = response.message.body
-      } else {
+      if (response.session_status == Session.STATUS_ASKING_FOR_PLACE) {
         await this.createClient(message.id, response.name || 'Usuario')
         msg = Messages.greeting(this.currentClient.name)
         msg.message = response.message.body
         if (message.interactive && message.interactive.body) {
           message.interactive.body.text = response.message.body
         }
+      } else {
+        msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
+        msg.message = response.message.body
       }
 
       await this.sendMessage(msg)
