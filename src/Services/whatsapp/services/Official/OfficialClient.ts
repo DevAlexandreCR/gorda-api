@@ -74,18 +74,39 @@ export class OfficialClient implements WPClientInterface {
   }
 
   async initialize(): Promise<void> {
-    const msg: ChatBotMessage = {
-      id: MessagesEnum.GREETING,
-      message: 'Prueba de inicialización de whatsapp',
-      name: 'Bot',
-      enabled: true,
-      description: 'Mensaje de prueba',
-      interactive: null,
-    }
-    return await this.sendMessage('573103794656', msg).then(() => {
+    await this.testApiConnection().catch((error) => {
+      this.status = WpStates.UNPAIRED
+      this.triggerEvent(WpEvents.DISCONNECTED)
+      console.error('Failed to initialize WhatsApp API:', error)
+    }).then(() => {
       this.status = WpStates.CONNECTED
       this.triggerEvent(WpEvents.AUTHENTICATED)
       this.triggerEvent(WpEvents.READY)
+      console.log('WhatsApp API connection established successfully')
+    })
+  }
+
+  private async testApiConnection(): Promise<void> {
+    // Test connection by making a GET request to the phone number endpoint
+    // This verifies the token without sending any messages
+    const phoneNumberEndpoint = config.WAPI_URL + this.wpClient.id
+
+    return new Promise<void>((resolve, reject) => {
+      axios
+        .get(phoneNumberEndpoint, {
+          headers: {
+            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: this.config.timeout,
+        })
+        .then((response) => {
+          console.log('API connection test successful:', response.data)
+          resolve()
+        })
+        .catch((error) => {
+          console.error('API connection test failed:', error.response?.data || error.message)
+        })
     })
   }
 
