@@ -9,6 +9,7 @@ import * as Messages from '../Messages'
 import { ChoosingPlace } from './Responses/ChoosingPlace'
 import { AskingForComment } from './Responses/AskingForComment'
 import { Agreement } from './Responses/Agreement'
+import { Support } from './Responses/Support'
 import { WpMessage } from '../../../Types/WpMessage'
 import { getSingleMessage } from '../Messages'
 import { MessagesEnum } from '../MessagesEnum'
@@ -34,6 +35,7 @@ export class ResponseContext {
       [Session.STATUS_ASKING_FOR_COMMENT]: new AskingForComment(session),
       [Session.STATUS_REQUESTING_SERVICE]: new RequestingService(session),
       [Session.STATUS_SERVICE_IN_PROGRESS]: new ServiceInProgress(session),
+      [Session.STATUS_SUPPORT]: new Support(session),
     }
 
     return responses[status]
