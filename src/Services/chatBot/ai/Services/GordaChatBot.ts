@@ -6,7 +6,6 @@ import { SessionStatuses } from '../../../../Types/SessionStatuses'
 import DateHelper from '../../../../Helpers/DateHelper'
 import axios, { AxiosResponse } from 'axios'
 import config from '../../../../../config'
-import { log } from 'node:console'
 
 export class GordaChatBot implements MessageHandlerInterface {
   private apiURL: string
@@ -23,7 +22,7 @@ export class GordaChatBot implements MessageHandlerInterface {
   async handleMessage(message: string): Promise<AIResponseInterface> {
     const data = await this.requestAIService(message)
 
-    log('AI service response data:', data.data) // Debug log
+    console.log('AI service response data:', data.data) // Debug log
 
     const parsedData = JSON.parse(data.data)
     const messageText = parsedData.message
