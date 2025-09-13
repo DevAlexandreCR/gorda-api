@@ -28,26 +28,8 @@ export class Created extends ResponseContract {
         if (!place) return
         await this.session.setPlace(place)
       }
-      const ia = new MessageHandler(new GordaChatBot())
-
-      const response = await ia.handleMessage(message.msg)
-
-      let msg: ChatBotMessage
-
-      if (response.session_status == Session.STATUS_ASKING_FOR_PLACE) {
-        await this.createClient(message.id, response.name || 'Usuario')
-        msg = Messages.greeting(this.currentClient.name)
-        msg.message = response.message.body
-        if (message.interactive && message.interactive.body) {
-          message.interactive.body.text = response.message.body
-        }
-      } else {
-        msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
-        msg.message = response.message.body
-      }
-
-      await this.sendMessage(msg)
-      await this.session.setStatus(response.session_status)
+      await this.session.setStatus(Session.STATUS_ASKING_FOR_NAME)
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_NAME))
     }
   }
 
