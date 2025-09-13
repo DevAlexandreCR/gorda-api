@@ -1,5 +1,6 @@
+import { SessionStatuses } from '../../../../Types/SessionStatuses'
 import { AIResponseInterface } from './AIResponseInterface'
 
 export interface MessageHandlerInterface {
-  handleMessage(message: string): Promise<AIResponseInterface>
+  handleMessage(message: string, sessionStatus: SessionStatuses): Promise<AIResponseInterface>
 }

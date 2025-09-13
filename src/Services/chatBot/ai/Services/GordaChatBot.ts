@@ -6,6 +6,7 @@ import { SessionStatuses } from '../../../../Types/SessionStatuses'
 import DateHelper from '../../../../Helpers/DateHelper'
 import axios, { AxiosResponse } from 'axios'
 import config from '../../../../../config'
+import { AIResponse } from '../Interfaces/AIResponse'
 
 export class GordaChatBot implements MessageHandlerInterface {
   private apiURL: string
@@ -19,14 +20,13 @@ export class GordaChatBot implements MessageHandlerInterface {
     }
   }
 
-  async handleMessage(message: string): Promise<AIResponseInterface> {
-    const data = await this.requestAIService(message)
+  async handleMessage(message: string, sessionStatus: SessionStatuses): Promise<AIResponseInterface> {
+    const data = await this.requestAIService(message, sessionStatus)
 
     console.log('AI service response data:', data.data) // Debug log
 
-    const parsedData = JSON.parse(data.data)
-    const messageText = parsedData.message
-    const sessionStatus = parsedData.session_status as SessionStatuses
+    const messageText = data.data.outputText
+    const sessionStatusR = data.data.sessionStatus
 
     let responseMessage: Message = {
       id: DateHelper.unix().toString(),
@@ -39,20 +39,21 @@ export class GordaChatBot implements MessageHandlerInterface {
     }
 
     const response: AIResponseInterface = {
-      name: parsedData.name || null,
+      name: data.data.name,
       message: responseMessage,
-      session_status: sessionStatus
+      sessionStatus: sessionStatusR,
+      place: data.data.place
     }
 
     return Promise.resolve(response)
   }
 
-  private requestAIService(message: string): Promise<AxiosResponse> {
+  private requestAIService(message: string, sessionStatus: SessionStatuses): Promise<AxiosResponse<AIResponse>> {
     return axios.post(
       this.apiURL + '/chat/messages',
       {
         content: message,
-        session_status: SessionStatuses.CREATED
+        session_status: sessionStatus
       },
       {
         headers: {

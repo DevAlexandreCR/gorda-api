@@ -3,21 +3,21 @@ import { AIResponseInterface } from './Interfaces/AIResponseInterface'
 import { Message } from '../../../Interfaces/Message'
 import { SessionStatuses } from '../../../Types/SessionStatuses'
 import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
-import { Exception } from 'bullmq'
+import { AxiosDefaults, AxiosError, AxiosResponse } from 'axios'
 
 export class MessageHandler {
   constructor(private client: MessageHandlerInterface) { }
 
-  async handleMessage(message: string): Promise<AIResponseInterface> {
+  async handleMessage(message: string, sessionStatus: SessionStatuses): Promise<AIResponseInterface> {
     const maxRetries = 3
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await this.client.handleMessage(message)
-      } catch (error: unknown) {
+        return await this.client.handleMessage(message, sessionStatus)
+      } catch (error) {
         lastError = error as Error
-        console.warn(`Attempt ${attempt} failed for message handling:`, (error as Error).message)
+        console.warn(`Attempt ${attempt} failed for message handling:`, (error as AxiosError).response?.data || (error as Error).message)
 
         // If this is not the last attempt, continue to retry
         if (attempt < maxRetries) {
@@ -46,7 +46,7 @@ export class MessageHandler {
     return {
       name: 'Sistema',
       message: defaultMessage,
-      session_status: SessionStatuses.SUPPORT
+      sessionStatus: SessionStatuses.SUPPORT
     }
   }
 }

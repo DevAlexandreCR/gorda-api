@@ -1,9 +1,8 @@
-import { Message } from '../../../../Interfaces/Message'
 import { SessionStatuses } from '../../../../Types/SessionStatuses'
 
-export interface AIResponseInterface {
+export interface AIResponse {
   name?: string
-  message: Message
+  outputText: string
   sessionStatus: SessionStatuses
   place?: string
 }

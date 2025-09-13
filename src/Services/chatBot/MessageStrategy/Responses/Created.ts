@@ -9,9 +9,6 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import ClientRepository from '../../../../Repositories/ClientRepository'
 import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
-import { GordaChatBot } from '../../../../Services/chatBot/ai/Services/GordaChatBot'
-import { MessageHandler } from '../../../chatBot/ai/MessageHandler'
-import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 
 export class Created extends ResponseContract {
   public messageSupported: Array<string> = [
