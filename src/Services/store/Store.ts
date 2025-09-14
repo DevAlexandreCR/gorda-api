@@ -18,6 +18,7 @@ import { Branch } from '../../Interfaces/Branch'
 import { City } from '../../Interfaces/City'
 import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
+import MessageHelper from '../../Helpers/MessageHelper'
 
 export class Store {
   static instance: Store
@@ -195,5 +196,12 @@ export class Store {
       }
     })
     return country
+  }
+
+  findPlaceByName(placeName: string): Place | undefined {
+    const placesArray = Array.from(this.places)
+    return placesArray.find(pla => {
+      return MessageHelper.normalize(pla.name) === MessageHelper.normalize(placeName)
+    })
   }
 }

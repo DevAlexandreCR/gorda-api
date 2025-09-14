@@ -37,7 +37,7 @@ export class AskingForName extends ResponseContract {
           })
         }
       } else {
-        let msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
+        const msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
         msg.message = response.message.body
         await this.sendMessage(msg)
       }
