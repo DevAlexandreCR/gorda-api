@@ -25,14 +25,11 @@ export class GordaChatBot implements MessageHandlerInterface {
 
     console.log('AI service response data:', data.data) // Debug log
 
-    const messageText = data.data.outputText
-    const sessionStatusR = data.data.sessionStatus
-
     let responseMessage: Message = {
       id: DateHelper.unix().toString(),
       created_at: DateHelper.unix(),
       type: MessageTypes.TEXT,
-      body: messageText,
+      body: data.data.message,
       fromMe: true,
       interactive: null,
       interactiveReply: null
@@ -41,7 +38,7 @@ export class GordaChatBot implements MessageHandlerInterface {
     const response: AIResponseInterface = {
       name: data.data.name,
       message: responseMessage,
-      sessionStatus: sessionStatusR,
+      sessionStatus: data.data.sessionStatus,
       place: data.data.place
     }
 
