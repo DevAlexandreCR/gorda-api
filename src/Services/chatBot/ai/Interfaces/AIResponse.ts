@@ -3,6 +3,6 @@ import { SessionStatuses } from '../../../../Types/SessionStatuses'
 export interface AIResponse {
   name?: string
   message: string
-  sessionStatus: SessionStatuses
+  session_status: SessionStatuses
   place?: string
 }

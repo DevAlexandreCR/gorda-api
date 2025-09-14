@@ -7,6 +7,7 @@ import DateHelper from '../../../../Helpers/DateHelper'
 import axios, { AxiosResponse } from 'axios'
 import config from '../../../../../config'
 import { AIResponse } from '../Interfaces/AIResponse'
+import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
 
 export class GordaChatBot implements MessageHandlerInterface {
   private apiURL: string
@@ -29,7 +30,7 @@ export class GordaChatBot implements MessageHandlerInterface {
       id: DateHelper.unix().toString(),
       created_at: DateHelper.unix(),
       type: MessageTypes.TEXT,
-      body: data.data.message,
+      body: data.data.message === '' ? MessagesEnum.DEFAULT_MESSAGE : data.data.message,
       fromMe: true,
       interactive: null,
       interactiveReply: null
@@ -38,7 +39,7 @@ export class GordaChatBot implements MessageHandlerInterface {
     const response: AIResponseInterface = {
       name: data.data.name,
       message: responseMessage,
-      sessionStatus: data.data.sessionStatus,
+      sessionStatus: data.data.session_status,
       place: data.data.place
     }
 

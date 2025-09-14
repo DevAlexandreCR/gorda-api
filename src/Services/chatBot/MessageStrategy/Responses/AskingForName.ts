@@ -10,6 +10,7 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import { MessageHandler } from '../../ai/MessageHandler'
 import { GordaChatBot } from '../../ai/Services/GordaChatBot'
 import { SessionStatuses } from '../../../../Types/SessionStatuses'
+import { log } from 'console'
 export class AskingForName extends ResponseContract {
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
 
