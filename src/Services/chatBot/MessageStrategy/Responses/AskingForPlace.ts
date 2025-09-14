@@ -43,8 +43,7 @@ export class AskingForPlace extends ResponseContract {
               await this.session.setPlace(place)
             })
           } else {
-            const msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
-            msg.message = response.message.body
+            const msg = Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND)
             await this.sendMessage(msg)
           }
         }
