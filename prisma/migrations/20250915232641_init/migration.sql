@@ -31,6 +31,8 @@ CREATE TABLE "public"."cities" (
 CREATE TABLE "public"."places" (
     "id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
+    "lat" DOUBLE PRECISION NOT NULL,
+    "lng" DOUBLE PRECISION NOT NULL,
     "location" geometry(Point,4326) NOT NULL,
     "city_id" VARCHAR(50) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

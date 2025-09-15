@@ -52,6 +52,8 @@ model City {
 model Place {
   id       String @id @default(cuid())
   name     String @db.VarChar(255)
+  lat      Float
+  lng      Float
   location Unsupported("geometry(Point,4326)")
   cityId   String @map("city_id") @db.VarChar(50)
   createdAt DateTime @default(now()) @map("created_at")

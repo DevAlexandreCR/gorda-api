@@ -21,9 +21,6 @@ class PlaceRepository {
     })
   }
 
-  /**
-   * Get all places for a specific city
-   */
   async index(cityId: string) {
     const places = await this.prisma.place.findMany({
       where: { cityId },
@@ -40,9 +37,6 @@ class PlaceRepository {
     return places
   }
 
-  /**
-   * Store a new place
-   */
   async store(data: {
     name: string
     lat: number
@@ -51,7 +45,13 @@ class PlaceRepository {
   }) {
     try {
       const place = await this.prisma.place.create({
-        data,
+        data: {
+          name: data.name,
+          lat: data.lat,
+          lng: data.lng,
+          cityId: data.cityId,
+          location: `POINT(${data.lng} ${data.lat})`
+        },
         include: {
           city: {
             include: {
@@ -68,7 +68,6 @@ class PlaceRepository {
         lng: place.lng,
         country: place.city.branch.country,
         city: place.city.name,
-        cityId: place.cityId,
         createdAt: place.createdAt,
         updatedAt: place.updatedAt
       }
@@ -99,38 +98,7 @@ class PlaceRepository {
       name: place.name,
       lat: place.lat,
       lng: place.lng,
-      country: place.city.branch.country,
-      city: place.city.name,
-      cityId: place.cityId,
-      createdAt: place.createdAt,
-      updatedAt: place.updatedAt
     }
-  }
-
-  /**
-   * Find places within city polygon boundaries
-   */
-  async findPlacesWithinCityPolygon(lat: number, lng: number) {
-    const places = await this.prisma.$queryRaw`
-      SELECT p.*, c.name as city_name, b.country
-      FROM places p
-      JOIN cities c ON p.city_id = c.id
-      JOIN branches b ON c.branch_id = b.id
-      WHERE c.polygon IS NOT NULL 
-      AND ST_Contains(c.polygon, ST_Point(${lng}, ${lat}))
-    ` as any[]
-
-    return places.map(place => ({
-      id: place.id,
-      name: place.name,
-      lat: place.lat,
-      lng: place.lng,
-      country: place.country,
-      city: place.city_name,
-      cityId: place.city_id,
-      createdAt: place.created_at,
-      updatedAt: place.updated_at
-    }))
   }
 
   async disconnect() {
