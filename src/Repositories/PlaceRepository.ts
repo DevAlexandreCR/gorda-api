@@ -76,9 +76,6 @@ class PlaceRepository {
     }
   }
 
-  /**
-   * Find place by id
-   */
   async findById(id: string) {
     const place = await this.prisma.place.findUnique({
       where: { id },
