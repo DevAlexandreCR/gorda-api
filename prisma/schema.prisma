@@ -33,10 +33,9 @@ model Branch {
 model City {
   id         String                        @id @db.VarChar(50)
   name       String                        @db.VarChar(100)
-  lat        Float
-  lng        Float
-  percentage Int?
-  polygon    Unsupported("geometry(Polygon,4326)")
+  center     Unsupported("geometry(Point,4326)")
+  percentage Float
+  polygon    Unsupported("geometry(Polygon,4326)")?
   branchId   String                        @map("branch_id") @db.VarChar(50)
   createdAt  DateTime                      @default(now()) @map("created_at")
   updatedAt  DateTime                      @updatedAt @map("updated_at")
@@ -47,14 +46,13 @@ model City {
 
   @@map("cities")
   @@index([polygon], type: Gist)
+  @@index([center], type: Gist)
 }
 
 model Place {
   id       String @id @default(cuid())
   name     String @db.VarChar(255)
-  lat      Float
-  lng      Float
-  key      String @unique @db.VarChar(100)
+  location Unsupported("geometry(Point,4326)")
   cityId   String @map("city_id") @db.VarChar(50)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -63,4 +61,5 @@ model Place {
   city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
 
   @@map("places")
+  @@index([location], type: Gist)
 }
