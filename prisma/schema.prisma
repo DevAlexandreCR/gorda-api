@@ -5,11 +5,62 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis(map: "postgis")]
+}
+
+model Branch {
+  id           String @id @db.VarChar(50)
+  country      String @db.VarChar(100)
+  callingCode  String @map("calling_code") @db.VarChar(10)
+  currencyCode String @map("currency_code") @db.VarChar(10)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  cities City[]
+
+  @@map("branches")
+}
+
+model City {
+  id         String                        @id @db.VarChar(50)
+  name       String                        @db.VarChar(100)
+  lat        Float
+  lng        Float
+  percentage Int?
+  polygon    Unsupported("geometry(Polygon,4326)")
+  branchId   String                        @map("branch_id") @db.VarChar(50)
+  createdAt  DateTime                      @default(now()) @map("created_at")
+  updatedAt  DateTime                      @updatedAt @map("updated_at")
+
+  // Relations
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  places Place[]
+
+  @@map("cities")
+  @@index([polygon], type: Gist)
+}
+
+model Place {
+  id       String @id @default(cuid())
+  name     String @db.VarChar(255)
+  lat      Float
+  lng      Float
+  key      String @unique @db.VarChar(100)
+  cityId   String @map("city_id") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@map("places")
 }
