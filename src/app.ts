@@ -20,6 +20,7 @@ import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/Controllers/Whatsapp/MessageController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
 import NotificationController from './Api/Controllers/Notifications/NotificationController'
+import PlaceController from './Api/Controllers/Places/PlaceController'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
@@ -53,6 +54,7 @@ app.use(express.json())
 app.use(controller)
 app.use(polygonController)
 app.use(NotificationController)
+app.use('/places', PlaceController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
@@ -115,7 +117,7 @@ io.on('connection', async (socket: Socket) => {
   socket.on('get-state', async () => {
     if (wpServices[clientId]) wpServices[clientId].getState()
   })
-  
+
   socket.on('reset', async () => {
     console.log('restarting by user: ', clientId)
     process.exit(0)
