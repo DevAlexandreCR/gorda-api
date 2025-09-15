@@ -10,3 +10,5 @@ firebase.config.js
 firebaseAccount.json
 .ecosystem.config.js
 /.wwebjs_auth/*
+
+/generated/prisma
