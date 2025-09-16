@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize'
-import sequelize from '../Config/database'
+import sequelize from '../Database/Config/database'
 import City from './City'
 
 // Place interface

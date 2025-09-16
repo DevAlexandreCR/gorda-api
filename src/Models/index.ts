@@ -1,4 +1,4 @@
-import sequelize from '../Config/database'
+import sequelize from '../Database/Config/database'
 import Branch from './Branch'
 import City from './City'
 import Place from './Place'
