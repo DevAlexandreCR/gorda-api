@@ -3,15 +3,10 @@ import Container from "../../../Container/Container"
 
 const controller = Router()
 
-/**
- * GET /places
- * Get all places for a specific city
- */
 controller.get('/', async (req: Request, res: Response) => {
   try {
     const cityId = req.query.cityId as string
 
-    // Validate required cityId parameter
     if (!cityId || typeof cityId !== 'string') {
       return res.status(400).json({
         success: false,
@@ -35,10 +30,6 @@ controller.get('/', async (req: Request, res: Response) => {
   }
 })
 
-/**
- * POST /places
- * Create a new place
- */
 controller.post('/', async (req: Request, res: Response) => {
   try {
     const { name, lat, lng, cityId } = req.body
@@ -91,10 +82,6 @@ controller.post('/', async (req: Request, res: Response) => {
   }
 })
 
-/**
- * GET /places/:id
- * Get a specific place by id
- */
 controller.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params
@@ -126,10 +113,6 @@ controller.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-/**
- * GET /places/search/within-polygon
- * Find places within city polygon boundaries
- */
 controller.get('/search/within-polygon', async (req: Request, res: Response) => {
   try {
     const lat = parseFloat(req.query.lat as string)
