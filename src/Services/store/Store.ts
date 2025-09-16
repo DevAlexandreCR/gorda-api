@@ -18,11 +18,12 @@ import { Branch } from '../../Interfaces/Branch'
 import { City } from '../../Interfaces/City'
 import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
+import { PlaceInterface } from '../../Interfaces/PlaceInterface'
 
 export class Store {
   static instance: Store
   drivers: Map<string, Driver> = new Map()
-  places: Set<Place> = new Set<Place>()
+  places: Set<PlaceInterface> = new Set<PlaceInterface>()
   clients: Map<string, Client> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
@@ -48,7 +49,7 @@ export class Store {
 
   private async setPlaces() {
     const placeRepository = Container.getPlaceRepository()
-    const places = await placeRepository.index()
+    const places = await placeRepository.index('popayan')
     places.forEach((place) => {
       this.places.add(place)
     })
@@ -154,11 +155,9 @@ export class Store {
     }
   }
 
-  findPlaceById(placeId: string): Place | undefined {
-    const placesArray = Array.from(this.places)
-    return placesArray.find((pla) => {
-      return pla.key === placeId
-    })
+  findPlaceById(placeId: string): Promise<PlaceInterface | null> {
+    const placeRepository = Container.getPlaceRepository()
+    return placeRepository.findById(placeId)
   }
 
   getBranches(): void {

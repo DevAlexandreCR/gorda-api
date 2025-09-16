@@ -1,8 +1,10 @@
 export interface PlaceInterface {
-  key: string
+  id?: string
   name: string
   lat: number
   lng: number
-  country: string
-  city: string
+  location: any
+  cityId: string
+  createdAt?: Date
+  updatedAt?: Date
 }

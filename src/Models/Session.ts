@@ -16,6 +16,7 @@ import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface
 import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
 import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
 import { ChatBotMessage } from '../Types/ChatBotMessage'
+import { PlaceInterface } from '../Interfaces/PlaceInterface'
 
 export default class Session implements SessionInterface {
   public id: string
@@ -26,7 +27,7 @@ export default class Session implements SessionInterface {
   public service_id: string | null
   public created_at: number
   public updated_at: number | null
-  public place: Place | null = null
+  public place: PlaceInterface | null = null
   public messages: Map<string, WpMessage> = new Map()
   public chat: WpChatInterface
   public wp_client_id: string
@@ -164,7 +165,7 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateStatus(this)
   }
 
-  async setPlace(place: Place): Promise<void> {
+  async setPlace(place: PlaceInterface): Promise<void> {
     this.place = place
     await SessionRepository.updatePlace(this)
   }
@@ -196,7 +197,7 @@ export default class Session implements SessionInterface {
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {
     const handler = ResponseContext.getResponse(this.status, this)
     const response = new ResponseContext(handler)
-    
+
     await response
       .processMessage(message)
       .finally(async () => {

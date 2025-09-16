@@ -151,7 +151,7 @@ controller.get('/search/within-polygon', async (req: Request, res: Response) => 
     }
 
     const placeRepository = Container.getPlaceRepository()
-    const places = await placeRepository.findPlacesWithinCityPolygon(lat, lng)
+    const places = await placeRepository.findPlacesWithinCityPolygon('popayan')
 
     return res.status(200).json({
       success: true,

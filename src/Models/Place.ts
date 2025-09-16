@@ -1,23 +1,12 @@
 import { DataTypes, Model, Optional } from 'sequelize'
 import sequelize from '../Database/sequelize'
 import City from './City'
+import { PlaceInterface } from '../Interfaces/PlaceInterface'
 
-// Place interface
-interface PlaceAttributes {
-  id?: string
-  name: string
-  lat: number
-  lng: number
-  location: any // PostGIS geometry
-  cityId: string
-  createdAt?: Date
-  updatedAt?: Date
-}
-
-interface PlaceCreationAttributes extends Optional<PlaceAttributes, 'id' | 'createdAt' | 'updatedAt'> { }
+interface PlaceCreationAttributes extends Optional<PlaceInterface, 'id' | 'createdAt' | 'updatedAt'> { }
 
 // Place model
-class Place extends Model<PlaceAttributes, PlaceCreationAttributes> implements PlaceAttributes {
+class Place extends Model<PlaceInterface, PlaceCreationAttributes> implements PlaceInterface {
   public id!: string
   public name!: string
   public lat!: number

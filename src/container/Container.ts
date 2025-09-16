@@ -1,4 +1,4 @@
-import sequelize from '../Config/database'
+import sequelize from '../Database/sequelize'
 import PlaceRepository from '../Repositories/PlaceRepository'
 
 class Container {

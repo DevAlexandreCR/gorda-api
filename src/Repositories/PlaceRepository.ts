@@ -1,6 +1,4 @@
-import DBService from '../Services/firebase/Database'
 import { PlaceInterface } from '../Interfaces/PlaceInterface'
-import Place from '../Models/Place'
 import { Sequelize, QueryTypes } from 'sequelize'
 import SequelizePlace from '../Models/Place'
 import City from '../Models/City'
@@ -43,14 +41,7 @@ class PlaceRepository {
 
     return places.map(place => {
       const placeData = place.get({ plain: true }) as any
-      return {
-        key: place.id,
-        name: place.name,
-        lat: place.lat,
-        lng: place.lng,
-        country: placeData.city?.branch?.country || '',
-        city: placeData.city?.name || ''
-      }
+      return placeData as PlaceInterface
     })
   }
 
@@ -67,14 +58,7 @@ class PlaceRepository {
       cityId: placeData.cityId
     })
 
-    return {
-      key: place.id,
-      name: place.name,
-      lat: place.lat,
-      lng: place.lng,
-      country: '',
-      city: ''
-    }
+    return place.get({ plain: true }) as PlaceInterface
   }
 
   async findById(id: string): Promise<PlaceInterface | null> {
@@ -93,15 +77,7 @@ class PlaceRepository {
 
     if (!place) return null
 
-    const placeData = place.get({ plain: true }) as any
-    return {
-      key: place.id,
-      name: place.name,
-      lat: place.lat,
-      lng: place.lng,
-      country: placeData.city?.branch?.country || '',
-      city: placeData.city?.name || ''
-    }
+    return place.get({ plain: true }) as PlaceInterface
   }
 
   async findPlacesWithinCityPolygon(cityId: string): Promise<PlaceInterface[]> {
@@ -117,14 +93,7 @@ class PlaceRepository {
       type: QueryTypes.SELECT
     }) as any[]
 
-    return places.map(place => ({
-      key: place.id,
-      name: place.name,
-      lat: place.lat,
-      lng: place.lng,
-      country: place.country,
-      city: place.city_name
-    }))
+    return places
   }
 }
 

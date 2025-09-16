@@ -15,6 +15,7 @@ import { MessagesEnum } from '../MessagesEnum'
 import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { City } from '../../../Interfaces/City'
 import { LatLng } from '../../../Interfaces/LatLng'
+import { PlaceInterface } from '../../../Interfaces/PlaceInterface'
 
 export abstract class ResponseContract {
   protected store: Store = Store.getInstance()
@@ -22,7 +23,7 @@ export abstract class ResponseContract {
 
   abstract messageSupported: Array<string>
 
-  constructor(public session: Session) {}
+  constructor(public session: Session) { }
 
   abstract processMessage(message: WpMessage): Promise<void>
 
@@ -60,7 +61,7 @@ export abstract class ResponseContract {
     return client != undefined
   }
 
-  async createService(place: Place, comment: string | null = null): Promise<string> {
+  async createService(place: PlaceInterface, comment: string | null = null): Promise<string> {
     const service = new Service()
     service.wp_client_id = this.getWpClientId()
     service.client_id = this.session.chat_id
@@ -85,7 +86,7 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
 
-  async getPlaceFromLocation(location: WpLocation): Promise<Place|false> {
+  async getPlaceFromLocation(location: WpLocation): Promise<Place | false> {
     const place = new Place()
     const latlng: LatLng = { lat: location.lat, lng: location.lng }
     const city = await this.findContainingPolygon(latlng)
@@ -93,8 +94,7 @@ export abstract class ResponseContract {
       place.lat = location.lat
       place.lng = location.lng
       place.name = location.name || MessageHelper.LOCATION_NO_NAME
-      place.city = city.id
-      place.country = this.store.findCountryByCity(city.id)
+      place.cityId = city.id
 
       return place
     } else {
@@ -104,9 +104,9 @@ export abstract class ResponseContract {
     }
   }
 
-  getPlaceFromMessage(message: string): Array<Place> {
+  getPlaceFromMessage(message: string): Array<PlaceInterface> {
     const findPlace = MessageHelper.getPlace(message)
-    const foundPlaces: Array<Place> = []
+    const foundPlaces: Array<PlaceInterface> = []
     if (findPlace.length < 3) return foundPlaces
     Array.from(this.store.places).forEach((place) => {
       const placeName = MessageHelper.normalize(place.name)
@@ -142,7 +142,7 @@ export abstract class ResponseContract {
 
   protected async findContainingPolygon(latlng: LatLng): Promise<City | null> {
     let city: City | null = null
-    city = this.store.findCityById('popayan')?? null
+    city = this.store.findCityById('popayan') ?? null
     // this.store.polygons.forEach((polygon) => {
     //   const geoPoint = point([latlng.lat, latlng.lng])
     //   if (booleanPointInPolygon(geoPoint, polygon)) {

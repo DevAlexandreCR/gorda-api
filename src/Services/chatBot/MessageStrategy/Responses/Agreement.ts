@@ -2,13 +2,13 @@ import { ResponseContract } from '../ResponseContract'
 import Session from '../../../../Models/Session'
 import * as Messages from '../../Messages'
 import MessageHelper from '../../../../Helpers/MessageHelper'
-import Place from '../../../../Models/Place'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import Service from '../../../../Models/Service'
 import * as Sentry from '@sentry/node'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
+import { PlaceInterface } from '../../../../Interfaces/PlaceInterface'
 
 export class Agreement extends ResponseContract {
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
@@ -38,9 +38,9 @@ export class Agreement extends ResponseContract {
     }
   }
 
-  getPlace(message: string): Place | null {
+  getPlace(message: string): PlaceInterface | null {
     let findPlace = MessageHelper.getPlaceFromAgreement(message).trim()
-    let foundPlace: Place | null = null
+    let foundPlace: PlaceInterface | null = null
     if (findPlace.length < 3) return foundPlace
     Array.from(this.store.places).forEach((place) => {
       const placeName = MessageHelper.normalize(place.name)
