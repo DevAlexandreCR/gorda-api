@@ -1,8 +1,7 @@
 import { Request, Response, Router } from "express"
-import PlaceRepository from "../../../Repositories/PlaceRepository"
+import Container from "../../../container/Container"
 
 const controller = Router()
-const placeRepository = new PlaceRepository()
 
 /**
  * GET /places
@@ -20,6 +19,7 @@ controller.get('/', async (req: Request, res: Response) => {
       })
     }
 
+    const placeRepository = Container.getPlaceRepository()
     const places = await placeRepository.index(cityId)
 
     return res.status(200).json({
@@ -69,6 +69,7 @@ controller.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Longitude must be between -180 and 180' })
     }
 
+    const placeRepository = Container.getPlaceRepository()
     const place = await placeRepository.store({
       name: name.trim(),
       lat,
@@ -102,6 +103,7 @@ controller.get('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Id parameter is required' })
     }
 
+    const placeRepository = Container.getPlaceRepository()
     const place = await placeRepository.findById(id)
 
     if (!place) {
@@ -148,6 +150,7 @@ controller.get('/search/within-polygon', async (req: Request, res: Response) => 
       return res.status(400).json({ error: 'Longitude must be between -180 and 180' })
     }
 
+    const placeRepository = Container.getPlaceRepository()
     const places = await placeRepository.findPlacesWithinCityPolygon(lat, lng)
 
     return res.status(200).json({
@@ -165,17 +168,6 @@ controller.get('/search/within-polygon', async (req: Request, res: Response) => 
       error: 'Internal server error'
     })
   }
-})
-
-// Cleanup on module unload
-process.on('SIGINT', async () => {
-  await placeRepository.disconnect()
-  process.exit(0)
-})
-
-process.on('SIGTERM', async () => {
-  await placeRepository.disconnect()
-  process.exit(0)
 })
 
 export default controller

@@ -6,8 +6,8 @@ import { PrismaClient } from '../../generated/prisma'
 class PlaceRepository {
   private prisma: PrismaClient
 
-  constructor() {
-    this.prisma = new PrismaClient()
+  constructor(prismaClient: PrismaClient) {
+    this.prisma = prismaClient
   }
 
   /* istanbul ignore next */
@@ -21,20 +21,38 @@ class PlaceRepository {
     })
   }
 
-  async index(cityId: string) {
+  async index(cityId: string): Promise<PlaceInterface[]> {
     const places = await this.prisma.place.findMany({
       where: { cityId },
       select: {
+        id: true,
         name: true,
         lat: true,
-        lng: true
+        lng: true,
+        city: {
+          select: {
+            name: true,
+            branch: {
+              select: {
+                country: true
+              }
+            }
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
       }
     })
 
-    return places
+    return places.map(place => ({
+      key: place.id,
+      name: place.name,
+      lat: place.lat,
+      lng: place.lng,
+      country: place.city.branch.country,
+      city: place.city.name
+    }))
   }
 
   async store(data: {
@@ -96,10 +114,6 @@ class PlaceRepository {
       lat: place.lat,
       lng: place.lng,
     }
-  }
-
-  async disconnect() {
-    await this.prisma.$disconnect()
   }
 }
 
