@@ -5,10 +5,10 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.bulkInsert('branches', [
       {
-        id: 'CR001',
-        country: 'Costa Rica',
-        calling_code: '+506',
-        currency_code: 'CRC',
+        id: 'CO001',
+        country: 'Colombia',
+        calling_code: '+57',
+        currency_code: 'COP',
         created_at: new Date(),
         updated_at: new Date()
       }
@@ -17,7 +17,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     await queryInterface.bulkDelete('branches', {
-      id: 'CR001'
+      id: 'CO001'
     }, {})
   }
 }
