@@ -13,16 +13,16 @@ class PlaceRepository {
     this.sequelize = sequelizeInstance
   }
 
-  /* istanbul ignore next */
-  getAll(listener: (place: Place) => void): void {
-    DBService.dbPlaces().on('child_added', (snapshot) => {
-      const place = snapshot.val() as PlaceInterface
-      const placeTmp = new Place
-      Object.assign(placeTmp, place)
-      placeTmp.key = snapshot.key ?? ''
-      listener(placeTmp)
-    })
-  }
+  // /* istanbul ignore next */
+  // getAll(listener: (place: Place) => void): void {
+  //   DBService.dbPlaces().on('child_added', (snapshot) => {
+  //     const place = snapshot.val() as PlaceInterface
+  //     const placeTmp = new Place
+  //     Object.assign(placeTmp, place)
+  //     placeTmp.key = snapshot.key ?? ''
+  //     listener(placeTmp)
+  //   })
+  // }
 
   async index(cityId: string): Promise<PlaceInterface[]> {
     const places = await SequelizePlace.findAll({
