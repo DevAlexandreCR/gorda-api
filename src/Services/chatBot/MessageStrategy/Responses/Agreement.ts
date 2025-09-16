@@ -9,6 +9,7 @@ import { WpMessage } from '../../../../Types/WpMessage'
 import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import { PlaceInterface } from '../../../../Interfaces/PlaceInterface'
+import Container from '../../../../Container/Container'
 
 export class Agreement extends ResponseContract {
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
@@ -28,7 +29,7 @@ export class Agreement extends ResponseContract {
     if (MessageHelper.isCancel(message.msg)) {
       return this.cancelService(message)
     }
-    const place = this.getPlace(message.msg)
+    const place = await this.getPlace(message.msg)
     const comment = MessageHelper.getCommentFromAgreement(message.msg)
     if (place) {
       await this.session.setPlace(place)
@@ -38,19 +39,12 @@ export class Agreement extends ResponseContract {
     }
   }
 
-  getPlace(message: string): PlaceInterface | null {
+  async getPlace(message: string): Promise<PlaceInterface | null> {
     let findPlace = MessageHelper.getPlaceFromAgreement(message).trim()
     let foundPlace: PlaceInterface | null = null
     if (findPlace.length < 3) return foundPlace
-    Array.from(this.store.places).forEach((place) => {
-      const placeName = MessageHelper.normalize(place.name)
-      findPlace = MessageHelper.normalize(findPlace)
-      if (placeName === findPlace) {
-        foundPlace = place
-      }
-    })
-
-    return foundPlace
+    const placeRepository = Container.getPlaceRepository()
+    return (await placeRepository.findByName(findPlace, 'popayan')).shift() || null
   }
 
   async cancelService(message: WpMessage): Promise<void> {

@@ -1,5 +1,5 @@
 import { PlaceInterface } from '../Interfaces/PlaceInterface'
-import { Sequelize, QueryTypes } from 'sequelize'
+import { Sequelize, QueryTypes, Op } from 'sequelize'
 import SequelizePlace from '../Models/Place'
 import City from '../Models/City'
 import Branch from '../Models/Branch'
@@ -78,6 +78,27 @@ class PlaceRepository {
     if (!place) return null
 
     return place.get({ plain: true }) as PlaceInterface
+  }
+
+  async findByName(name: string, cityId?: string): Promise<PlaceInterface[]> {
+    const whereClause: any = {
+      name: {
+        [Op.iLike]: `%${name}%`
+      }
+    }
+
+    if (cityId) {
+      whereClause.cityId = cityId
+    }
+
+    const places = await SequelizePlace.findAll({
+      where: whereClause,
+      attributes: ['id', 'name', 'lat', 'lng', 'cityId'],
+      order: [['name', 'ASC']],
+      limit: 3
+    })
+
+    return places.map(place => place.get({ plain: true }) as PlaceInterface)
   }
 
   async findPlacesWithinCityPolygon(cityId: string): Promise<PlaceInterface[]> {

@@ -23,7 +23,6 @@ import { PlaceInterface } from '../../Interfaces/PlaceInterface'
 export class Store {
   static instance: Store
   drivers: Map<string, Driver> = new Map()
-  places: Set<PlaceInterface> = new Set<PlaceInterface>()
   clients: Map<string, Client> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
@@ -35,7 +34,6 @@ export class Store {
   private constructor() {
     this.setDrivers()
     this.updateDrivers()
-    this.setPlaces()
     this.setClients()
     this.listenMessages()
   }
@@ -45,14 +43,6 @@ export class Store {
       Store.instance = new Store()
     }
     return Store.instance
-  }
-
-  private async setPlaces() {
-    const placeRepository = Container.getPlaceRepository()
-    const places = await placeRepository.index('popayan')
-    places.forEach((place) => {
-      this.places.add(place)
-    })
   }
 
   private setClients() {

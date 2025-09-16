@@ -16,6 +16,7 @@ import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { City } from '../../../Interfaces/City'
 import { LatLng } from '../../../Interfaces/LatLng'
 import { PlaceInterface } from '../../../Interfaces/PlaceInterface'
+import Container from '../../../Container/Container'
 
 export abstract class ResponseContract {
   protected store: Store = Store.getInstance()
@@ -104,18 +105,13 @@ export abstract class ResponseContract {
     }
   }
 
-  getPlaceFromMessage(message: string): Array<PlaceInterface> {
+  async getPlaceFromMessage(message: string): Promise<Array<PlaceInterface>> {
     const findPlace = MessageHelper.getPlace(message)
     const foundPlaces: Array<PlaceInterface> = []
     if (findPlace.length < 3) return foundPlaces
-    Array.from(this.store.places).forEach((place) => {
-      const placeName = MessageHelper.normalize(place.name)
-      if (placeName.includes(findPlace)) {
-        foundPlaces.push(place)
-      }
-    })
 
-    return foundPlaces
+    const placeRepository = Container.getPlaceRepository()
+    return await placeRepository.findByName(findPlace, 'popayan')
   }
 
   supportMessage(message: WpMessage): boolean {
