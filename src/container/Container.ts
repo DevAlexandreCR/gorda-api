@@ -1,21 +1,18 @@
-import { PrismaClient } from '../../generated/prisma'
+import sequelize from '../Config/database'
 import PlaceRepository from '../Repositories/PlaceRepository'
 
 class Container {
-  private static prisma: PrismaClient
+  private static sequelizeInstance: typeof sequelize
   private static placeRepository: PlaceRepository
 
   /**
-   * Get or create PrismaClient instance
+   * Get or create Sequelize instance
    */
-  static getPrismaClient(): PrismaClient {
-    if (!this.prisma) {
-      this.prisma = new PrismaClient({
-        log: ['error', 'warn'],
-        errorFormat: 'pretty',
-      })
+  static getSequelize(): typeof sequelize {
+    if (!this.sequelizeInstance) {
+      this.sequelizeInstance = sequelize
     }
-    return this.prisma
+    return this.sequelizeInstance
   }
 
   /**
@@ -23,7 +20,7 @@ class Container {
    */
   static getPlaceRepository(): PlaceRepository {
     if (!this.placeRepository) {
-      this.placeRepository = new PlaceRepository(this.getPrismaClient())
+      this.placeRepository = new PlaceRepository(this.getSequelize())
     }
     return this.placeRepository
   }
@@ -33,8 +30,8 @@ class Container {
    */
   static async cleanup(): Promise<void> {
     try {
-      if (this.prisma) {
-        await this.prisma.$disconnect()
+      if (this.sequelizeInstance) {
+        await this.sequelizeInstance.close()
         console.log('Database connections closed')
       }
     } catch (error) {
@@ -47,9 +44,10 @@ class Container {
    */
   static async initialize(): Promise<void> {
     try {
-      // Test database connection
-      await this.getPrismaClient().$connect()
-      console.log('Database connected successfully')
+      // Test database connection and sync models
+      await this.getSequelize().authenticate()
+      await this.getSequelize().sync({ alter: true })
+      console.log('Database connected and models synchronized successfully')
     } catch (error) {
       console.error('Database connection failed:', error)
       throw error
