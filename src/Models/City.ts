@@ -8,7 +8,7 @@ interface CityAttributes {
   name: string
   center: any // PostGIS geometry
   percentage: number
-  polygon?: any // PostGIS geometry (optional)
+  polygon: any // PostGIS geometry (optional)
   branchId: string
   createdAt?: Date
   updatedAt?: Date
@@ -22,7 +22,7 @@ class City extends Model<CityAttributes, CityCreationAttributes> implements City
   public name!: string
   public center!: any
   public percentage!: number
-  public polygon?: any
+  public polygon!: any
   public branchId!: string
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
