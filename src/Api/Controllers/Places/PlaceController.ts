@@ -1,18 +1,18 @@
 import { Request, Response, Router } from "express"
 import Container from "../../../Container/Container"
+import { validateRequest } from "../../../Middlewares/ValidateRequest"
+import {
+  IndexPlacesRequest,
+  StorePlaceRequest,
+  ShowPlaceRequest,
+  SearchWithinPolygonRequest
+} from "../../Requests/Places"
 
 const controller = Router()
 
-controller.get('/', async (req: Request, res: Response) => {
+controller.get('/', validateRequest(IndexPlacesRequest), async (req: Request, res: Response) => {
   try {
-    const cityId = req.query.cityId as string
-
-    if (!cityId || typeof cityId !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'CityId query parameter is required'
-      })
-    }
+    const { cityId } = req.query as { cityId: string }
 
     const placeRepository = Container.getPlaceRepository()
     const places = await placeRepository.index(cityId)
@@ -30,35 +30,9 @@ controller.get('/', async (req: Request, res: Response) => {
   }
 })
 
-controller.post('/', async (req: Request, res: Response) => {
+controller.post('/', validateRequest(StorePlaceRequest), async (req: Request, res: Response) => {
   try {
     const { name, lat, lng, cityId } = req.body
-
-    // Validate required fields
-    if (!name || typeof name !== 'string') {
-      return res.status(400).json({ error: 'Name is required and must be a string' })
-    }
-
-    if (!lat || typeof lat !== 'number') {
-      return res.status(400).json({ error: 'Latitude is required and must be a number' })
-    }
-
-    if (!lng || typeof lng !== 'number') {
-      return res.status(400).json({ error: 'Longitude is required and must be a number' })
-    }
-
-    if (!cityId || typeof cityId !== 'string') {
-      return res.status(400).json({ error: 'CityId is required and must be a string' })
-    }
-
-    // Validate coordinate ranges
-    if (lat < -90 || lat > 90) {
-      return res.status(400).json({ error: 'Latitude must be between -90 and 90' })
-    }
-
-    if (lng < -180 || lng > 180) {
-      return res.status(400).json({ error: 'Longitude must be between -180 and 180' })
-    }
 
     const placeRepository = Container.getPlaceRepository()
     const place = await placeRepository.store({
@@ -82,13 +56,9 @@ controller.post('/', async (req: Request, res: Response) => {
   }
 })
 
-controller.get('/:id', async (req: Request, res: Response) => {
+controller.get('/:id', validateRequest(ShowPlaceRequest), async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-
-    if (!id) {
-      return res.status(400).json({ error: 'Id parameter is required' })
-    }
 
     const placeRepository = Container.getPlaceRepository()
     const place = await placeRepository.findById(id)
@@ -113,25 +83,9 @@ controller.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-controller.get('/search/within-polygon', async (req: Request, res: Response) => {
+controller.get('/search/within-polygon', validateRequest(SearchWithinPolygonRequest), async (req: Request, res: Response) => {
   try {
-    const lat = parseFloat(req.query.lat as string)
-    const lng = parseFloat(req.query.lng as string)
-
-    if (isNaN(lat) || isNaN(lng)) {
-      return res.status(400).json({
-        error: 'Valid latitude and longitude are required'
-      })
-    }
-
-    // Validate coordinate ranges
-    if (lat < -90 || lat > 90) {
-      return res.status(400).json({ error: 'Latitude must be between -90 and 90' })
-    }
-
-    if (lng < -180 || lng > 180) {
-      return res.status(400).json({ error: 'Longitude must be between -180 and 180' })
-    }
+    const { lat, lng } = req.query as unknown as { lat: number, lng: number }
 
     const placeRepository = Container.getPlaceRepository()
     const places = await placeRepository.findPlacesWithinCityPolygon('popayan')
