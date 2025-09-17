@@ -1,5 +1,4 @@
 import Driver from '../../Models/Driver'
-import Place from '../../Models/Place'
 import Container from '../../Container/Container'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
@@ -30,6 +29,7 @@ export class Store {
   branches: Map<string, Branch> = new Map()
   cities: Map<string, City> = new Map()
   polygons: Array<Feature<Polygon>> = new Array()
+  placeRepository = Container.getPlaceRepository()
 
   private constructor() {
     this.setDrivers()
@@ -188,10 +188,7 @@ export class Store {
     return country
   }
 
-  findPlaceByName(placeName: string): Place | undefined {
-    const placesArray = Array.from(this.places)
-    return placesArray.find((pla) => {
-      return MessageHelper.normalize(pla.name) === MessageHelper.normalize(placeName)
-    })
+  async findPlaceByName(placeName: string): Promise<PlaceInterface | null> {
+    return (await this.placeRepository.findByName(placeName, 'popayan')).shift() ?? null
   }
 }

@@ -36,7 +36,7 @@ export class AskingForPlace extends ResponseContract {
       } else {
         const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_PLACE)
         if (response.place) {
-          const place = this.store.findPlaceByName(response.place)
+          const place = await this.store.findPlaceByName(response.place)
           if (place) {
             await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
               await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
@@ -51,7 +51,7 @@ export class AskingForPlace extends ResponseContract {
     } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME && this.isChat(message)) {
       const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_PLACE)
       if (response.place) {
-        const place = this.store.findPlaceByName(response.place)
+        const place = await this.store.findPlaceByName(response.place)
         if (place) {
           await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
             await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
