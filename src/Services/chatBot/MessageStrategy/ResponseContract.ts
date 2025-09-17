@@ -1,7 +1,6 @@
 import Session from '../../../Models/Session'
 import { Store } from '../../store/Store'
 import CurrentClient from '../../../Models/Client'
-import Place from '../../../Models/Place'
 import Service from '../../../Models/Service'
 import ServiceRepository from '../../../Repositories/ServiceRepository'
 import * as Messages from '../Messages'
@@ -87,8 +86,8 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
 
-  async getPlaceFromLocation(location: WpLocation): Promise<Place | false> {
-    const place = new Place()
+  async getPlaceFromLocation(location: WpLocation): Promise<PlaceInterface | false> {
+    const place: PlaceInterface = { id: '', name: '', location: null, lat: 0, lng: 0, cityId: '' }
     const latlng: LatLng = { lat: location.lat, lng: location.lng }
     const city = await this.findContainingPolygon(latlng)
     if (city) {
