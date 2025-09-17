@@ -1,7 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize'
 import sequelize from '../Database/sequelize'
 
-// Branch interface
 interface BranchAttributes {
   id: string
   country: string
@@ -13,7 +12,6 @@ interface BranchAttributes {
 
 interface BranchCreationAttributes extends Optional<BranchAttributes, 'createdAt' | 'updatedAt'> { }
 
-// Branch model
 class Branch extends Model<BranchAttributes, BranchCreationAttributes> implements BranchAttributes {
   public id!: string
   public country!: string

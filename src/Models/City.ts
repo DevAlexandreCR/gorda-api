@@ -2,7 +2,6 @@ import { DataTypes, Model, Optional } from 'sequelize'
 import sequelize from '../Database/sequelize'
 import Branch from './Branch'
 
-// City interface
 interface CityAttributes {
   id: string
   name: string
@@ -16,7 +15,6 @@ interface CityAttributes {
 
 interface CityCreationAttributes extends Optional<CityAttributes, 'polygon' | 'createdAt' | 'updatedAt'> { }
 
-// City model
 class City extends Model<CityAttributes, CityCreationAttributes> implements CityAttributes {
   public id!: string
   public name!: string
@@ -89,7 +87,6 @@ City.init({
   ]
 })
 
-// Define associations
 City.belongsTo(Branch, { foreignKey: 'branchId', as: 'branch' })
 Branch.hasMany(City, { foreignKey: 'branchId', as: 'cities' })
 

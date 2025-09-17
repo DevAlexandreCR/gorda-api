@@ -5,7 +5,6 @@ import { PlaceInterface } from '../Interfaces/PlaceInterface'
 
 interface PlaceCreationAttributes extends Optional<PlaceInterface, 'id' | 'createdAt' | 'updatedAt'> { }
 
-// Place model
 class Place extends Model<PlaceInterface, PlaceCreationAttributes> implements PlaceInterface {
   public id!: string
   public name!: string
@@ -74,7 +73,6 @@ Place.init({
   ]
 })
 
-// Define associations
 Place.belongsTo(City, { foreignKey: 'cityId', as: 'city' })
 City.hasMany(Place, { foreignKey: 'cityId', as: 'places' })
 
