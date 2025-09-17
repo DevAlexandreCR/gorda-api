@@ -1,5 +1,5 @@
 export interface PlaceInterface {
-  id?: string
+  id: string
   name: string
   lat: number
   lng: number

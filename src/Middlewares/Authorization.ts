@@ -12,7 +12,8 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
-        error: 'Authorization header missing or invalid format'
+        message: 'Authorization header missing or invalid format',
+        data: {}
       })
     }
 
@@ -23,14 +24,16 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
       console.error('SERVER_API_KEY environment variable not set')
       return res.status(500).json({
         success: false,
-        error: 'Server configuration error'
+        message: 'Server configuration error',
+        data: {}
       })
     }
 
     if (token !== validApiKey) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid API key'
+        message: 'Invalid API key',
+        data: {}
       })
     }
 
@@ -40,7 +43,8 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
     console.error('Authorization error:', error)
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      message: 'Internal server error',
+      data: {}
     })
   }
 }

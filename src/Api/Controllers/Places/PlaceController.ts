@@ -22,13 +22,14 @@ controller.get('/', validateRequest(IndexPlacesRequest), async (req: Request, re
 
     return res.status(200).json({
       success: true,
-      data: places
+      data: { places }
     })
   } catch (error) {
     console.error('Error fetching places:', error)
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      message: 'Internal server error',
+      data: {}
     })
   }
 })
@@ -47,14 +48,15 @@ controller.post('/', validateRequest(StorePlaceRequest), async (req: Request, re
 
     return res.status(201).json({
       success: true,
-      data: place
+      data: { place }
     })
   } catch (error: any) {
     console.error('Error creating place:', error)
 
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      message: 'Internal server error',
+      data: {}
     })
   }
 })
@@ -69,19 +71,21 @@ controller.get('/:id', validateRequest(ShowPlaceRequest), async (req: Request, r
     if (!place) {
       return res.status(404).json({
         success: false,
-        error: 'Place not found'
+        message: 'Place not found',
+        data: {}
       })
     }
 
     return res.status(200).json({
       success: true,
-      data: place
+      data: { place }
     })
   } catch (error) {
     console.error('Error fetching place:', error)
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      message: 'Internal server error',
+      data: {}
     })
   }
 })
@@ -95,17 +99,20 @@ controller.get('/search/within-polygon', validateRequest(SearchWithinPolygonRequ
 
     return res.status(200).json({
       success: true,
-      data: places,
-      meta: {
-        total: places.length,
-        coordinates: { lat, lng }
+      data: {
+        places,
+        meta: {
+          total: places.length,
+          coordinates: { lat, lng }
+        }
       }
     })
   } catch (error) {
     console.error('Error searching places within polygon:', error)
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      message: 'Internal server error',
+      data: {}
     })
   }
 })
