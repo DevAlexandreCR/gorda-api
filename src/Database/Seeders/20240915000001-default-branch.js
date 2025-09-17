@@ -5,7 +5,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.bulkInsert('branches', [
       {
-        id: 'CO001',
+        id: 'colombia',
         country: 'Colombia',
         calling_code: '+57',
         currency_code: 'COP',

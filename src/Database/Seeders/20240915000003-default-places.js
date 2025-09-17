@@ -12,7 +12,7 @@ module.exports = {
         lat: 2.4544,
         lng: -76.6092,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6092 2.4544)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -22,7 +22,7 @@ module.exports = {
         lat: 2.4389,
         lng: -76.6131,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6131 2.4389)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -32,7 +32,7 @@ module.exports = {
         lat: 2.4390,
         lng: -76.6130,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6130 2.4390)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -42,7 +42,7 @@ module.exports = {
         lat: 2.4432,
         lng: -76.6063,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6063 2.4432)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -52,7 +52,7 @@ module.exports = {
         lat: 2.4444,
         lng: -76.6055,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6055 2.4444)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -62,7 +62,7 @@ module.exports = {
         lat: 2.4501,
         lng: -76.6089,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6089 2.4501)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -72,7 +72,7 @@ module.exports = {
         lat: 2.4372,
         lng: -76.6121,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6121 2.4372)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -82,7 +82,7 @@ module.exports = {
         lat: 2.4520,
         lng: -76.6180,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6180 2.4520)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -92,7 +92,7 @@ module.exports = {
         lat: 2.4389,
         lng: -76.6131,
         location: queryInterface.sequelize.fn('ST_GeomFromText', 'POINT(-76.6131 2.4389)', 4326),
-        city_id: 'POPAYAN_001',
+        city_id: 'popayan',
         created_at: new Date(),
         updated_at: new Date()
       }
@@ -101,7 +101,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     await queryInterface.bulkDelete('places', {
-      city_id: 'POPAYAN_001'
+      city_id: 'popayan'
     }, {})
   }
 }
