@@ -6,7 +6,8 @@ import {
   IndexPlacesRequest,
   StorePlaceRequest,
   ShowPlaceRequest,
-  SearchWithinPolygonRequest
+  SearchWithinPolygonRequest,
+  DeletePlaceRequest
 } from "../../Requests/Places"
 
 const controller = Router()
@@ -109,6 +110,46 @@ controller.get('/search/within-polygon', validateRequest(SearchWithinPolygonRequ
     })
   } catch (error) {
     console.error('Error searching places within polygon:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: {}
+    })
+  }
+})
+
+controller.delete('/:id', validateRequest(DeletePlaceRequest), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+
+    const placeRepository = Container.getPlaceRepository()
+
+    const existingPlace = await placeRepository.findById(id)
+    if (!existingPlace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Place not found',
+        data: {}
+      })
+    }
+
+    const deleted = await placeRepository.delete(id)
+
+    if (!deleted) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to delete place',
+        data: {}
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Place deleted successfully',
+      data: {}
+    })
+  } catch (error) {
+    console.error('Error deleting place:', error)
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

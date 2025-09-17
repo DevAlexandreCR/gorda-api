@@ -105,6 +105,14 @@ class PlaceRepository {
 
     return places
   }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await SequelizePlace.destroy({
+      where: { id }
+    })
+
+    return result > 0
+  }
 }
 
 export default PlaceRepository
