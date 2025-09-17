@@ -25,12 +25,12 @@ export class ChoosingPlace extends ResponseContract {
     const placeId = this.validateOption(message)
     const options = this.session.placeOptions ?? []
     if (!placeId) {
-      await this.sendMessage(sendPlaceOptions(options, true))
+      await this.sendMessage(await sendPlaceOptions(options, true))
     } else if (placeId === 'NONE_OF_THE_ABOVE') {
       await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
       await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION))
     } else {
-      const place = this.store.findPlaceById(placeId as string)
+      const place = await this.store.findPlaceById(placeId as string)
       if (place) {
         await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
           await this.session.setStatus(Session.STATUS_ASKING_FOR_COMMENT)

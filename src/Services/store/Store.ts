@@ -1,6 +1,6 @@
 import Driver from '../../Models/Driver'
 import Place from '../../Models/Place'
-import PlaceRepository from '../../Repositories/PlaceRepository'
+import Container from '../../Container/Container'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
@@ -18,12 +18,11 @@ import { Branch } from '../../Interfaces/Branch'
 import { City } from '../../Interfaces/City'
 import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
-import MessageHelper from '../../Helpers/MessageHelper'
+import { PlaceInterface } from '../../Interfaces/PlaceInterface'
 
 export class Store {
   static instance: Store
   drivers: Map<string, Driver> = new Map()
-  places: Set<Place> = new Set<Place>()
   clients: Map<string, Client> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
@@ -35,7 +34,6 @@ export class Store {
   private constructor() {
     this.setDrivers()
     this.updateDrivers()
-    this.setPlaces()
     this.setClients()
     this.listenMessages()
   }
@@ -45,12 +43,6 @@ export class Store {
       Store.instance = new Store()
     }
     return Store.instance
-  }
-
-  private setPlaces() {
-    PlaceRepository.getAll((place) => {
-      this.places.add(place)
-    })
   }
 
   private setClients() {
@@ -157,11 +149,9 @@ export class Store {
     }
   }
 
-  findPlaceById(placeId: string): Place | undefined {
-    const placesArray = Array.from(this.places)
-    return placesArray.find((pla) => {
-      return pla.key === placeId
-    })
+  findPlaceById(placeId: string): Promise<PlaceInterface | null> {
+    const placeRepository = Container.getPlaceRepository()
+    return placeRepository.findById(placeId)
   }
 
   getBranches(): void {

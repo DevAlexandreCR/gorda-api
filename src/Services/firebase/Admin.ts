@@ -23,7 +23,7 @@ export default class Admin {
     this.auth = getAuth(this.app)
     this.fs = getFirestore(this.app)
     this.fcm = getMessaging(this.app)
-    if (config.NODE_ENV == 'local') {
+    if (config.NODE_ENV != 'production') {
       this.db.useEmulator(config.DATABASE_EMULATOR_HOST, config.DATABASE_EMULATOR_PORT as number)
     }
   }

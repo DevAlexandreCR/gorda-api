@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add postgres connection with Sequelize. [#106](https://github.com/DevAlexandreCR/gorda-api/pull/106)
+
 # Release Notes for 1.5.x
 
 ## [1.5.4 (2025-07-09)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.5.4...v1.5.3)
