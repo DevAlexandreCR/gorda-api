@@ -1,6 +1,7 @@
 import { Request, Response, Router } from "express"
 import Container from "../../../Container/Container"
 import { validateRequest } from "../../../Middlewares/ValidateRequest"
+import { requireAuth } from "../../../Middlewares/Authorization"
 import {
   IndexPlacesRequest,
   StorePlaceRequest,
@@ -9,6 +10,8 @@ import {
 } from "../../Requests/Places"
 
 const controller = Router()
+
+controller.use(requireAuth)
 
 controller.get('/', validateRequest(IndexPlacesRequest), async (req: Request, res: Response) => {
   try {
