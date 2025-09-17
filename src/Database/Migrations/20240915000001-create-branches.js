@@ -7,34 +7,34 @@ module.exports = {
       id: {
         type: Sequelize.STRING(50),
         primaryKey: true,
-        allowNull: false
+        allowNull: false,
       },
       country: {
         type: Sequelize.STRING(100),
-        allowNull: false
+        allowNull: false,
       },
       calling_code: {
         type: Sequelize.STRING(10),
-        allowNull: false
+        allowNull: false,
       },
       currency_code: {
         type: Sequelize.STRING(10),
-        allowNull: false
+        allowNull: false,
       },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     })
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('branches')
-  }
+  },
 }

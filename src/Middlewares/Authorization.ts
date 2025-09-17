@@ -13,7 +13,7 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
       return res.status(401).json({
         success: false,
         message: 'Authorization header missing or invalid format',
-        data: {}
+        data: {},
       })
     }
 
@@ -25,7 +25,7 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
       return res.status(500).json({
         success: false,
         message: 'Server configuration error',
-        data: {}
+        data: {},
       })
     }
 
@@ -33,7 +33,7 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
       return res.status(401).json({
         success: false,
         message: 'Invalid API key',
-        data: {}
+        data: {},
       })
     }
 
@@ -44,7 +44,7 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
-      data: {}
+      data: {},
     })
   }
 }

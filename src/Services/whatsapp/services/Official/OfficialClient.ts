@@ -74,16 +74,18 @@ export class OfficialClient implements WPClientInterface {
   }
 
   async initialize(): Promise<void> {
-    await this.testApiConnection().catch((error) => {
-      this.status = WpStates.UNPAIRED
-      this.triggerEvent(WpEvents.DISCONNECTED)
-      console.error('Failed to initialize WhatsApp API:', error)
-    }).then(() => {
-      this.status = WpStates.CONNECTED
-      this.triggerEvent(WpEvents.AUTHENTICATED)
-      this.triggerEvent(WpEvents.READY)
-      console.log('WhatsApp API connection established successfully')
-    })
+    await this.testApiConnection()
+      .catch((error) => {
+        this.status = WpStates.UNPAIRED
+        this.triggerEvent(WpEvents.DISCONNECTED)
+        console.error('Failed to initialize WhatsApp API:', error)
+      })
+      .then(() => {
+        this.status = WpStates.CONNECTED
+        this.triggerEvent(WpEvents.AUTHENTICATED)
+        this.triggerEvent(WpEvents.READY)
+        console.log('WhatsApp API connection established successfully')
+      })
   }
 
   private async testApiConnection(): Promise<void> {
@@ -95,7 +97,7 @@ export class OfficialClient implements WPClientInterface {
       axios
         .get(phoneNumberEndpoint, {
           headers: {
-            'Authorization': `Bearer ${this.config.apiKey}`,
+            Authorization: `Bearer ${this.config.apiKey}`,
             'Content-Type': 'application/json',
           },
           timeout: this.config.timeout,

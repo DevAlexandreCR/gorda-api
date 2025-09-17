@@ -6,9 +6,12 @@ import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { AxiosDefaults, AxiosError, AxiosResponse } from 'axios'
 
 export class MessageHandler {
-  constructor(private client: MessageHandlerInterface) { }
+  constructor(private client: MessageHandlerInterface) {}
 
-  async handleMessage(message: string, sessionStatus: SessionStatuses): Promise<AIResponseInterface> {
+  async handleMessage(
+    message: string,
+    sessionStatus: SessionStatuses
+  ): Promise<AIResponseInterface> {
     const maxRetries = 3
     let lastError: Error | null = null
 
@@ -17,18 +20,24 @@ export class MessageHandler {
         return await this.client.handleMessage(message, sessionStatus)
       } catch (error) {
         lastError = error as Error
-        console.warn(`Attempt ${attempt} failed for message handling:`, (error as AxiosError).response?.data || (error as Error).message)
+        console.warn(
+          `Attempt ${attempt} failed for message handling:`,
+          (error as AxiosError).response?.data || (error as Error).message
+        )
 
         // If this is not the last attempt, continue to retry
         if (attempt < maxRetries) {
           // Optional: Add a small delay between retries
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await new Promise((resolve) => setTimeout(resolve, 1000))
           continue
         }
       }
     }
 
-    console.error(`All ${maxRetries} attempts failed. Returning default response.`, lastError?.message)
+    console.error(
+      `All ${maxRetries} attempts failed. Returning default response.`,
+      lastError?.message
+    )
     return this.getDefaultResponse()
   }
 
@@ -40,13 +49,13 @@ export class MessageHandler {
       body: 'Lo siento, estoy experimentando dificultades técnicas en este momento. En un momento uno de nuestros operadores se pondrá en contacto contigo.',
       fromMe: true,
       interactive: null,
-      interactiveReply: null
+      interactiveReply: null,
     }
 
     return {
       name: 'Sistema',
       message: defaultMessage,
-      sessionStatus: SessionStatuses.SUPPORT
+      sessionStatus: SessionStatuses.SUPPORT,
     }
   }
 }

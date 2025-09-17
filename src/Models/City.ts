@@ -13,7 +13,8 @@ interface CityAttributes {
   updatedAt?: Date
 }
 
-interface CityCreationAttributes extends Optional<CityAttributes, 'polygon' | 'createdAt' | 'updatedAt'> { }
+interface CityCreationAttributes
+  extends Optional<CityAttributes, 'polygon' | 'createdAt' | 'updatedAt'> {}
 
 class City extends Model<CityAttributes, CityCreationAttributes> implements CityAttributes {
   public id!: string
@@ -26,66 +27,69 @@ class City extends Model<CityAttributes, CityCreationAttributes> implements City
   public readonly updatedAt!: Date
 }
 
-City.init({
-  id: {
-    type: DataTypes.STRING(50),
-    primaryKey: true,
-    allowNull: false
-  },
-  name: {
-    type: DataTypes.STRING(100),
-    allowNull: false
-  },
-  center: {
-    type: DataTypes.GEOMETRY('POINT', 4326),
-    allowNull: false
-  },
-  percentage: {
-    type: DataTypes.FLOAT,
-    allowNull: false
-  },
-  polygon: {
-    type: DataTypes.GEOMETRY('POLYGON', 4326),
-    allowNull: true
-  },
-  branchId: {
-    type: DataTypes.STRING(50),
-    allowNull: false,
-    field: 'branch_id',
-    references: {
-      model: Branch,
-      key: 'id'
+City.init(
+  {
+    id: {
+      type: DataTypes.STRING(50),
+      primaryKey: true,
+      allowNull: false,
     },
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE'
+    name: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+    center: {
+      type: DataTypes.GEOMETRY('POINT', 4326),
+      allowNull: false,
+    },
+    percentage: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+    },
+    polygon: {
+      type: DataTypes.GEOMETRY('POLYGON', 4326),
+      allowNull: true,
+    },
+    branchId: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      field: 'branch_id',
+      references: {
+        model: Branch,
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      field: 'created_at',
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      field: 'updated_at',
+    },
   },
-  createdAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    field: 'created_at'
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    field: 'updated_at'
+  {
+    sequelize,
+    tableName: 'cities',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+      {
+        fields: ['center'],
+        using: 'gist',
+      },
+      {
+        fields: ['polygon'],
+        using: 'gist',
+      },
+    ],
   }
-}, {
-  sequelize,
-  tableName: 'cities',
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-  indexes: [
-    {
-      fields: ['center'],
-      using: 'gist'
-    },
-    {
-      fields: ['polygon'],
-      using: 'gist'
-    }
-  ]
-})
+)
 
 City.belongsTo(Branch, { foreignKey: 'branchId', as: 'branch' })
 Branch.hasMany(City, { foreignKey: 'branchId', as: 'cities' })

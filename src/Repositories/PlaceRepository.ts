@@ -15,26 +15,35 @@ class PlaceRepository {
     const places = await SequelizePlace.findAll({
       where: { cityId },
       attributes: ['id', 'name', 'lat', 'lng'],
-      include: [{
-        model: City,
-        as: 'city',
-        attributes: ['name'],
-        include: [{
-          model: Branch,
-          as: 'branch',
-          attributes: ['country']
-        }]
-      }],
-      order: [['createdAt', 'DESC']]
+      include: [
+        {
+          model: City,
+          as: 'city',
+          attributes: ['name'],
+          include: [
+            {
+              model: Branch,
+              as: 'branch',
+              attributes: ['country'],
+            },
+          ],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
     })
 
-    return places.map(place => {
+    return places.map((place) => {
       const placeData = place.get({ plain: true }) as any
       return placeData as PlaceInterface
     })
   }
 
-  async store(placeData: { name: string; lat: number; lng: number; cityId: string }): Promise<PlaceInterface> {
+  async store(placeData: {
+    name: string
+    lat: number
+    lng: number
+    cityId: string
+  }): Promise<PlaceInterface> {
     const place = await SequelizePlace.create({
       name: placeData.name,
       lat: placeData.lat,
@@ -42,9 +51,9 @@ class PlaceRepository {
       location: {
         type: 'Point',
         coordinates: [placeData.lng, placeData.lat],
-        crs: { type: 'name', properties: { name: 'EPSG:4326' } }
+        crs: { type: 'name', properties: { name: 'EPSG:4326' } },
       },
-      cityId: placeData.cityId
+      cityId: placeData.cityId,
     })
 
     return place.get({ plain: true }) as PlaceInterface
@@ -52,16 +61,20 @@ class PlaceRepository {
 
   async findById(id: string): Promise<PlaceInterface | null> {
     const place = await SequelizePlace.findByPk(id, {
-      include: [{
-        model: City,
-        as: 'city',
-        attributes: ['name'],
-        include: [{
-          model: Branch,
-          as: 'branch',
-          attributes: ['country']
-        }]
-      }]
+      include: [
+        {
+          model: City,
+          as: 'city',
+          attributes: ['name'],
+          include: [
+            {
+              model: Branch,
+              as: 'branch',
+              attributes: ['country'],
+            },
+          ],
+        },
+      ],
     })
 
     if (!place) return null
@@ -72,8 +85,8 @@ class PlaceRepository {
   async findByName(name: string, cityId?: string): Promise<PlaceInterface[]> {
     const whereClause: any = {
       name: {
-        [Op.iLike]: `%${name}%`
-      }
+        [Op.iLike]: `%${name}%`,
+      },
     }
 
     if (cityId) {
@@ -84,31 +97,34 @@ class PlaceRepository {
       where: whereClause,
       attributes: ['id', 'name', 'lat', 'lng', 'cityId'],
       order: [['name', 'ASC']],
-      limit: 3
+      limit: 3,
     })
 
-    return places.map(place => place.get({ plain: true }) as PlaceInterface)
+    return places.map((place) => place.get({ plain: true }) as PlaceInterface)
   }
 
   async findPlacesWithinCityPolygon(cityId: string): Promise<PlaceInterface[]> {
-    const places = await this.sequelize.query(`
+    const places = (await this.sequelize.query(
+      `
       SELECT p.id, p.name, p.lat, p.lng, c.name as city_name, b.country
       FROM places p
       JOIN cities c ON p.city_id = c.id
       JOIN branches b ON c.branch_id = b.id
       WHERE c.id = :cityId
       AND ST_Within(p.location, c.polygon)
-    `, {
-      replacements: { cityId },
-      type: QueryTypes.SELECT
-    }) as any[]
+    `,
+      {
+        replacements: { cityId },
+        type: QueryTypes.SELECT,
+      }
+    )) as any[]
 
     return places
   }
 
   async delete(id: string): Promise<boolean> {
     const result = await SequelizePlace.destroy({
-      where: { id }
+      where: { id },
     })
 
     return result > 0

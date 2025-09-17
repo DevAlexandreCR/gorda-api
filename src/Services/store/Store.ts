@@ -190,7 +190,7 @@ export class Store {
 
   findPlaceByName(placeName: string): Place | undefined {
     const placesArray = Array.from(this.places)
-    return placesArray.find(pla => {
+    return placesArray.find((pla) => {
       return MessageHelper.normalize(pla.name) === MessageHelper.normalize(placeName)
     })
   }

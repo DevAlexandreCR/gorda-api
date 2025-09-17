@@ -21,7 +21,10 @@ export class GordaChatBot implements MessageHandlerInterface {
     }
   }
 
-  async handleMessage(message: string, sessionStatus: SessionStatuses): Promise<AIResponseInterface> {
+  async handleMessage(
+    message: string,
+    sessionStatus: SessionStatuses
+  ): Promise<AIResponseInterface> {
     const data = await this.requestAIService(message, sessionStatus)
 
     console.log('AI service response data:', data.data) // Debug log
@@ -33,31 +36,34 @@ export class GordaChatBot implements MessageHandlerInterface {
       body: data.data.message === '' ? MessagesEnum.DEFAULT_MESSAGE : data.data.message,
       fromMe: true,
       interactive: null,
-      interactiveReply: null
+      interactiveReply: null,
     }
 
     const response: AIResponseInterface = {
       name: data.data.name,
       message: responseMessage,
       sessionStatus: data.data.session_status,
-      place: data.data.place
+      place: data.data.place,
     }
 
     return Promise.resolve(response)
   }
 
-  private requestAIService(message: string, sessionStatus: SessionStatuses): Promise<AxiosResponse<AIResponse>> {
+  private requestAIService(
+    message: string,
+    sessionStatus: SessionStatuses
+  ): Promise<AxiosResponse<AIResponse>> {
     return axios.post(
       this.apiURL + '/chat/messages',
       {
         content: message,
-        session_status: sessionStatus
+        session_status: sessionStatus,
       },
       {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`
-        }
+          Authorization: `Bearer ${this.apiKey}`,
+        },
       }
     )
   }

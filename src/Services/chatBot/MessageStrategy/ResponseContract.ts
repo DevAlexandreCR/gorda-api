@@ -23,7 +23,7 @@ export abstract class ResponseContract {
 
   abstract messageSupported: Array<string>
 
-  constructor(public session: Session) { }
+  constructor(public session: Session) {}
 
   abstract processMessage(message: WpMessage): Promise<void>
 
@@ -86,38 +86,36 @@ export abstract class ResponseContract {
     return Promise.resolve(service.id)
   }
 
-  async getPlaceFromLocation(location: WpLocation): Promise<Place | false> {
-    const place = new Place()
-  async getPlaceFromLocation(location: WpLocation): Promise < PlaceInterface | false > {
-      const place: PlaceInterface = { id: '', name: '', location: null, lat: 0, lng: 0, cityId: '' }
+  async getPlaceFromLocation(location: WpLocation): Promise<PlaceInterface | false> {
+    const place: PlaceInterface = { id: '', name: '', location: null, lat: 0, lng: 0, cityId: '' }
     const latlng: LatLng = { lat: location.lat, lng: location.lng }
     const city = await this.findContainingPolygon(latlng)
-    if(city) {
-        place.lat = location.lat
-        place.lng = location.lng
-        place.name = location.name || MessageHelper.LOCATION_NO_NAME
-        place.cityId = city.id
+    if (city) {
+      place.lat = location.lat
+      place.lng = location.lng
+      place.name = location.name || MessageHelper.LOCATION_NO_NAME
+      place.cityId = city.id
 
-        return place
-      } else {
-        await this.sendMessage(Messages.getSingleMessage(MessagesEnum.NON_COVERED_AREA))
+      return place
+    } else {
+      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.NON_COVERED_AREA))
       await this.session.setStatus(Session.STATUS_COMPLETED)
       return false
-      }
     }
+  }
 
-  async getPlaceFromMessage(message: string): Promise < Array < PlaceInterface >> {
-      const findPlace = MessageHelper.getPlace(message)
-    const foundPlaces: Array<PlaceInterface> =[]
-    if(findPlace.length < 3) return foundPlaces
+  async getPlaceFromMessage(message: string): Promise<Array<PlaceInterface>> {
+    const findPlace = MessageHelper.getPlace(message)
+    const foundPlaces: Array<PlaceInterface> = []
+    if (findPlace.length < 3) return foundPlaces
 
     const placeRepository = Container.getPlaceRepository()
     return await placeRepository.findByName(findPlace, 'popayan')
-    }
+  }
 
-    supportMessage(message: WpMessage): boolean {
-      return this.messageSupported.includes(message.type)
-    }
+  supportMessage(message: WpMessage): boolean {
+    return this.messageSupported.includes(message.type)
+  }
 
   protected retryPromise<T>(promiseFactory: Promise<T>, maxRetries: number): Promise<T> {
     return new Promise<T>((resolve, reject) => {

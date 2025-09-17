@@ -16,7 +16,6 @@ export class AskingForName extends ResponseContract {
 
   public async processMessage(message: WpMessage): Promise<void> {
     if (this.isChat(message)) {
-
       const ia = new MessageHandler(new GordaChatBot())
 
       const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_NAME)
