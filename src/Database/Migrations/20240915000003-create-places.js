@@ -1,8 +1,12 @@
 'use strict'
 
+const { QueryTypes } = require('sequelize')
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS pg_trgm;', { type: QueryTypes.RAW })
+
     await queryInterface.createTable('places', {
       id: {
         type: Sequelize.UUID,
@@ -51,6 +55,10 @@ module.exports = {
     // Create spatial index
     await queryInterface.sequelize.query(
       'CREATE INDEX IF NOT EXISTS places_location_idx ON places USING GIST (location);'
+    )
+    await queryInterface.sequelize.query(
+      'CREATE INDEX IF NOT EXISTS places_name_trgm_idx ON "places" USING GIN (name gin_trgm_ops);',
+      { type: QueryTypes.RAW }
     )
   },
 
