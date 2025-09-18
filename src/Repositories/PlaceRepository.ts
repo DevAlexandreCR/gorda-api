@@ -115,7 +115,7 @@ class PlaceRepository {
         replacements: { cityId },
         type: QueryTypes.SELECT,
       }
-    )) as any[]
+    )) as PlaceInterface[]
 
     return places
   }
