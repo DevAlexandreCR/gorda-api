@@ -23,7 +23,7 @@ export abstract class ResponseContract {
 
   abstract messageSupported: Array<string>
 
-  constructor(public session: Session) {}
+  constructor(public session: Session) { }
 
   abstract processMessage(message: WpMessage): Promise<void>
 
@@ -147,5 +147,16 @@ export abstract class ResponseContract {
     //   }
     // })
     return city
+  }
+
+  protected async sendAIMessage(MessagesEnum: MessagesEnum, customMessage?: string) {
+    const msg = Messages.getSingleMessage(MessagesEnum)
+    if (customMessage) {
+      msg.message = customMessage
+      if (msg.interactive?.body) {
+        msg.interactive.body.text = customMessage
+      }
+    }
+    await this.sendMessage(msg)
   }
 }

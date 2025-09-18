@@ -46,6 +46,8 @@ export class AskingForPlace extends ResponseContract {
             const msg = Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND)
             await this.sendMessage(msg)
           }
+        } else {
+          await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
         }
       }
     } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME && this.isChat(message)) {
@@ -58,9 +60,7 @@ export class AskingForPlace extends ResponseContract {
             await this.session.setPlace(place)
           })
         } else {
-          const msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
-          msg.message = response.message.body
-          await this.sendMessage(msg)
+          await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
         }
       }
     } else {
