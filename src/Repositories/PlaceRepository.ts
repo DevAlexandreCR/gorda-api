@@ -85,6 +85,7 @@ class PlaceRepository {
 
   async findByName(name: string, cityId?: string): Promise<PlaceInterface[]> {
     const replacements: any = { name, cityId }
+
     let sql = `
     SELECT id, name, lat, lng, city_id, similarity(name, :name) AS score
     FROM "places"
@@ -97,6 +98,10 @@ class PlaceRepository {
       replacements,
       type: QueryTypes.SELECT,
     })
+
+    if (places.length > 0 && (places[0] as any).score >= 0.7) {
+      return [places[0]] as PlaceInterface[]
+    }
 
     return places as PlaceInterface[]
   }
