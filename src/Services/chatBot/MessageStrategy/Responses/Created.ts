@@ -9,6 +9,9 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import ClientRepository from '../../../../Repositories/ClientRepository'
 import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
+import { MessageHandler } from '../../ai/MessageHandler'
+import { GordaChatBot } from '../../ai/Services/GordaChatBot'
+import { SessionStatuses } from '../../../../Types/SessionStatuses'
 
 export class Created extends ResponseContract {
   public messageSupported: Array<string> = [
@@ -56,7 +59,17 @@ export class Created extends ResponseContract {
       const response = new AskingForPlace(this.session)
       await response.processMessage(message)
     } else {
-      if (!this.session.notifications.greeting) {
+      const ia = new MessageHandler(new GordaChatBot())
+      const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_PLACE)
+      if (response.place) {
+        const place = await this.store.findPlaceByName(response.place)
+        if (place) {
+          await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
+            await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
+            await this.session.setPlace(place)
+          })
+        }
+      } else if (!this.session.notifications.greeting) {
         await this.sendMessage(Messages.greeting(this.currentClient.name)).then(async () => {
           await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)
           await this.session.setNotification(NotificationType.greeting)
