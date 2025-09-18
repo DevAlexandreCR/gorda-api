@@ -3,6 +3,7 @@ import { Sequelize, QueryTypes, Op } from 'sequelize'
 import SequelizePlace from '../Models/Place'
 import City from '../Models/City'
 import Branch from '../Models/Branch'
+import Place from '../Models/Place'
 
 class PlaceRepository {
   private sequelize: Sequelize
@@ -83,24 +84,21 @@ class PlaceRepository {
   }
 
   async findByName(name: string, cityId?: string): Promise<PlaceInterface[]> {
-    const whereClause: any = {
-      name: {
-        [Op.iLike]: `%${name}%`,
-      },
-    }
+    const replacements: any = { name, cityId }
+    let sql = `
+    SELECT id, name, lat, lng, city_id, similarity(name, :name) AS score
+    FROM "places"
+    WHERE name % :name
+    `
+    if (cityId) sql += ' AND city_id = :cityId'
+    sql += ' ORDER BY score DESC LIMIT 3'
 
-    if (cityId) {
-      whereClause.cityId = cityId
-    }
-
-    const places = await SequelizePlace.findAll({
-      where: whereClause,
-      attributes: ['id', 'name', 'lat', 'lng', 'cityId'],
-      order: [['name', 'ASC']],
-      limit: 3,
+    const places = await this.sequelize.query<PlaceInterface>(sql, {
+      replacements,
+      type: QueryTypes.SELECT,
     })
 
-    return places.map((place) => place.get({ plain: true }) as PlaceInterface)
+    return places as PlaceInterface[]
   }
 
   async findPlacesWithinCityPolygon(cityId: string): Promise<PlaceInterface[]> {
