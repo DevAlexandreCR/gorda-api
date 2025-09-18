@@ -1,10 +1,8 @@
-'use strict'
+import { QueryInterface, DataTypes } from 'sequelize'
+import { v4 as uuidv4 } from 'uuid'
 
-const { v4: uuidv4 } = require('uuid')
-
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up(queryInterface: QueryInterface, Sequelize: typeof DataTypes): Promise<void> {
     await queryInterface.bulkInsert(
       'places',
       [
@@ -103,7 +101,7 @@ module.exports = {
     )
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface: QueryInterface, Sequelize: typeof DataTypes): Promise<void> {
     await queryInterface.bulkDelete(
       'places',
       {

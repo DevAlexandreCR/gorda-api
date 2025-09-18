@@ -1,8 +1,7 @@
-'use strict'
+import { QueryInterface, DataTypes } from 'sequelize'
 
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up(queryInterface: QueryInterface, Sequelize: typeof DataTypes): Promise<void> {
     await queryInterface.bulkInsert(
       'cities',
       [
@@ -25,7 +24,7 @@ module.exports = {
     )
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface: QueryInterface, Sequelize: typeof DataTypes): Promise<void> {
     await queryInterface.bulkDelete(
       'cities',
       {
