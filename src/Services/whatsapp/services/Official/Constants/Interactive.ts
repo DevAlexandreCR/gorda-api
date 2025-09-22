@@ -5,6 +5,15 @@ export type Interactive = {
   }
   action: {
     name?: string
+    button?: string
+    sections?: Array<{
+      title?: string
+      rows: Array<{
+        id: string
+        title: string
+        description?: string
+      }>
+    }>
     buttons?: Array<{
       type: 'reply'
       reply?: {
