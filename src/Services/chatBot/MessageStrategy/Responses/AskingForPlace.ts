@@ -7,6 +7,8 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import { SessionStatuses } from '../../../../Types/SessionStatuses'
 import { MessageHandler } from '../../ai/MessageHandler'
 import { GordaChatBot } from '../../ai/Services/GordaChatBot'
+import { PlaceSuggestionHelper } from '../../PlaceSuggestionHelper'
+import { PlaceOption } from '../../../../Interfaces/PlaceOption'
 
 export class AskingForPlace extends ResponseContract {
   public messageSupported: Array<string> = [
@@ -36,11 +38,55 @@ export class AskingForPlace extends ResponseContract {
       } else {
         const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_PLACE)
         if (response.place) {
-          const place = await this.store.findPlaceByName(response.place)
-          if (place) {
-            await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
+          const searchResult = await this.store.findPlacesWithSuggestions(response.place)
+
+          if (searchResult.place && searchResult.hasExactMatch) {
+            await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(async () => {
               await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
-              await this.session.setPlace(place)
+              await this.session.setPlace(searchResult.place!)
+            })
+          } else if (searchResult.place && !searchResult.hasExactMatch) {
+            const wpClient = this.store.wpClients[this.session.wp_client_id]
+            const confirmationMessage = PlaceSuggestionHelper.createConfirmationMessage(
+              searchResult.place.name,
+              wpClient?.service,
+              { id: this.session.id }
+            )
+            await this.sendMessage(confirmationMessage).then(async () => {
+              await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
+
+              // Store candidate place as option 0 (special case for confirmation)
+              const placeOptions: PlaceOption[] = [
+                { option: 0, placeId: `confirm:${searchResult.place!.id}` }
+              ]
+
+              // Add suggestions as additional options if available
+              if (searchResult.suggestions && searchResult.suggestions.length > 0) {
+                searchResult.suggestions.forEach((suggestion, index) => {
+                  placeOptions.push({ option: index + 1, placeId: suggestion.id })
+                })
+              }
+
+              await this.session.setPlaceOptions(placeOptions)
+            })
+          } else if (searchResult.suggestions.length > 0) {
+            const wpClient = this.store.wpClients[this.session.wp_client_id]
+            const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
+              searchResult.suggestions,
+              message.msg,
+              wpClient?.service,
+              { id: this.session.id }
+            )
+            await this.sendMessage(suggestionMessage).then(async () => {
+              await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
+
+              // Store each suggestion as a separate PlaceOption
+              const placeOptions: PlaceOption[] = searchResult.suggestions.map((suggestion, index) => ({
+                option: index + 1,
+                placeId: suggestion.id
+              }))
+
+              await this.session.setPlaceOptions(placeOptions)
             })
           } else {
             const msg = Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND)
@@ -53,11 +99,31 @@ export class AskingForPlace extends ResponseContract {
     } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME && this.isChat(message)) {
       const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_PLACE)
       if (response.place) {
-        const place = await this.store.findPlaceByName(response.place)
-        if (place) {
-          await this.sendMessage(Messages.requestingService(place.name)).then(async () => {
+        const searchResult = await this.store.findPlacesWithSuggestions(response.place)
+
+        if (searchResult.place) {
+          await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(async () => {
             await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
-            await this.session.setPlace(place)
+            await this.session.setPlace(searchResult.place!)
+          })
+        } else if (searchResult.suggestions.length > 0) {
+          const wpClient = this.store.wpClients[this.session.wp_client_id]
+          const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
+            searchResult.suggestions,
+            message.msg,
+            wpClient?.service,
+            { id: this.session.id }
+          )
+          await this.sendMessage(suggestionMessage).then(async () => {
+            await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
+
+            // Store each suggestion as a separate PlaceOption
+            const placeOptions: PlaceOption[] = searchResult.suggestions.map((suggestion, index) => ({
+              option: index + 1,
+              placeId: suggestion.id
+            }))
+
+            await this.session.setPlaceOptions(placeOptions)
           })
         } else {
           await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
