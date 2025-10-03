@@ -6,7 +6,7 @@ import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { AxiosDefaults, AxiosError, AxiosResponse } from 'axios'
 
 export class MessageHandler {
-  constructor(private client: MessageHandlerInterface) {}
+  constructor(private client: MessageHandlerInterface) { }
 
   async handleMessage(
     message: string,
@@ -46,7 +46,7 @@ export class MessageHandler {
       id: `default_${Date.now()}`,
       created_at: Date.now(),
       type: MessageTypes.TEXT,
-      body: 'Lo siento, estoy experimentando dificultades técnicas en este momento. En un momento uno de nuestros operadores se pondrá en contacto contigo.',
+      body: 'Lo siento, estoy experimentando dificultades técnicas en este momento. Intenta enviando la ubicación o en un momento uno de nuestros operadores se pondrá en contacto contigo.',
       fromMe: true,
       interactive: null,
       interactiveReply: null,

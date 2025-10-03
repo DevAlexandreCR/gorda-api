@@ -133,8 +133,12 @@ export class ChoosingPlace extends ResponseContract {
           if (suggestions.length > 0) {
             const wpClient = this.store.wpClients[this.session.wp_client_id]
             const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
-              suggestions,
-              candidatePlace.name, // Use candidate name as original query
+              suggestions.map((suggestion, index) => ({
+                option: index + 1,
+                placeId: suggestion.id,
+                placeName: suggestion.name
+              })),
+              candidatePlace.name,
               wpClient?.service,
               { id: this.session.id }
             )
