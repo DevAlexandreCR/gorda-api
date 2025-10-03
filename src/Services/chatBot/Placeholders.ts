@@ -20,7 +20,7 @@ placeholdersMap.set(Placeholders.COMPANY, config.APP_NAME)
 Object.freeze(placeholdersMap)
 
 export const getPlaceholders = (): Map<Placeholders, string> => {
-  return new Map<Placeholders, string>()
+  return new Map<Placeholders, string>(placeholdersMap)
 }
 
 export const getPlaceholder = (placeholder: Placeholders): string => {
