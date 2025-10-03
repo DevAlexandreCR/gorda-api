@@ -72,7 +72,11 @@ export class AskingForPlace extends ResponseContract {
           } else if (searchResult.suggestions.length > 0) {
             const wpClient = this.store.wpClients[this.session.wp_client_id]
             const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
-              searchResult.suggestions,
+              searchResult.suggestions.map((suggestion, index) => ({
+                option: index + 1,
+                placeId: suggestion.id,
+                placeName: suggestion.name
+              })),
               message.msg,
               wpClient?.service,
               { id: this.session.id }
@@ -109,7 +113,11 @@ export class AskingForPlace extends ResponseContract {
         } else if (searchResult.suggestions.length > 0) {
           const wpClient = this.store.wpClients[this.session.wp_client_id]
           const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
-            searchResult.suggestions,
+            searchResult.suggestions.map((suggestion, index) => ({
+              option: index + 1,
+              placeId: suggestion.id,
+              placeName: suggestion.name
+            })),
             message.msg,
             wpClient?.service,
             { id: this.session.id }
