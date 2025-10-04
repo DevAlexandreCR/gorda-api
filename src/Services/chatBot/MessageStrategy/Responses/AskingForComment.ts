@@ -4,7 +4,6 @@ import * as Messages from '../../Messages'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
-import { log } from 'console'
 
 export class AskingForComment extends ResponseContract {
   public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
@@ -31,7 +30,6 @@ export class AskingForComment extends ResponseContract {
   hasComment(message: WpMessage): false | string {
     let msg = ''
 
-    log('Message received in AskingForComment:', message)
     if (message.type === MessageTypes.INTERACTIVE && message.interactiveReply) {
       if (message.interactiveReply.button_reply) {
         msg = message.interactiveReply.button_reply.id
@@ -42,6 +40,6 @@ export class AskingForComment extends ResponseContract {
       msg = message.msg
     }
 
-    return msg.length >= 2 ? msg : false
+    return msg.length > 2 ? msg : false
   }
 }
