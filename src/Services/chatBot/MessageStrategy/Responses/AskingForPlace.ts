@@ -77,7 +77,7 @@ export class AskingForPlace extends ResponseContract {
                 placeId: suggestion.id,
                 placeName: suggestion.name
               })),
-              message.msg,
+              response.place,
               wpClient?.service,
               { id: this.session.id }
             )
