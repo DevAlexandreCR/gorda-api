@@ -32,6 +32,8 @@ module.exports = {
       "REDIS_PORT": 6379,
       "AI_SERVICE_URL": "http://localhost:8000",
       "AI_SERVICE_API_KEY": "admin-token",
+      "SERVER_API_KEY": "server-token",
+      "DATABASE_URL": "postgresql://root:root@postgres:5432/gorda_db?schema=public"
     }
   }]
 }
