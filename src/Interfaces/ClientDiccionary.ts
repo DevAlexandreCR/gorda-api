@@ -1,5 +1,5 @@
-import {WpClient} from "./WpClient";
+import { WpClient } from './WpClient'
 
 export interface ClientDictionary {
-    [id: string]: WpClient
+  [id: string]: WpClient
 }

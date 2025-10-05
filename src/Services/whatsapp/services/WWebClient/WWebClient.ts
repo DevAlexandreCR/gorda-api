@@ -1,13 +1,13 @@
-import {Client, LocalAuth, Message} from 'whatsapp-web.js'
-import {WpEvents} from '../../constants/WpEvents'
-import {WpStates} from '../../constants/WpStates'
-import {WPClientInterface} from '../../interfaces/WPClientInterface'
-import {WpChatInterface} from '../../interfaces/WpChatInterface'
+import { Client, LocalAuth, Message } from 'whatsapp-web.js'
+import { WpEvents } from '../../constants/WpEvents'
+import { WpStates } from '../../constants/WpStates'
+import { WPClientInterface } from '../../interfaces/WPClientInterface'
+import { WpChatInterface } from '../../interfaces/WpChatInterface'
 import config from '../../../../../config'
-import {WpClient} from '../../../../Interfaces/WpClient'
-import {WpChatAdapter} from './Adapters/WpChatAdapter'
-import {WpClients} from '../../constants/WPClients'
-import {WpMessageAdapter} from "./Adapters/WpMessageAdapter";
+import { WpClient } from '../../../../Interfaces/WpClient'
+import { WpChatAdapter } from './Adapters/WpChatAdapter'
+import { WpClients } from '../../constants/WPClients'
+import { WpMessageAdapter } from './Adapters/WpMessageAdapter'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 
 export class WWebClient implements WPClientInterface {

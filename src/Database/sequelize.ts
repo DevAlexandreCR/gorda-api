@@ -13,7 +13,7 @@ const sequelize = new Sequelize(dbConfig.url, {
   dialectOptions: dbConfig.dialectOptions,
   logging: dbConfig.logging,
   pool: dbConfig.pool,
-  timezone: '+00:00' // Force UTC timezone for database operations
+  timezone: '+00:00', // Force UTC timezone for database operations
 })
 
 export default sequelize

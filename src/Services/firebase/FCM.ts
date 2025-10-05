@@ -1,6 +1,6 @@
-import { DataMessagePayload, MessagingPayload } from "firebase-admin/messaging";
-import { FCMNotification } from "../../Types/FCMNotifications";
-import Admin from "./Admin"
+import { DataMessagePayload, MessagingPayload } from 'firebase-admin/messaging'
+import { FCMNotification } from '../../Types/FCMNotifications'
+import Admin from './Admin'
 
 class FCM {
   public sendNotificationTo(token: string, payload: FCMNotification) {
@@ -18,4 +18,4 @@ class FCM {
   }
 }
 
-export default new FCM();
+export default new FCM()

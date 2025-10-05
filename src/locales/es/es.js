@@ -9,11 +9,11 @@ export default {
     dashboard: 'Dashboard',
     users: 'Usuarios',
     drivers: 'Conductores',
-    places: 'Lugares'
+    places: 'Lugares',
   },
   users: users,
   common: common,
   validations: validations,
   services: services,
-  drivers: drivers
+  drivers: drivers,
 }

@@ -1,6 +1,6 @@
 import { Chat } from '../Interfaces/Chat'
 import Firestore from '../Services/firebase/Firestore'
-import {Message} from '../Interfaces/Message'
+import { Message } from '../Interfaces/Message'
 import DateHelper from '../Helpers/DateHelper'
 
 class ChatRepository {
@@ -21,11 +21,13 @@ class ChatRepository {
   }
 
   public async updateChat(wpClientId: string, chatId: string, message: Message): Promise<void> {
-    await Firestore.dbChats(wpClientId).doc(chatId).update({
-      updated_at: DateHelper.unix(),
-      lastMessage: message,
-      archived: false,
-    } as Partial<Chat>)
+    await Firestore.dbChats(wpClientId)
+      .doc(chatId)
+      .update({
+        updated_at: DateHelper.unix(),
+        lastMessage: message,
+        archived: false,
+      } as Partial<Chat>)
     return Promise.resolve()
   }
 

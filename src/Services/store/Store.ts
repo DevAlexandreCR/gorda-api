@@ -1,5 +1,4 @@
 import Driver from '../../Models/Driver'
-import Place from '../../Models/Place'
 import Container from '../../Container/Container'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
@@ -30,6 +29,8 @@ export class Store {
   branches: Map<string, Branch> = new Map()
   cities: Map<string, City> = new Map()
   polygons: Array<Feature<Polygon>> = new Array()
+  placeRepository = Container.getPlaceRepository()
+  placeSearchRepository = Container.getPlaceSearchRepository()
 
   private constructor() {
     this.setDrivers()
@@ -52,7 +53,7 @@ export class Store {
       },
       (clientId) => {
         if (clientId) this.clients.delete(clientId)
-      },
+      }
     )
   }
 
@@ -93,7 +94,11 @@ export class Store {
     })
   }
 
-  async getChatById(wpClientId: string, chatId: string, profileName: string = 'Usuario'): Promise<Chat> {
+  async getChatById(
+    wpClientId: string,
+    chatId: string,
+    profileName: string = 'Usuario'
+  ): Promise<Chat> {
     const chat = this.wpChats.get(chatId)
 
     if (chat) {
@@ -183,5 +188,33 @@ export class Store {
       }
     })
     return country
+  }
+
+  async findPlaceByName(placeName: string, cityId?: string): Promise<PlaceInterface | null> {
+    const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
+      cityId: cityId || 'popayan',
+      limit: 1,
+      minScore: 0.3
+    })
+
+    return searchResult.results[0] || null
+  }
+
+  async findPlacesWithSuggestions(placeName: string, cityId?: string): Promise<{
+    place: PlaceInterface | null
+    suggestions: Array<{ id: string, name: string }>
+    hasExactMatch: boolean
+  }> {
+    const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
+      cityId: cityId || 'popayan',
+      limit: 5,
+      minScore: 0.2
+    })
+
+    return {
+      place: searchResult.results[0] || null,
+      suggestions: searchResult.suggestions,
+      hasExactMatch: searchResult.hasExactMatch
+    }
   }
 }

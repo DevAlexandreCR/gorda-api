@@ -7,7 +7,7 @@ export const validateRequest = (schema: z.ZodSchema) => {
       schema.parse({
         body: req.body,
         query: req.query,
-        params: req.params
+        params: req.params,
       })
       next()
     } catch (error) {
@@ -17,13 +17,13 @@ export const validateRequest = (schema: z.ZodSchema) => {
           error: 'Validation error',
           details: error.issues.map((err: z.ZodIssue) => ({
             field: err.path.join('.'),
-            message: err.message
-          }))
+            message: err.message,
+          })),
         })
       }
       return res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
       })
     }
   }

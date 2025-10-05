@@ -11,7 +11,10 @@ export class WpChatAdapter implements WpChatInterface {
   archived: boolean = false
   store: Store
 
-  constructor(private client: OfficialClient, public id: string) {
+  constructor(
+    private client: OfficialClient,
+    public id: string
+  ) {
     this.store = Store.getInstance()
   }
 
@@ -27,12 +30,14 @@ export class WpChatAdapter implements WpChatInterface {
   async getContact(): Promise<WpContactInterface> {
     const contact = this.store.clients.get(this.id)
     if (!contact) {
-      return Promise.resolve(new WpContactAdapter({
-        id: this.id,
-        name: 'Usuario',
-        phone: this.id.replace('@c.us', ''),
-        photoUrl: config.DEFAULT_CLIENT_PHOTO_URL,
-      } as ClientInterface))
+      return Promise.resolve(
+        new WpContactAdapter({
+          id: this.id,
+          name: 'Usuario',
+          phone: this.id.replace('@c.us', ''),
+          photoUrl: config.DEFAULT_CLIENT_PHOTO_URL,
+        } as ClientInterface)
+      )
     } else {
       return Promise.resolve(new WpContactAdapter(contact))
     }

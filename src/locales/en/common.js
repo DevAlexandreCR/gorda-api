@@ -5,11 +5,11 @@ export default {
     disabled: 'Disabled',
     name: 'Name',
     email: 'Email Address',
-    phone: 'Phone'
+    phone: 'Phone',
   },
   models: {
     users: 'User | Users',
-    drivers: 'Driver | Drivers'
+    drivers: 'Driver | Drivers',
   },
   actions: {
     submit: 'Submit',
@@ -19,14 +19,14 @@ export default {
     cancel: 'Cancel',
     release: 'Release',
     assign: 'Assign',
-    terminate: 'Terminate'
+    terminate: 'Terminate',
   },
   messages: {
     updated: 'Resource updated successfully',
     created: 'Resource created successfully',
     deleted: 'Resource deleted successfully',
     error: 'Something went wrong!',
-    forbidden: 'Permission denied'
+    forbidden: 'Permission denied',
   },
   placeholders: {
     name: 'Enter name',
@@ -37,17 +37,17 @@ export default {
     address: 'Enter Address',
     comment: 'Enter comment',
     search: 'Search',
-    map: 'Map'
+    map: 'Map',
   },
   forms: {
-    select_img: 'Choose image from files'
+    select_img: 'Choose image from files',
   },
   chatBot: {
     connected: 'Connected',
     disconnected: 'Disconnected',
     disconnect: 'Disconnect',
     connect: 'Connect',
-    reset: 'Reset'
+    reset: 'Reset',
   },
   colors: {
     black: 'Black',
@@ -66,6 +66,6 @@ export default {
     brown: 'Brown',
     maroon: 'Maroon',
     beige: 'Beige',
-    silver: 'Silver'
-  }
+    silver: 'Silver',
+  },
 }

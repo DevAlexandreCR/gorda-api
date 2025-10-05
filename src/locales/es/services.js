@@ -15,10 +15,10 @@ export default {
     driver: 'Conductor',
     lat: 'Latitud',
     lng: 'Longitud',
-    comment: 'Comentario'
+    comment: 'Comentario',
   },
   history: 'Historial',
   messages: {
-    new_client: 'El cliente no existe, por lo que se ha creado uno nuevo'
-  }
+    new_client: 'El cliente no existe, por lo que se ha creado uno nuevo',
+  },
 }

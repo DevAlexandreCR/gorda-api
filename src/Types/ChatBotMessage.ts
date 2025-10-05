@@ -1,4 +1,4 @@
-import { Interactive } from "../Services/whatsapp/services/Official/Constants/Interactive"
+import { Interactive } from '../Services/whatsapp/services/Official/Constants/Interactive'
 
 export type ChatBotMessage = {
   id: string

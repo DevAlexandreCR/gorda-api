@@ -1,5 +1,5 @@
 import SessionRepository from '../Repositories/SessionRepository'
-import {SessionInterface} from '../Interfaces/SessionInterface'
+import { SessionInterface } from '../Interfaces/SessionInterface'
 import dayjs from 'dayjs'
 import Session from '../Models/Session'
 import * as Sentry from '@sentry/node'
@@ -17,13 +17,13 @@ export async function updateSessionAbandoned(): Promise<void> {
   const sessions = await SessionRepository.getActiveSessions()
   const sessionsAbandoned = Array<SessionInterface>()
   console.log('updating abandoned sessions...')
-  sessions.forEach(session => {
+  sessions.forEach((session) => {
     if (isSessionAbandoned(session)) {
       session.status = Session.STATUS_COMPLETED
       sessionsAbandoned.push(session)
     }
   })
-  SessionRepository.closeAbandoned(sessionsAbandoned).catch(e => {
-		Sentry.captureException(e)
+  SessionRepository.closeAbandoned(sessionsAbandoned).catch((e) => {
+    Sentry.captureException(e)
   })
 }

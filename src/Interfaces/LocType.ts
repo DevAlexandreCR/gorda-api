@@ -1,5 +1,5 @@
 export type LocType = {
-  name: string,
-  lat: number,
+  name: string
+  lat: number
   lng: number
 }

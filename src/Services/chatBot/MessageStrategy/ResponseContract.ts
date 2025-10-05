@@ -148,4 +148,15 @@ export abstract class ResponseContract {
     // })
     return city
   }
+
+  protected async sendAIMessage(MessagesEnum: MessagesEnum, customMessage?: string) {
+    const msg = Messages.getSingleMessage(MessagesEnum)
+    if (customMessage) {
+      msg.message = customMessage
+      if (msg.interactive?.body) {
+        msg.interactive.body.text = customMessage
+      }
+    }
+    await this.sendMessage(msg)
+  }
 }

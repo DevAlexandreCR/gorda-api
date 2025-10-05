@@ -11,7 +11,10 @@ export class WpChatAdapter implements WpChatInterface {
   archived: boolean = false
   store: Store
 
-  constructor(private waSocket: WASocket, public id: string) {
+  constructor(
+    private waSocket: WASocket,
+    public id: string
+  ) {
     this.store = Store.getInstance()
   }
 
@@ -26,7 +29,7 @@ export class WpChatAdapter implements WpChatInterface {
         lastMessages: [],
         archive: true,
       },
-      this.id,
+      this.id
     )
     this.archived = true
   }
@@ -34,12 +37,14 @@ export class WpChatAdapter implements WpChatInterface {
   async getContact(): Promise<WpContactInterface> {
     const contact = this.store.clients.get(this.id)
     if (!contact) {
-      return Promise.resolve(new WpContactAdapter({
-        id: this.id,
-        name: 'Usuario',
-        phone: this.id.replace('@c.us', ''),
-        photoUrl: config.DEFAULT_CLIENT_PHOTO_URL,
-      } as ClientInterface))
+      return Promise.resolve(
+        new WpContactAdapter({
+          id: this.id,
+          name: 'Usuario',
+          phone: this.id.replace('@c.us', ''),
+          photoUrl: config.DEFAULT_CLIENT_PHOTO_URL,
+        } as ClientInterface)
+      )
     } else {
       return Promise.resolve(new WpContactAdapter(contact))
     }

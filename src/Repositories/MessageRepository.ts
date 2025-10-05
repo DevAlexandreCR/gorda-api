@@ -3,7 +3,11 @@ import Firestore from '../Services/firebase/Firestore'
 import ChatRepository from './ChatRepository'
 
 class MessageRepository {
-  public getMessages(wpClientId: string, chatId: string, listener: (messages: Message[]) => void): void {
+  public getMessages(
+    wpClientId: string,
+    chatId: string,
+    listener: (messages: Message[]) => void
+  ): void {
     Firestore.dbMessages(wpClientId, chatId)
       .limit(100)
       .onSnapshot((snapshot) => {

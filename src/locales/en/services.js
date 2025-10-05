@@ -15,10 +15,10 @@ export default {
     driver: 'Driver',
     lat: 'Latitude',
     lng: 'Longitude',
-    comment: 'Comment'
+    comment: 'Comment',
   },
   history: 'History',
   messages: {
-    new_client: 'Client does nor exists, therefor has been created a new one'
-  }
+    new_client: 'Client does nor exists, therefor has been created a new one',
+  },
 }

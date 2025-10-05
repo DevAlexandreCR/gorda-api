@@ -16,11 +16,14 @@ export class WpMessageAdapter implements WpMessageInterface {
   location: LocType
   interactiveReply = null
 
-  constructor(private message: WAMessage, private waSocket: WASocket) {
+  constructor(
+    private message: WAMessage,
+    private waSocket: WASocket
+  ) {
     this.id = message.key.id!
     this.timestamp = message.messageTimestamp as number
     this.type = message.message?.conversation ? MessageTypes.TEXT : MessageTypes.UNKNOWN
-    this.isStatus = message.broadcast?? false
+    this.isStatus = message.broadcast ?? false
     this.body = message.message?.conversation || ''
     this.from = message.key.remoteJid!.replace('@s.whatsapp.net', '@c.us')
     if (message.message?.locationMessage) {

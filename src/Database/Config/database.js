@@ -5,23 +5,23 @@ module.exports = {
     url: config.DATABASE_URL,
     dialect: 'postgres',
     dialectOptions: {
-      ssl: false
+      ssl: false,
     },
     logging: console.log,
     pool: {
       max: 20,
       min: 0,
       acquire: 30000,
-      idle: 10000
-    }
+      idle: 10000,
+    },
   },
   test: {
     url: config.DATABASE_URL,
     dialect: 'postgres',
     dialectOptions: {
-      ssl: false
+      ssl: false,
     },
-    logging: false
+    logging: false,
   },
   production: {
     url: config.DATABASE_URL,
@@ -29,15 +29,15 @@ module.exports = {
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false
-      }
+        rejectUnauthorized: false,
+      },
     },
     logging: false,
     pool: {
       max: 20,
       min: 0,
       acquire: 30000,
-      idle: 10000
-    }
-  }
+      idle: 10000,
+    },
+  },
 }
