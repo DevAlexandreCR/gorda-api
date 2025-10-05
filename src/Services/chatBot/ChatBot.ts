@@ -50,6 +50,7 @@ export default class ChatBot {
               sessionInMap.placeOptions = session.placeOptions
               sessionInMap.created_at = session.created_at
               sessionInMap.updated_at = session.updated_at
+              sessionInMap.service_id = session.service_id
               this.sessions.set(session.id, sessionInMap)
             }
             break
