@@ -1,4 +1,4 @@
 export type LoadingType = {
-	percent: string,
-	message: string
+  percent: string
+  message: string
 }

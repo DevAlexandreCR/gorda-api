@@ -1,4 +1,4 @@
-import { DataMessagePayload } from "firebase-admin/messaging"
+import { DataMessagePayload } from 'firebase-admin/messaging'
 
 export type FCMNotification = {
   title: string

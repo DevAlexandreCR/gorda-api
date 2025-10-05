@@ -35,7 +35,7 @@ class SettingsRepository {
       snapshot.forEach((doc) => {
         const data = doc.data()
         const interactive = data.interactive as Interactive | null
-        
+
         const chatBotMessage: ChatBotMessage = {
           id: data.id,
           name: data.name,
@@ -44,7 +44,9 @@ class SettingsRepository {
           enabled: data.enabled,
           interactive: interactive,
         }
-        const messageEnumValue: MessagesEnum | undefined = Object.values(MessagesEnum).find((value) => value === doc.id)
+        const messageEnumValue: MessagesEnum | undefined = Object.values(MessagesEnum).find(
+          (value) => value === doc.id
+        )
         if (messageEnumValue) {
           msgs.set(messageEnumValue, chatBotMessage)
         } else {
@@ -87,20 +89,35 @@ class SettingsRepository {
   }
 
   async setMinFee(fee: number): Promise<void> {
-    return Database.dbRideFees().child('fees_minimum').set(fee).catch((error) => {
-      console.error('Error setting min fee', error)
-    })
+    return Database.dbRideFees()
+      .child('fees_minimum')
+      .set(fee)
+      .catch((error) => {
+        console.error('Error setting min fee', error)
+      })
   }
 
   async setMultiplier(fee: number): Promise<void> {
-    return Database.dbRideFees().child('fee_multiplier').set(fee).catch((error) => {
-      console.error('Error setting multiplier fee', error)
-    })
+    return Database.dbRideFees()
+      .child('fee_multiplier')
+      .set(fee)
+      .catch((error) => {
+        console.error('Error setting multiplier fee', error)
+      })
   }
 
   /* istanbul ignore next */
-  async setCoordinates(branchId: string, cityId: string, coordinates: Array<LatLng>): Promise<void> {
-    return Database.dbBranches().child(branchId).child('cities').child(cityId).child('polygon').set(coordinates)
+  async setCoordinates(
+    branchId: string,
+    cityId: string,
+    coordinates: Array<LatLng>
+  ): Promise<void> {
+    return Database.dbBranches()
+      .child(branchId)
+      .child('cities')
+      .child(cityId)
+      .child('polygon')
+      .set(coordinates)
   }
 }
 export default new SettingsRepository()

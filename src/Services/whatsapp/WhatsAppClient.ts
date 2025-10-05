@@ -1,31 +1,31 @@
 import * as Sentry from '@sentry/node'
-import {Server as SocketIOServer} from 'socket.io'
+import { Server as SocketIOServer } from 'socket.io'
 import ChatBot from '../chatBot/ChatBot'
-import {DataSnapshot} from 'firebase-admin/lib/database'
+import { DataSnapshot } from 'firebase-admin/lib/database'
 import * as Messages from '../chatBot/Messages'
-import {Store} from '../store/Store'
+import { Store } from '../store/Store'
 import config from '../../../config'
-import {WpNotificationType} from '../../Interfaces/WpNotificationType'
+import { WpNotificationType } from '../../Interfaces/WpNotificationType'
 import WpNotificationRepository from '../../Repositories/WpNotificationRepository'
-import {EmitEvents} from './EmitEvents'
-import {LoadingType} from '../../Interfaces/LoadingType'
+import { EmitEvents } from './EmitEvents'
+import { LoadingType } from '../../Interfaces/LoadingType'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import Service from '../../Models/Service'
-import {WpClient} from '../../Interfaces/WpClient'
+import { WpClient } from '../../Interfaces/WpClient'
 import Session from '../../Models/Session'
-import {ServiceInterface} from '../../Interfaces/ServiceInterface'
-import {NotificationType} from '../../Types/NotificationType'
-import {MessagesEnum} from '../chatBot/MessagesEnum'
-import {ChatBotMessage} from '../../Types/ChatBotMessage'
-import {WpStates} from './constants/WpStates'
-import {WpEvents} from './constants/WpEvents'
-import {WPClientInterface} from './interfaces/WPClientInterface'
-import {WpMessageInterface} from './interfaces/WpMessageInterface'
-import {ClientFactory} from './ClientFactory'
-import {WpClients} from './constants/WPClients'
-import {MessageTypes} from './constants/MessageTypes'
-import {spawn} from 'child_process'
+import { ServiceInterface } from '../../Interfaces/ServiceInterface'
+import { NotificationType } from '../../Types/NotificationType'
+import { MessagesEnum } from '../chatBot/MessagesEnum'
+import { ChatBotMessage } from '../../Types/ChatBotMessage'
+import { WpStates } from './constants/WpStates'
+import { WpEvents } from './constants/WpEvents'
+import { WPClientInterface } from './interfaces/WPClientInterface'
+import { WpMessageInterface } from './interfaces/WpMessageInterface'
+import { ClientFactory } from './ClientFactory'
+import { WpClients } from './constants/WPClients'
+import { MessageTypes } from './constants/MessageTypes'
+import { spawn } from 'child_process'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -102,8 +102,15 @@ export class WhatsAppClient {
   }
 
   onMessageReceived = async (msg: WpMessageInterface): Promise<void> => {
-    console.log('Message received', this.wpClient.alias, msg.type, msg.from, msg.body.substring(0, 50))
-    if (this.isProcessableMsg(msg)) await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
+    console.log(
+      'Message received',
+      this.wpClient.alias,
+      msg.type,
+      msg.from,
+      msg.body.substring(0, 50)
+    )
+    if (this.isProcessableMsg(msg))
+      await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
   }
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
@@ -180,7 +187,8 @@ export class WhatsAppClient {
       })
       .catch((e) => {
         console.log(EmitEvents.GET_STATE, this.wpClient.alias, e.message)
-        if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.UNPAIRED)
+        if (this.socket)
+          this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.UNPAIRED)
       })
   }
 
@@ -233,7 +241,10 @@ export class WhatsAppClient {
         WpNotificationRepository.deleteNotification(Service.STATUS_TERMINATED, snapshot.key ?? '')
       })
     } else {
-      await WpNotificationRepository.deleteNotification(Service.STATUS_TERMINATED, snapshot.key ?? '')
+      await WpNotificationRepository.deleteNotification(
+        Service.STATUS_TERMINATED,
+        snapshot.key ?? ''
+      )
     }
   }
 
@@ -349,12 +360,18 @@ export class WhatsAppClient {
         console.log('new service', service.id)
     }
 
-    if (mustSend && message && !this.wpClient.wpNotifications) await this.sendMessage(service.client_id, message)
+    if (mustSend && message && !this.wpClient.wpNotifications)
+      await this.sendMessage(service.client_id, message)
   }
 
   async sendMessage(chatId: string, message: ChatBotMessage): Promise<void> {
     await this.client.sendMessage(chatId, message).catch((e) => {
-      console.log('sendMessage Error' + message.message.substring(0, 20), this.wpClient.alias, chatId, JSON.stringify(e))
+      console.log(
+        'sendMessage Error' + message.message.substring(0, 20),
+        this.wpClient.alias,
+        chatId,
+        JSON.stringify(e)
+      )
       Sentry.captureException(e)
       // if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
       if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
@@ -378,6 +395,6 @@ export class WhatsAppClient {
     })
     chromium.unref()
     console.log('restart chromium...')
-    return  this.client.initialize()
+    return this.client.initialize()
   }
 }

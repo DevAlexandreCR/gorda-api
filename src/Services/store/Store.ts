@@ -1,6 +1,5 @@
 import Driver from '../../Models/Driver'
-import Place from '../../Models/Place'
-import PlaceRepository from '../../Repositories/PlaceRepository'
+import Container from '../../Container/Container'
 import DriverRepository from '../../Repositories/DriverRepository'
 import ClientRepository from '../../Repositories/ClientRepository'
 import Client from '../../Models/Client'
@@ -18,11 +17,11 @@ import { Branch } from '../../Interfaces/Branch'
 import { City } from '../../Interfaces/City'
 import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
+import { PlaceInterface } from '../../Interfaces/PlaceInterface'
 
 export class Store {
   static instance: Store
   drivers: Map<string, Driver> = new Map()
-  places: Set<Place> = new Set<Place>()
   clients: Map<string, Client> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
@@ -30,11 +29,12 @@ export class Store {
   branches: Map<string, Branch> = new Map()
   cities: Map<string, City> = new Map()
   polygons: Array<Feature<Polygon>> = new Array()
+  placeRepository = Container.getPlaceRepository()
+  placeSearchRepository = Container.getPlaceSearchRepository()
 
   private constructor() {
     this.setDrivers()
     this.updateDrivers()
-    this.setPlaces()
     this.setClients()
     this.listenMessages()
   }
@@ -46,12 +46,6 @@ export class Store {
     return Store.instance
   }
 
-  private setPlaces() {
-    PlaceRepository.getAll((place) => {
-      this.places.add(place)
-    })
-  }
-
   private setClients() {
     ClientRepository.onClient(
       (client) => {
@@ -59,7 +53,7 @@ export class Store {
       },
       (clientId) => {
         if (clientId) this.clients.delete(clientId)
-      },
+      }
     )
   }
 
@@ -100,7 +94,11 @@ export class Store {
     })
   }
 
-  async getChatById(wpClientId: string, chatId: string, profileName: string = 'Usuario'): Promise<Chat> {
+  async getChatById(
+    wpClientId: string,
+    chatId: string,
+    profileName: string = 'Usuario'
+  ): Promise<Chat> {
     const chat = this.wpChats.get(chatId)
 
     if (chat) {
@@ -153,11 +151,9 @@ export class Store {
     }
   }
 
-  findPlaceById(placeId: string): Place | undefined {
-    const placesArray = Array.from(this.places)
-    return placesArray.find((pla) => {
-      return pla.key === placeId
-    })
+  findPlaceById(placeId: string): Promise<PlaceInterface | null> {
+    const placeRepository = Container.getPlaceRepository()
+    return placeRepository.findById(placeId)
   }
 
   getBranches(): void {
@@ -192,5 +188,33 @@ export class Store {
       }
     })
     return country
+  }
+
+  async findPlaceByName(placeName: string, cityId?: string): Promise<PlaceInterface | null> {
+    const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
+      cityId: cityId || 'popayan',
+      limit: 1,
+      minScore: 0.3
+    })
+
+    return searchResult.results[0] || null
+  }
+
+  async findPlacesWithSuggestions(placeName: string, cityId?: string): Promise<{
+    place: PlaceInterface | null
+    suggestions: Array<{ id: string, name: string }>
+    hasExactMatch: boolean
+  }> {
+    const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
+      cityId: cityId || 'popayan',
+      limit: 5,
+      minScore: 0.2
+    })
+
+    return {
+      place: searchResult.results[0] || null,
+      suggestions: searchResult.suggestions,
+      hasExactMatch: searchResult.hasExactMatch
+    }
   }
 }

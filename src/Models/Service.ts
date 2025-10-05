@@ -1,8 +1,8 @@
-import {ServiceInterface} from '../Interfaces/ServiceInterface'
+import { ServiceInterface } from '../Interfaces/ServiceInterface'
 import dayjs from 'dayjs'
 import ServiceRepository from '../Repositories/ServiceRepository'
-import {PlaceInterface} from '../Interfaces/PlaceInterface'
-import {Metadata} from '../Interfaces/Metadata'
+import { PlaceInterface } from '../Interfaces/PlaceInterface'
+import { Metadata } from '../Interfaces/Metadata'
 
 export default class Service implements ServiceInterface {
   id: string
@@ -40,7 +40,7 @@ export default class Service implements ServiceInterface {
   isinProgress(): boolean {
     return this.status === Service.STATUS_IN_PROGRESS
   }
-  
+
   async cancel(): Promise<void> {
     this.status = Service.STATUS_CANCELED
     await ServiceRepository.updateStatus(this.id, this.status)

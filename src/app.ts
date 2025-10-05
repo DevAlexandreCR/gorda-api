@@ -20,6 +20,8 @@ import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/Controllers/Whatsapp/MessageController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
 import NotificationController from './Api/Controllers/Notifications/NotificationController'
+import PlaceController from './Api/Controllers/Places/PlaceController'
+import Container from './Container/Container'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
@@ -35,16 +37,21 @@ let wpServices: WhatsAppClientDictionary = {}
 
 Sentry.init({
   dsn: config.SENTRY_DSN,
-  integrations: [new Sentry.Integrations.Http({ tracing: true }), new Tracing.Integrations.Express({ app })],
+  integrations: [
+    new Sentry.Integrations.Http({ tracing: true }),
+    new Tracing.Integrations.Express({ app }),
+  ],
 
   tracesSampleRate: 0.8,
 })
 
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
-}))
+app.use(
+  cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  })
+)
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
@@ -53,6 +60,7 @@ app.use(express.json())
 app.use(controller)
 app.use(polygonController)
 app.use(NotificationController)
+app.use('/places', PlaceController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
@@ -64,6 +72,12 @@ io.attach(server, { cors: { origin: true } })
 io.attach(serverSSL, { cors: { origin: true } })
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
+
+  await Container.initialize().catch((error) => {
+    console.error('Failed to initialize container:', error)
+    process.exit(1)
+  })
+
   store.getBranches()
   store.getWpClients((clients: ClientDictionary) => {
     Object.values(clients).forEach((client: WpClient) => {
@@ -115,7 +129,7 @@ io.on('connection', async (socket: Socket) => {
   socket.on('get-state', async () => {
     if (wpServices[clientId]) wpServices[clientId].getState()
   })
-  
+
   socket.on('reset', async () => {
     console.log('restarting by user: ', clientId)
     process.exit(0)
@@ -153,4 +167,29 @@ io.on('connection', async (socket: Socket) => {
   socket.on('disconnect', (reason) => {
     console.log('disconnecting ...', reason)
   })
+})
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT, shutting down gracefully...')
+  await Container.cleanup()
+  process.exit(0)
+})
+
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM, shutting down gracefully...')
+  await Container.cleanup()
+  process.exit(0)
+})
+
+process.on('uncaughtException', async (error) => {
+  console.error('Uncaught Exception:', error)
+  await Container.cleanup()
+  process.exit(1)
+})
+
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+  await Container.cleanup()
+  process.exit(1)
 })

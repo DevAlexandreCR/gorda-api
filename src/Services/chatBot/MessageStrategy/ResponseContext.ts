@@ -1,32 +1,32 @@
 import Session from '../../../Models/Session'
-import {AskingForName} from './Responses/AskingForName'
-import {ResponseContract} from './ResponseContract'
-import {AskingForPlace} from './Responses/AskingForPlace'
-import {RequestingService} from './Responses/RequestingService'
-import {ServiceInProgress} from './Responses/ServiceInProgress'
-import {Created} from './Responses/Created'
+import { AskingForName } from './Responses/AskingForName'
+import { ResponseContract } from './ResponseContract'
+import { AskingForPlace } from './Responses/AskingForPlace'
+import { RequestingService } from './Responses/RequestingService'
+import { ServiceInProgress } from './Responses/ServiceInProgress'
+import { Created } from './Responses/Created'
 import * as Messages from '../Messages'
-import {ChoosingPlace} from './Responses/ChoosingPlace'
-import {AskingForComment} from './Responses/AskingForComment'
+import { ChoosingPlace } from './Responses/ChoosingPlace'
+import { AskingForComment } from './Responses/AskingForComment'
 import { Agreement } from './Responses/Agreement'
-import {WpMessage} from '../../../Types/WpMessage'
-import {getSingleMessage} from '../Messages'
-import {MessagesEnum} from '../MessagesEnum'
+import { Support } from './Responses/Support'
+import { WpMessage } from '../../../Types/WpMessage'
+import { getSingleMessage } from '../Messages'
+import { MessagesEnum } from '../MessagesEnum'
 
 export class ResponseContext {
-
   private response: ResponseContract
-  
+
   constructor(response: ResponseContract) {
     this.response = response
   }
-  
+
   public setResponse(response: ResponseContract): void {
     this.response = response
   }
 
   public static getResponse(status: string, session: Session): ResponseContract {
-  const responses: {[key:string] : ResponseContract} = {
+    const responses: { [key: string]: ResponseContract } = {
       [Session.STATUS_AGREEMENT]: new Agreement(session),
       [Session.STATUS_CREATED]: new Created(session),
       [Session.STATUS_ASKING_FOR_NAME]: new AskingForName(session),
@@ -35,12 +35,13 @@ export class ResponseContext {
       [Session.STATUS_ASKING_FOR_COMMENT]: new AskingForComment(session),
       [Session.STATUS_REQUESTING_SERVICE]: new RequestingService(session),
       [Session.STATUS_SERVICE_IN_PROGRESS]: new ServiceInProgress(session),
+      [Session.STATUS_SUPPORT]: new Support(session),
     }
 
     return responses[status]
   }
-  
-  public async processMessage(message: WpMessage): Promise<void> {    
+
+  public async processMessage(message: WpMessage): Promise<void> {
     if (!this.response.supportMessage(message)) {
       const msg = getSingleMessage(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
       if (msg.enabled) {

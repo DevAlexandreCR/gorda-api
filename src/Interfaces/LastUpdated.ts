@@ -1,5 +1,5 @@
 export type LastUpdated = {
-	driverId: string
-	
-	timestamp: number
+  driverId: string
+
+  timestamp: number
 }

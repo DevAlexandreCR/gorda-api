@@ -1,7 +1,7 @@
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
-import {SessionInterface} from '../../Interfaces/SessionInterface'
-import {Agreement} from './MessageStrategy/Responses/Agreement'
+import { SessionInterface } from '../../Interfaces/SessionInterface'
+import { Agreement } from './MessageStrategy/Responses/Agreement'
 import { WPClientInterface } from '../whatsapp/interfaces/WPClientInterface'
 import { WpMessageInterface } from '../whatsapp/interfaces/WpMessageInterface'
 
@@ -10,18 +10,17 @@ export default class ChatBot {
   private readonly wpClientId: string
   private sessions = new Map<string, Session>()
 
-  
   constructor(client: WPClientInterface, wpClientId: string) {
     this.wpClient = client
     this.wpClientId = wpClientId
   }
 
   private async syncSessions(): Promise<void> {
-    await SessionRepository.getActiveSessions().then(async sessions => {
-      sessions.forEach(sessionData => {
+    await SessionRepository.getActiveSessions().then(async (sessions) => {
+      sessions.forEach((sessionData) => {
         const session = new Session(sessionData.chat_id)
         Object.assign(session, sessionData)
-        this.wpClient.getChatById(session.chat_id).then(chat => {
+        this.wpClient.getChatById(session.chat_id).then((chat) => {
           session.setChat(chat)
           session.syncMessages(true).then(() => {
             this.sessions.set(session.id, session)
@@ -59,11 +58,11 @@ export default class ChatBot {
   }
 
   public removeSession(sessionId: string): void {
-      this.sessions.delete(sessionId)
+    this.sessions.delete(sessionId)
   }
-  
+
   async processMessage(message: WpMessageInterface): Promise<void> {
-    await this.findOrCreateSession(message.from, message).then(async session => {
+    await this.findOrCreateSession(message.from, message).then(async (session) => {
       await session.addMsg(message)
     })
   }
@@ -84,7 +83,7 @@ export default class ChatBot {
 
     return session
   }
-  
+
   isSessionActive(session: SessionInterface): boolean {
     return session.status !== Session.STATUS_COMPLETED
   }
@@ -92,15 +91,19 @@ export default class ChatBot {
   isAgreement(message: string): boolean {
     return message.includes(Agreement.AGREEMENT)
   }
-  
+
   async createSession(session: Session): Promise<Session> {
     const sessionDB = await SessionRepository.create(session)
     return Object.assign(session, sessionDB)
   }
 
-  findSessionByChatId(chatId: string): Session|null {
+  findSessionByChatId(chatId: string): Session | null {
     for (const [_, session] of this.sessions.entries()) {
-      if (session.chat_id === chatId && this.isSessionActive(session) && session.wp_client_id === this.wpClientId) {
+      if (
+        session.chat_id === chatId &&
+        this.isSessionActive(session) &&
+        session.wp_client_id === this.wpClientId
+      ) {
         return session
       }
     }

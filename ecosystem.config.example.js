@@ -1,5 +1,5 @@
 module.exports = {
-  apps : [{
+  apps: [{
     name: 'wp-api',
     script: '/path/to/wp-api/build/src/app.js',
     watch: false,
@@ -30,6 +30,10 @@ module.exports = {
       "WAPI_URL": "https://graph.facebook.com/v20.0/",
       "REDIS_HOST": "localhost",
       "REDIS_PORT": 6379,
+      "AI_SERVICE_URL": "http://localhost:8000",
+      "AI_SERVICE_API_KEY": "admin-token",
+      "SERVER_API_KEY": "server-token",
+      "DATABASE_URL": "postgresql://root:root@postgres:5432/gorda_db?schema=public"
     }
   }]
 }

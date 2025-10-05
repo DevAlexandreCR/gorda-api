@@ -20,7 +20,9 @@ export class RequestingService extends ResponseContract {
       await this.cancelService()
       await this.session.setStatus(Session.STATUS_COMPLETED)
     } else {
-      await this.sendMessage(Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_FIND_DRIVER))
+      await this.sendMessage(
+        Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
+      )
     }
   }
 

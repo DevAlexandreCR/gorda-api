@@ -45,12 +45,14 @@ export class BaileysClient implements WPClientInterface {
   private interval: NodeJS.Timer
   serviceName: WpClients = WpClients.BAILEYS
   private status: WpStates = WpStates.UNPAIRED
-  private QR: string|null = null
+  private QR: string | null = null
   private msgQueue = QueueService.getInstance()
   private QUEUE_NAME = WpClients.BAILEYS + '-msg-queue'
 
   constructor(private wpClient: WpClient) {
-    this.logger = P({ level: config.NODE_ENV === 'production' ? 'error' : 'trace' }) as unknown as Logger
+    this.logger = P({
+      level: config.NODE_ENV === 'production' ? 'error' : 'trace',
+    }) as unknown as Logger
     this.store = makeInMemoryStore({ logger: this.logger })
     this.msgQueue.addQueue(this.QUEUE_NAME)
     this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
@@ -107,7 +109,9 @@ export class BaileysClient implements WPClientInterface {
       return Promise.resolve()
     }
     this.retries++
-    const { state, saveCreds } = await useMultiFileAuthState(BaileysClient.SESSION_PATH + this.wpClient.id)
+    const { state, saveCreds } = await useMultiFileAuthState(
+      BaileysClient.SESSION_PATH + this.wpClient.id
+    )
     this.state = {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, this.logger),
@@ -145,17 +149,26 @@ export class BaileysClient implements WPClientInterface {
     this.clientSock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr, isOnline } = update
 
-      console.log('***** Connection *****');
+      console.log('***** Connection *****')
       console.table(update)
 
       if (connection === 'close') {
         this.QR = null
         const shouldReconnect =
-          (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut && this.retries <= 2
-        console.log('Connection closed due to', lastDisconnect?.error, 'Reconnecting:', shouldReconnect)
+          (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut &&
+          this.retries <= 2
+        console.log(
+          'Connection closed due to',
+          lastDisconnect?.error,
+          'Reconnecting:',
+          shouldReconnect
+        )
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
         this.status = WpStates.UNPAIRED
-        if (shouldReconnect || (lastDisconnect?.error as Boom)?.output?.statusCode === DisconnectReason.restartRequired) {
+        if (
+          shouldReconnect ||
+          (lastDisconnect?.error as Boom)?.output?.statusCode === DisconnectReason.restartRequired
+        ) {
           console.log('Restart required')
           this.status = WpStates.OPENING
           this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
@@ -193,16 +206,24 @@ export class BaileysClient implements WPClientInterface {
       }
     })
 
-    this.clientSock.ev.on('messages.upsert', async (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
-      if (this.isValidMessage(message.messages[0], message.type)) {
-        const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
-        this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+    this.clientSock.ev.on(
+      'messages.upsert',
+      async (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
+        if (this.isValidMessage(message.messages[0], message.type)) {
+          const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
+          this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+        }
       }
-    })
+    )
   }
 
   private isValidMessage(message: WAMessage, type: MessageUpsertType): boolean {
-    return !message.key.fromMe && !message.key.remoteJid?.includes('g.us') && !message.broadcast && type === 'notify'
+    return (
+      !message.key.fromMe &&
+      !message.key.remoteJid?.includes('g.us') &&
+      !message.broadcast &&
+      type === 'notify'
+    )
   }
 
   getInfo(): string {

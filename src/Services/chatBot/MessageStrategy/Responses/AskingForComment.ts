@@ -1,6 +1,5 @@
 import { ResponseContract } from '../ResponseContract'
 import Session from '../../../../Models/Session'
-import MessageHelper from '../../../../Helpers/MessageHelper'
 import * as Messages from '../../Messages'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { MessagesEnum } from '../../MessagesEnum'
@@ -11,9 +10,9 @@ export class AskingForComment extends ResponseContract {
 
   public async processMessage(message: WpMessage): Promise<void> {
     this.setCurrentClient(this.session.chat_id)
-    let comment = null
+    let comment = ''
     if (this.hasComment(message)) {
-      comment = message.msg
+      comment = this.hasComment(message).toString()
     }
 
     const place = this.session.place
@@ -28,8 +27,19 @@ export class AskingForComment extends ResponseContract {
     }
   }
 
-  hasComment(message: WpMessage): boolean {
-    const msg = MessageHelper.normalize(message.msg)
-    return msg.length >= 2
+  hasComment(message: WpMessage): false | string {
+    let msg = ''
+
+    if (message.type === MessageTypes.INTERACTIVE && message.interactiveReply) {
+      if (message.interactiveReply.button_reply) {
+        msg = message.interactiveReply.button_reply.id
+      } else if (message.interactiveReply.list_reply) {
+        msg = message.interactiveReply.list_reply.id
+      }
+    } else {
+      msg = message.msg
+    }
+
+    return msg.length > 2 ? msg : false
   }
 }

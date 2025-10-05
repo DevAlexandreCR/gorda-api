@@ -16,32 +16,35 @@ import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface
 import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
 import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
 import { ChatBotMessage } from '../Types/ChatBotMessage'
+import { SessionStatuses } from '../Types/SessionStatuses'
+import { PlaceInterface } from '../Interfaces/PlaceInterface'
 
 export default class Session implements SessionInterface {
   public id: string
-  public status: string
+  public status: SessionStatuses
   public chat_id: string
   public placeOptions?: Array<PlaceOption>
   public assigned_at: number = 0
   public service_id: string | null
   public created_at: number
   public updated_at: number | null
-  public place: Place | null = null
+  public place: PlaceInterface | null = null
   public messages: Map<string, WpMessage> = new Map()
   public chat: WpChatInterface
   public wp_client_id: string
   public notifications: WpNotifications
   private processorTimeout?: NodeJS.Timer
 
-  static readonly STATUS_AGREEMENT = 'AGREEMENT'
-  static readonly STATUS_CREATED = 'CREATED'
-  static readonly STATUS_ASKING_FOR_PLACE = 'ASKING_FOR_PLACE'
-  static readonly STATUS_CHOOSING_PLACE = 'CHOOSING_PLACE'
-  static readonly STATUS_ASKING_FOR_COMMENT = 'ASKING_FOR_COMMENT'
-  static readonly STATUS_REQUESTING_SERVICE = 'REQUESTING_SERVICE'
-  static readonly STATUS_SERVICE_IN_PROGRESS = 'SERVICE_IN_PROGRESS'
-  static readonly STATUS_COMPLETED = 'COMPLETED'
-  static readonly STATUS_ASKING_FOR_NAME = 'ASKING_FOR_NAME'
+  static readonly STATUS_AGREEMENT = SessionStatuses.AGREEMENT
+  static readonly STATUS_CREATED = SessionStatuses.CREATED
+  static readonly STATUS_ASKING_FOR_PLACE = SessionStatuses.ASKING_FOR_PLACE
+  static readonly STATUS_CHOOSING_PLACE = SessionStatuses.CHOOSING_PLACE
+  static readonly STATUS_ASKING_FOR_COMMENT = SessionStatuses.ASKING_FOR_COMMENT
+  static readonly STATUS_REQUESTING_SERVICE = SessionStatuses.REQUESTING_SERVICE
+  static readonly STATUS_SERVICE_IN_PROGRESS = SessionStatuses.SERVICE_IN_PROGRESS
+  static readonly STATUS_COMPLETED = SessionStatuses.COMPLETED
+  static readonly STATUS_ASKING_FOR_NAME = SessionStatuses.ASKING_FOR_NAME
+  static readonly STATUS_SUPPORT = SessionStatuses.SUPPORT
 
   constructor(chat_id: string) {
     this.chat_id = chat_id
@@ -107,7 +110,10 @@ export default class Session implements SessionInterface {
 
   async processUnprocessedMessages(): Promise<void> {
     let unprocessedMessages = this.getUnprocessedMessages()
-    if (unprocessedMessages.size === 1 || (unprocessedMessages.size > 1 && !this.processorTimeout)) {
+    if (
+      unprocessedMessages.size === 1 ||
+      (unprocessedMessages.size > 1 && !this.processorTimeout)
+    ) {
       this.processorTimeout = setTimeout(() => {
         const unprocessedMessagesArray = Array.from(this.getUnprocessedMessages().values())
         const text = unprocessedMessagesArray.map((msg) => msg.msg).join(' ')
@@ -159,12 +165,12 @@ export default class Session implements SessionInterface {
     await SessionRepository.updateService(this)
   }
 
-  async setStatus(status: string): Promise<void> {
+  async setStatus(status: SessionStatuses): Promise<void> {
     this.status = status
     await SessionRepository.updateStatus(this)
   }
 
-  async setPlace(place: Place): Promise<void> {
+  async setPlace(place: PlaceInterface): Promise<void> {
     this.place = place
     await SessionRepository.updatePlace(this)
   }
@@ -196,7 +202,7 @@ export default class Session implements SessionInterface {
   async processMessage(message: WpMessage, unprocessedMessages: WpMessage[]): Promise<void> {
     const handler = ResponseContext.getResponse(this.status, this)
     const response = new ResponseContext(handler)
-    
+
     await response
       .processMessage(message)
       .finally(async () => {
