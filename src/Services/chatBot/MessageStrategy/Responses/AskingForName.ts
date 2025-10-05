@@ -36,6 +36,9 @@ export class AskingForName extends ResponseContract {
             await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
           })
         }
+      } else if (response.sessionStatus === SessionStatuses.SUPPORT) {
+        await this.session.setStatus(SessionStatuses.SUPPORT)
+        await this.sendAIMessage(MessagesEnum.DEFAULT_MESSAGE, response.message.body)
       } else {
         const msg = Messages.getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
         msg.message = response.message.body

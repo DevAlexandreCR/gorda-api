@@ -69,6 +69,9 @@ export class Created extends ResponseContract {
             await this.session.setPlace(place)
           })
         }
+      } else if (response.sessionStatus === SessionStatuses.SUPPORT) {
+        await this.session.setStatus(SessionStatuses.SUPPORT)
+        await this.sendAIMessage(MessagesEnum.DEFAULT_MESSAGE, response.message.body)
       } else if (!this.session.notifications.greeting) {
         await this.sendMessage(Messages.greeting(this.currentClient.name)).then(async () => {
           await this.session.setStatus(Session.STATUS_ASKING_FOR_PLACE)

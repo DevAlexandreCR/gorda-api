@@ -96,6 +96,9 @@ export class AskingForPlace extends ResponseContract {
             const msg = Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND)
             await this.sendMessage(msg)
           }
+        } else if (response.sessionStatus === SessionStatuses.SUPPORT) {
+          await this.sendAIMessage(MessagesEnum.DEFAULT_MESSAGE, response.message.body)
+          await this.session.setStatus(SessionStatuses.SUPPORT)
         } else {
           await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
         }
