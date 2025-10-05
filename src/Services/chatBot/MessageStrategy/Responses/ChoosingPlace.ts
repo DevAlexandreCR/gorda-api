@@ -14,6 +14,7 @@ export class ChoosingPlace extends ResponseContract {
   ]
 
   public async processMessage(message: WpMessage): Promise<void> {
+    this.setCurrentClient(this.session.chat_id)
     console.log('🚀 ChoosingPlace.processMessage called with:', {
       messageType: message.type,
       messageText: message.msg,
