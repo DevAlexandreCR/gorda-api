@@ -1,7 +1,6 @@
 import { ResponseContract } from '../ResponseContract'
 import * as Messages from '../../Messages'
 import { WpMessage } from '../../../../Types/WpMessage'
-import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import { SessionStatuses } from '../../../../Types/SessionStatuses'
 import { PlaceSuggestionHelper } from '../../PlaceSuggestionHelper'
