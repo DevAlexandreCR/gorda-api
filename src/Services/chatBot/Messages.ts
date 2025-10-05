@@ -21,6 +21,13 @@ export const requestingService = (placeName: string): ChatBotMessage => {
   return replacePlaceholders(message, placeholdersMap)
 }
 
+export const askForLocation = (name: string): ChatBotMessage => {
+  const placeholdersMap = getPlaceholders()
+  placeholdersMap.set(Placeholders.USERNAME, name)
+  const message = store.findMessageById(MessagesEnum.ASK_FOR_LOCATION)
+  return replacePlaceholders(message, placeholdersMap)
+}
+
 export const completedService = (): ChatBotMessage => {
   const message = store.findMessageById(MessagesEnum.SERVICE_COMPLETED)
   return replacePlaceholders(message, getPlaceholders())

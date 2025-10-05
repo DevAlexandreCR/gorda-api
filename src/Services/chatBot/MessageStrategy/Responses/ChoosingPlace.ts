@@ -28,7 +28,7 @@ export class ChoosingPlace extends ResponseContract {
       console.log('❌ No placeOptions found - redirecting to ASKING_FOR_PLACE')
       // Si no hay datos, volver a preguntar por el lugar
       await this.session.setStatus(SessionStatuses.ASKING_FOR_PLACE)
-      const msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION)
+      const msg = Messages.askForLocation(this.currentClient.name)
       await this.sendMessage(msg)
       return
     }
@@ -358,7 +358,7 @@ export class ChoosingPlace extends ResponseContract {
   private async askForLocationAgain(): Promise<void> {
     await this.session.setStatus(SessionStatuses.ASKING_FOR_PLACE)
     await this.session.setPlaceOptions([])
-    const msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_LOCATION)
+    const msg = Messages.askForLocation(this.currentClient.name)
     await this.sendMessage(msg)
   }
 
