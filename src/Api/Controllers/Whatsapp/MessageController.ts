@@ -50,6 +50,18 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
       const messages = value.messages
 
       messages.forEach(async (message: any) => {
+        if (message.text && message.text.body === 'PING') {
+          console.log('PING message received, ignoring.')
+          return
+        }
+        if (message.type === 'system') {
+          console.log('System message received, ignoring.')
+          return
+        }
+        if (message.text && !message.text.body?.trim()) {
+          console.log('Empty message body received, ignoring.')
+          return
+        }
         const type: MessageTypes = message.type
           ? message.type
           : message.location
