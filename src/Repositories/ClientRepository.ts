@@ -19,6 +19,13 @@ class ClientRepository {
       AddListener(clientTmp)
     })
 
+    DBService.dbClients().on('child_changed', (snapshot) => {
+      const client = snapshot.val() as ClientInterface
+      const clientTmp = new Client()
+      Object.assign(clientTmp, client)
+      AddListener(clientTmp)
+    })
+
     DBService.dbClients().on('child_removed', (snapshot) => {
       if (!snapshot.key) return false
       const client = snapshot.val() as ClientInterface

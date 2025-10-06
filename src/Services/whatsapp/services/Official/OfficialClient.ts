@@ -149,7 +149,7 @@ export class OfficialClient implements WPClientInterface {
         })
         .then((response) => {
           const msgId = response.data.messages[0]?.id ?? DateHelper.unix()
-          console.log('Message sent', msgId)
+          console.log('Message sent', message.id, 'to', phone)
           MessageRepository.addMessage(this.wpClient.id, chat.id, {
             id: msgId,
             created_at: DateHelper.unix(),
