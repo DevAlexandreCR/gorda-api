@@ -99,13 +99,13 @@ export class Store {
     chatId: string,
     profileName: string = 'Usuario'
   ): Promise<Chat> {
-    const chat = this.wpChats.get(chatId)
+    const chat = this.wpChats.get(chatId.replace('@c.us', ''))
 
     if (chat) {
       return chat
     } else {
       return await ChatRepository.addChat(wpClientId, {
-        id: chatId,
+        id: chatId.replace('@c.us', ''),
         created_at: DateHelper.unix(),
         updated_at: DateHelper.unix(),
         archived: false,
@@ -113,7 +113,7 @@ export class Store {
           created_at: DateHelper.unix(),
           body: MessagesEnum.DEFAULT_MESSAGE,
           fromMe: true,
-          id: chatId,
+          id: chatId.replace('@c.us', ''),
           type: MessageTypes.TEXT,
           interactive: null,
           interactiveReply: null,
