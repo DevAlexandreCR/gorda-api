@@ -1,11 +1,9 @@
 import { ResponseContract } from '../ResponseContract'
 import Session from '../../../../Models/Session'
-import * as Messages from '../../Messages'
 import Service from '../../../../Models/Service'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import MessageHelper from '../../../../Helpers/MessageHelper'
 import { WpMessage } from '../../../../Types/WpMessage'
-import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 export class ServiceInProgress extends ResponseContract {
@@ -15,17 +13,11 @@ export class ServiceInProgress extends ResponseContract {
   public async processMessage(message: WpMessage): Promise<void> {
     await this.setService()
 
-    if (this.service.metadata && this.service.metadata.arrived_at)
-      await this.sendMessage(Messages.serviceInProgress())
-    else {
+    if (this.service) {
       const body = message.msg.toLowerCase()
       if (body.includes(MessageHelper.CANCEL)) {
         await this.cancelService()
         await this.session.setStatus(Session.STATUS_COMPLETED)
-      } else {
-        await this.sendMessage(
-          Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_WAIT_DRIVER)
-        )
       }
     }
   }

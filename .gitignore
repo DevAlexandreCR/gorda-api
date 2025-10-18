@@ -12,3 +12,6 @@ firebaseAccount.json
 /.wwebjs_auth/*
 
 /generated/prisma
+
+./ecosystem.config.js
+/src/Database/Seeders/Dump/**.json

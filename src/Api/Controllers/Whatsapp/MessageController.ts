@@ -37,7 +37,7 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
         responseMessages.push('No Messages')
         return
       }
-      const profileName = value.contacts ? value.contacts[0]?.profile.name : undefined
+      const profileName = value.contacts ? value.contacts[0]?.profile?.name : undefined
       const wpClient = store.wpClients[value.metadata.phone_number_id] ?? null
       if (!wpClient) {
         console.log('wpClient not found')
@@ -50,6 +50,18 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
       const messages = value.messages
 
       messages.forEach(async (message: any) => {
+        if (message.text && message.text.body === 'PING') {
+          console.log('PING message received, ignoring.')
+          return
+        }
+        if (message.type === 'system') {
+          console.log('System message received, ignoring.')
+          return
+        }
+        if (message.text && !message.text.body?.trim()) {
+          console.log('Empty message body received, ignoring.')
+          return
+        }
         const type: MessageTypes = message.type
           ? message.type
           : message.location
@@ -68,10 +80,10 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
             body: message.text?.body ?? type,
             location: message.location
               ? {
-                  name: message.location.name ?? MessageHelper.LOCATION_NO_NAME,
-                  lat: message.location.latitude,
-                  lng: message.location.longitude,
-                }
+                name: message.location?.name ?? MessageHelper.LOCATION_NO_NAME,
+                lat: message.location?.latitude,
+                lng: message.location?.longitude,
+              }
               : undefined,
             interactiveReply: message.interactive ?? null,
           },
