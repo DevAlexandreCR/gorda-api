@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.6.x
 
+## [1.6.1 (2025-10-18)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.6.1...v1.6.0)
+
+### Added
+
+- full mode support. [#109](https://github.com/DevAlexandreCR/gorda-api/pull/109)
+
 ## [1.6.0 (2025-10-05)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.6.0...v1.5.4)
 
 ### Added
