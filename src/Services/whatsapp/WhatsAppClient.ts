@@ -109,8 +109,18 @@ export class WhatsAppClient {
       msg.from,
       msg.body.substring(0, 50)
     )
-    if (this.isProcessableMsg(msg))
+    if (this.wpClient.full) {
+      await this.sendMessage(msg.from, Messages.getSingleMessage(MessagesEnum.FULL_CLIENT)).catch((e =>
+        console.log(
+          'sendMessage FULL_CLIENT Error',
+          this.wpClient.alias,
+          msg.from,
+          JSON.stringify(e)
+        )
+      ))
+    } else if (this.isProcessableMsg(msg)) {
       await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
+    }
   }
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
@@ -299,6 +309,7 @@ export class WhatsAppClient {
     this.wpClient.chatBot = client.chatBot
     this.wpClient.assistant = client.assistant
     this.wpClient.service = client.service ?? WpClients.WHATSAPP_WEB_JS
+    this.wpClient.full = client.full
   }
 
   serviceChanged = async (snapshot: DataSnapshot): Promise<void> => {
