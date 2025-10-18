@@ -73,9 +73,9 @@ export default class ChatBot {
     if (!session) {
       const newSession = new Session(chatId)
       newSession.setWpClientId(this.wpClientId)
-      if (this.isAgreement(message.body)) {
-        newSession.status = Session.STATUS_AGREEMENT
-      }
+      // if (this.isAgreement(message.body)) {
+      //   newSession.status = Session.STATUS_AGREEMENT // TODO: Handle agreement status
+      // }
       session = await this.createSession(newSession)
       const chat = await message.getChat()
       session.setChat(chat)
