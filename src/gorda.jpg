@@ -1,7 +1,0 @@
-<!-- Este es un archivo placeholder para gorda.jpg -->
-<!-- Reemplaza este archivo con la imagen real del logo -->
-<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="300" fill="#FCD34D"/>
-  <text x="200" y="150" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#111827">GORDA</text>
-  <text x="200" y="180" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1F2937">Logo Placeholder</text>
-</svg>
