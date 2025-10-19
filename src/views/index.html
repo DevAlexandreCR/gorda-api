@@ -14,21 +14,21 @@
   <!-- Custom CSS -->
   <style>
     body {
-      background-color: #0A0A0A;
-      color: #E0E0E0;
+      background-color: #FFFFFF;
+      color: #333333;
     }
     
     .info-landing {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0A0A0A;
-      color: #E0E0E0;
+      background-color: #FFFFFF;
+      color: #333333;
     }
 
     .hero-section {
-      background: linear-gradient(135deg, #1A1A1A 0%, #0A0A0A 100%);
+      background: linear-gradient(135deg, #FFF3E0 0%, #FFFFFF 100%);
       min-height: 100vh;
       padding: 2rem 0;
-      color: #E0E0E0;
+      color: #333333;
     }
 
     /* Logo styling */
@@ -81,10 +81,10 @@
     }
 
     .feature-card {
-      border: 1px solid #333333;
+      border: 1px solid #E0E0E0;
       transition: all 0.3s ease;
-      background-color: #1A1A1A !important;
-      color: #E0E0E0;
+      background-color: #FFFFFF !important;
+      color: #333333;
     }
 
     .feature-card:hover {
@@ -94,14 +94,26 @@
     }
 
     .contact-section {
-      background-color: #1A1A1A;
-      color: white;
+      background-color: #F5F5F5;
+      color: #333333;
     }
 
     .footer {
-      background-color: #0A0A0A;
-      color: #E0E0E0;
+      background-color: #F5F5F5;
+      color: #333333;
       border-top: 3px solid #FF5722;
+    }
+
+    .footer p {
+      color: #666666 !important;
+    }
+
+    .footer a {
+      color: #666666 !important;
+    }
+
+    .footer a:hover {
+      color: #FF5722 !important;
     }
 
     /* Botones personalizados */
@@ -165,9 +177,9 @@
 
     /* Testimonials */
     .testimonials-section .testimonial-card {
-      background-color: #0F0F0F !important;
-      border: 1px solid #333333 !important;
-      color: #E0E0E0 !important;
+      background-color: #FFFFFF !important;
+      border: 1px solid #E0E0E0 !important;
+      color: #333333 !important;
     }
     
     .testimonials-section .testimonial-card:hover {
@@ -177,14 +189,14 @@
 
     /* FAQ Accordion */
     .accordion-item {
-      background-color: #1A1A1A !important;
-      border-color: #333333 !important;
+      background-color: #FFFFFF !important;
+      border-color: #E0E0E0 !important;
     }
     
     .accordion-button {
-      background-color: #1A1A1A !important;
-      color: #E0E0E0 !important;
-      border-color: #333333 !important;
+      background-color: #FFFFFF !important;
+      color: #333333 !important;
+      border-color: #E0E0E0 !important;
     }
     
     .accordion-button:not(.collapsed) {
@@ -198,23 +210,23 @@
     }
     
     .accordion-body {
-      background-color: #1A1A1A !important;
-      color: #E0E0E0 !important;
+      background-color: #FFFFFF !important;
+      color: #333333 !important;
     }
 
     /* Hero section buttons */
     .btn-dark:hover {
-      background-color: #1F2937 !important;
-      border-color: #1F2937 !important;
-      color: #FF5722 !important;
+      background-color: #FF5722 !important;
+      border-color: #FF5722 !important;
+      color: #FFFFFF !important;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(17, 24, 39, 0.3);
+      box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
     }
 
     .btn-outline-dark:hover {
-      background-color: #1F2937 !important;
-      border-color: #1F2937 !important;
-      color: #FF5722 !important;
+      background-color: #FF5722 !important;
+      border-color: #FF5722 !important;
+      color: #FFFFFF !important;
       transform: translateY(-2px);
     }
 
@@ -251,20 +263,20 @@
       <div class="container">
         <div class="row align-items-center min-vh-100">
           <div class="col-lg-6">
-            <h1 class="display-4 fw-bold mb-4" style="color: #E0E0E0;">
+            <h1 class="display-4 fw-bold mb-4" style="color: #333333;">
               Plataforma de Transporte <span style="color: #FF5722;">Gorda</span>
             </h1>
-            <p class="lead mb-4" style="color: #E0E0E0;">
+            <p class="lead mb-4" style="color: #666666;">
               Conecta tu empresa de transporte con tus clientes a través de WhatsApp. 
               Gestión inteligente, comunicación directa y experiencia superior.
             </p>
             <div class="d-flex gap-3 flex-wrap">
-              <button class="btn btn-dark btn-lg" onclick="scrollToContact()" 
-                      style="background-color: #111827; border-color: #111827; color: #FF5722; font-weight: 600;">
+              <button class="btn btn-lg" onclick="scrollToContact()" 
+                      style="background-color: #FF5722; border-color: #FF5722; color: #FFFFFF; font-weight: 600;">
                 <i class="fa-solid fa-rocket me-2"></i>Comenzar Ahora
               </button>
-              <button class="btn btn-outline-dark btn-lg" onclick="scrollToContact()"
-                      style="border-color: #1F2937; color: #1F2937; font-weight: 600;">
+              <button class="btn btn-outline-secondary btn-lg" onclick="scrollToContact()"
+                      style="border-color: #666666; color: #666666; font-weight: 600;">
                 <i class="fa-solid fa-phone me-2"></i>Contactar Ventas
               </button>
             </div>
@@ -286,12 +298,12 @@
     </header>
 
     <!-- Features Section -->
-    <section class="features-section py-5" style="background-color: #0F0F0F;">
+    <section class="features-section py-5" style="background-color: #FAFAFA;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3" style="color: #E0E0E0;">Características Principales</h2>
-            <p class="lead" style="color: #C0C0C0;">Descubre lo que hace especial a nuestra plataforma</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">Características Principales</h2>
+            <p class="lead" style="color: #666666;">Descubre lo que hace especial a nuestra plataforma</p>
           </div>
         </div>
         <div class="row g-4">
@@ -304,11 +316,11 @@
                 </div>
               </div>
               <h4 class="fw-bold mb-3" style="color: #FF5722;">Chatbot IA</h4>
-              <p style="color: #C0C0C0;">Asistente virtual inteligente que atiende a tus clientes 24/7 a través de WhatsApp. Procesa solicitudes, confirma viajes y mantiene informados a los usuarios automáticamente.</p>
+              <p style="color: #666666;">Asistente virtual inteligente que atiende a tus clientes 24/7 a través de WhatsApp. Procesa solicitudes, confirma viajes y mantiene informados a los usuarios automáticamente.</p>
               <div class="mt-3">
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Procesamiento de lenguaje natural</small>
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Respuestas automáticas inteligentes</small>
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Integración completa con WhatsApp</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Procesamiento de lenguaje natural</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Respuestas automáticas inteligentes</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Integración completa con WhatsApp</small>
               </div>
             </div>
           </div>
@@ -321,11 +333,11 @@
                 </div>
               </div>
               <h4 class="fw-bold mb-3" style="color: #FF5722;">App Móvil</h4>
-              <p style="color: #C0C0C0;">Aplicación para conductores con GPS, gestión de viajes y comunicación directa. Interface intuitiva que facilita la operación diaria.</p>
+              <p style="color: #666666;">Aplicación para conductores con GPS, gestión de viajes y comunicación directa. Interface intuitiva que facilita la operación diaria.</p>
               <div class="mt-3">
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> GPS y navegación en tiempo real</small>
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Gestión de viajes y tarifas</small>
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Chat directo con clientes</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> GPS y navegación en tiempo real</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Gestión de viajes y tarifas</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Chat directo con clientes</small>
               </div>
             </div>
           </div>
@@ -338,11 +350,11 @@
                 </div>
               </div>
               <h4 class="fw-bold mb-3" style="color: #FF5722;">Panel Admin</h4>
-              <p style="color: #C0C0C0;">Dashboard completo para gestionar conductores, clientes y servicios. Control total de tu operación desde una interfaz web moderna.</p>
+              <p style="color: #666666;">Dashboard completo para gestionar conductores, clientes y servicios. Control total de tu operación desde una interfaz web moderna.</p>
               <div class="mt-3">
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Monitoreo en tiempo real</small>
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Reportes y analytics</small>
-                <small class="d-block" style="color: #C0C0C0;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Gestión de tarifas y promociones</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Monitoreo en tiempo real</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Reportes y analytics</small>
+                <small class="d-block" style="color: #666666;"><i class="fa-solid fa-check me-1" style="color: #FF5722;"></i> Gestión de tarifas y promociones</small>
               </div>
             </div>
           </div>
@@ -351,12 +363,12 @@
     </section>
 
     <!-- How it Works Section -->
-    <section class="how-it-works-section py-5" style="background-color: #1A1A1A;">
+    <section class="how-it-works-section py-5" style="background-color: #FFFFFF;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3" style="color: #E0E0E0;">¿Cómo Funciona?</h2>
-            <p class="lead" style="color: #C0C0C0;">Proceso simple en 4 pasos para comenzar</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">¿Cómo Funciona?</h2>
+            <p class="lead" style="color: #666666;">Proceso simple en 4 pasos para comenzar</p>
           </div>
         </div>
         <div class="row g-4">
@@ -368,8 +380,8 @@
                   1
                 </div>
               </div>
-              <h5 class="fw-bold mb-3" style="color: #E0E0E0;">Registro</h5>
-              <p style="color: #C0C0C0;">Crea tu cuenta y configura tu empresa en pocos minutos.</p>
+              <h5 class="fw-bold mb-3" style="color: #333333;">Registro</h5>
+              <p style="color: #666666;">Crea tu cuenta y configura tu empresa en pocos minutos.</p>
             </div>
           </div>
           <div class="col-lg-3 col-md-6">
@@ -380,8 +392,8 @@
                   2
                 </div>
               </div>
-              <h5 class="fw-bold mb-3" style="color: #E0E0E0;">Configuración</h5>
-              <p style="color: #C0C0C0;">Conecta tu número de WhatsApp Business y personaliza tu chatbot.</p>
+              <h5 class="fw-bold mb-3" style="color: #333333;">Configuración</h5>
+              <p style="color: #666666;">Conecta tu número de WhatsApp Business y personaliza tu chatbot.</p>
             </div>
           </div>
           <div class="col-lg-3 col-md-6">
@@ -392,8 +404,8 @@
                   3
                 </div>
               </div>
-              <h5 class="fw-bold mb-3" style="color: #E0E0E0;">Conductores</h5>
-              <p style="color: #C0C0C0;">Registra a tus conductores y descarga la app móvil.</p>
+              <h5 class="fw-bold mb-3" style="color: #333333;">Conductores</h5>
+              <p style="color: #666666;">Registra a tus conductores y descarga la app móvil.</p>
             </div>
           </div>
           <div class="col-lg-3 col-md-6">
@@ -404,8 +416,8 @@
                   4
                 </div>
               </div>
-              <h5 class="fw-bold mb-3" style="color: #E0E0E0;">¡Listo!</h5>
-              <p style="color: #C0C0C0;">Comienza a recibir solicitudes de viaje por WhatsApp.</p>
+              <h5 class="fw-bold mb-3" style="color: #333333;">¡Listo!</h5>
+              <p style="color: #666666;">Comienza a recibir solicitudes de viaje por WhatsApp.</p>
             </div>
           </div>
         </div>
@@ -413,12 +425,12 @@
     </section>
 
     <!-- Benefits Section -->
-    <section class="benefits-section py-5" style="background-color: #0F0F0F;">
+    <section class="benefits-section py-5" style="background-color: #FAFAFA;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3" style="color: #E0E0E0;">¿Por qué elegir Gorda?</h2>
-            <p class="lead" style="color: #C0C0C0;">Ventajas que nos diferencian de la competencia</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">¿Por qué elegir Gorda?</h2>
+            <p class="lead" style="color: #666666;">Ventajas que nos diferencian de la competencia</p>
           </div>
         </div>
         <div class="row g-4">
@@ -431,8 +443,8 @@
                 </div>
               </div>
               <div>
-                <h5 class="fw-bold" style="color: #E0E0E0;">Fácil Implementación</h5>
-                <p style="color: #C0C0C0;">Configuración rápida en menos de 24 horas. No necesitas conocimientos técnicos.</p>
+                <h5 class="fw-bold" style="color: #333333;">Fácil Implementación</h5>
+                <p style="color: #666666;">Configuración rápida en menos de 24 horas. No necesitas conocimientos técnicos.</p>
               </div>
             </div>
           </div>
@@ -445,8 +457,8 @@
                 </div>
               </div>
               <div>
-                <h5 class="fw-bold" style="color: #E0E0E0;">Soporte 24/7</h5>
-                <p style="color: #C0C0C0;">Equipo técnico disponible las 24 horas para resolver cualquier inconveniente.</p>
+                <h5 class="fw-bold" style="color: #333333;">Soporte 24/7</h5>
+                <p style="color: #666666;">Equipo técnico disponible las 24 horas para resolver cualquier inconveniente.</p>
               </div>
             </div>
           </div>
@@ -459,8 +471,8 @@
                 </div>
               </div>
               <div>
-                <h5 class="fw-bold" style="color: #E0E0E0;">Escalabilidad</h5>
-                <p style="color: #C0C0C0;">Crece con tu negocio. Maneja desde 10 hasta 10,000 viajes diarios sin problemas.</p>
+                <h5 class="fw-bold" style="color: #333333;">Escalabilidad</h5>
+                <p style="color: #666666;">Crece con tu negocio. Maneja desde 10 hasta 10,000 viajes diarios sin problemas.</p>
               </div>
             </div>
           </div>
@@ -469,12 +481,12 @@
     </section>
 
     <!-- Testimonials Section -->
-    <section class="testimonials-section py-5" style="background-color: #1A1A1A;">
+    <section class="testimonials-section py-5" style="background-color: #FFFFFF;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3 text-white">Lo Que Dicen Nuestros Clientes</h2>
-            <p class="lead text-light">Testimonios reales de empresas que confían en Gorda</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">Lo Que Dicen Nuestros Clientes</h2>
+            <p class="lead" style="color: #666666;">Testimonios reales de empresas que confían en Gorda</p>
           </div>
         </div>
         <div class="row g-4">
@@ -487,12 +499,12 @@
                     JR
                   </div>
                   <div>
-                    <h6 class="mb-0 fw-bold text-white">Juan Rodríguez</h6>
-                    <small class="text-light">CEO, TransBogotá</small>
+                    <h6 class="mb-0 fw-bold" style="color: #333333;">Juan Rodríguez</h6>
+                    <small style="color: #888888;">CEO, TransBogotá</small>
                   </div>
                 </div>
               </div>
-              <p class="text-light mb-3">"Gorda revolucionó nuestra operación. Pasamos de 50 a 200 viajes diarios en solo 3 meses. El chatbot atiende el 80% de las solicitudes automáticamente."</p>
+              <p style="color: #666666;" class="mb-3">"Gorda revolucionó nuestra operación. Pasamos de 50 a 200 viajes diarios en solo 3 meses. El chatbot atiende el 80% de las solicitudes automáticamente."</p>
               <div class="text-warning">
                 <i class="fa-solid fa-star"></i>
                 <i class="fa-solid fa-star"></i>
@@ -511,12 +523,12 @@
                     MG
                   </div>
                   <div>
-                    <h6 class="mb-0 fw-bold text-white">María González</h6>
-                    <small class="text-light">Gerente, RápidoValle</small>
+                    <h6 class="mb-0 fw-bold" style="color: #333333;">María González</h6>
+                    <small style="color: #888888;">Gerente, RápidoValle</small>
                   </div>
                 </div>
               </div>
-              <p class="text-light mb-3">"La integración fue súper fácil. En una semana ya teníamos todo funcionando. Nuestros clientes aman poder pedir viajes por WhatsApp."</p>
+              <p style="color: #666666;" class="mb-3">"La integración fue súper fácil. En una semana ya teníamos todo funcionando. Nuestros clientes aman poder pedir viajes por WhatsApp."</p>
               <div class="text-warning">
                 <i class="fa-solid fa-star"></i>
                 <i class="fa-solid fa-star"></i>
@@ -535,12 +547,12 @@
                     CP
                   </div>
                   <div>
-                    <h6 class="mb-0 fw-bold text-white">Carlos Pérez</h6>
-                    <small class="text-light">Director, MoveExpress</small>
+                    <h6 class="mb-0 fw-bold" style="color: #333333;">Carlos Pérez</h6>
+                    <small style="color: #888888;">Director, MoveExpress</small>
                   </div>
                 </div>
               </div>
-              <p class="text-light mb-3">"El soporte técnico es excepcional. Cualquier duda se resuelve inmediatamente. La plataforma es muy estable y confiable."</p>
+              <p style="color: #666666;" class="mb-3">"El soporte técnico es excepcional. Cualquier duda se resuelve inmediatamente. La plataforma es muy estable y confiable."</p>
               <div class="text-warning">
                 <i class="fa-solid fa-star"></i>
                 <i class="fa-solid fa-star"></i>
@@ -555,37 +567,37 @@
     </section>
 
     <!-- Statistics Section -->
-    <section class="stats-section py-5" style="background-color: #0F0F0F;">
+    <section class="stats-section py-5" style="background-color: #FAFAFA;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3 text-white">Resultados que Hablan</h2>
-            <p class="lead text-light">Números que demuestran nuestro impacto</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">Resultados que Hablan</h2>
+            <p class="lead" style="color: #666666;">Números que demuestran nuestro impacto</p>
           </div>
         </div>
         <div class="row text-center">
           <div class="col-md-3">
             <div class="p-4">
               <h3 class="display-4 fw-bold" style="color: #FF5722;">500+</h3>
-              <p class="text-light">Empresas Activas</p>
+              <p style="color: #666666;">Empresas Activas</p>
             </div>
           </div>
           <div class="col-md-3">
             <div class="p-4">
               <h3 class="display-4 fw-bold" style="color: #FF5722;">50K+</h3>
-              <p class="text-light">Viajes Mensuales</p>
+              <p style="color: #666666;">Viajes Mensuales</p>
             </div>
           </div>
           <div class="col-md-3">
             <div class="p-4">
               <h3 class="display-4 fw-bold" style="color: #FF5722;">98%</h3>
-              <p class="text-light">Satisfacción Cliente</p>
+              <p style="color: #666666;">Satisfacción Cliente</p>
             </div>
           </div>
           <div class="col-md-3">
             <div class="p-4">
               <h3 class="display-4 fw-bold" style="color: #FF5722;">24/7</h3>
-              <p class="text-light">Disponibilidad</p>
+              <p style="color: #666666;">Disponibilidad</p>
             </div>
           </div>
         </div>
@@ -593,54 +605,54 @@
     </section>
 
     <!-- Technology Section -->
-    <section class="technology-section py-5" style="background-color: #1A1A1A;">
+    <section class="technology-section py-5" style="background-color: #FFFFFF;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3 text-white">Tecnología de Vanguardia</h2>
-            <p class="lead text-light">Impulsado por las mejores tecnologías del mercado</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">Tecnología de Vanguardia</h2>
+            <p class="lead" style="color: #666666;">Impulsado por las mejores tecnologías del mercado</p>
           </div>
         </div>
         <div class="row align-items-center">
           <div class="col-lg-6">
             <div class="technology-showcase p-4">
-              <div class="rounded-3 shadow p-4" style="background-color: #0F0F0F; border: 1px solid #333333;">
-                <h5 class="fw-bold mb-3 text-white">Arquitectura de la Plataforma</h5>
+              <div class="rounded-3 shadow p-4" style="background-color: #FAFAFA; border: 1px solid #E0E0E0;">
+                <h5 class="fw-bold mb-3" style="color: #333333;">Arquitectura de la Plataforma</h5>
                 <div class="d-flex flex-column gap-3">
                   <div class="tech-item d-flex align-items-center">
                     <div class="d-inline-flex align-items-center justify-content-center me-3"
                          style="width: 40px; height: 40px; background: #25D366; border-radius: 50%;">
                       <i class="fa-brands fa-whatsapp" style="color: white;"></i>
                     </div>
-                    <span class="text-white">WhatsApp Business API</span>
+                    <span style="color: #333333;">WhatsApp Business API</span>
                   </div>
                   <div class="tech-item d-flex align-items-center">
                     <div class="d-inline-flex align-items-center justify-content-center me-3"
                          style="width: 40px; height: 40px; background: #FF5722; border-radius: 50%;">
                       <i class="fa-solid fa-brain" style="color: #FFFFFF;"></i>
                     </div>
-                    <span class="text-white">Motor de IA y NLP</span>
+                    <span style="color: #333333;">Motor de IA y NLP</span>
                   </div>
                   <div class="tech-item d-flex align-items-center">
                     <div class="d-inline-flex align-items-center justify-content-center me-3"
                          style="width: 40px; height: 40px; background: #0EA5E9; border-radius: 50%;">
                       <i class="fa-solid fa-cloud" style="color: white;"></i>
                     </div>
-                    <span class="text-white">Firebase Cloud Platform</span>
+                    <span style="color: #333333;">Firebase Cloud Platform</span>
                   </div>
                   <div class="tech-item d-flex align-items-center">
                     <div class="d-inline-flex align-items-center justify-content-center me-3"
                          style="width: 40px; height: 40px; background: #FF5722; border-radius: 50%;">
                       <i class="fa-brands fa-android" style="color: white;"></i>
                     </div>
-                    <span class="text-white">App Mobile Android</span>
+                    <span style="color: #333333;">App Mobile Android</span>
                   </div>
                   <div class="tech-item d-flex align-items-center">
                     <div class="d-inline-flex align-items-center justify-content-center me-3"
                          style="width: 40px; height: 40px; background: #10B981; border-radius: 50%;">
                       <i class="fa-solid fa-map-location-dot" style="color: white;"></i>
                     </div>
-                    <span class="text-white">Google Maps Integration</span>
+                    <span style="color: #333333;">Google Maps Integration</span>
                   </div>
                 </div>
               </div>
@@ -648,12 +660,12 @@
           </div>
           <div class="col-lg-6">
             <div class="p-4">
-              <h4 class="fw-bold mb-4 text-white">Características Técnicas</h4>
+              <h4 class="fw-bold mb-4" style="color: #333333;">Características Técnicas</h4>
               <ul class="list-unstyled">
                 <li class="mb-3">
                   <div class="d-flex align-items-start">
                     <i class="fa-solid fa-check me-2" style="color: #FF5722;"></i>
-                    <div class="text-white">
+                    <div style="color: #666666;">
                       <strong>API RESTful</strong> - Integración fácil con sistemas existentes
                     </div>
                   </div>
@@ -661,7 +673,7 @@
                 <li class="mb-3">
                   <div class="d-flex align-items-start">
                     <i class="fa-solid fa-check me-2" style="color: #FF5722;"></i>
-                    <div class="text-white">
+                    <div style="color: #666666;">
                       <strong>Tiempo Real</strong> - Actualizaciones instantáneas de ubicación
                     </div>
                   </div>
@@ -669,7 +681,7 @@
                 <li class="mb-3">
                   <div class="d-flex align-items-start">
                     <i class="fa-solid fa-check me-2" style="color: #FF5722;"></i>
-                    <div class="text-white">
+                    <div style="color: #666666;">
                       <strong>Seguridad</strong> - Encriptación end-to-end en todas las comunicaciones
                     </div>
                   </div>
@@ -677,7 +689,7 @@
                 <li class="mb-3">
                   <div class="d-flex align-items-start">
                     <i class="fa-solid fa-check me-2" style="color: #FF5722;"></i>
-                    <div class="text-white">
+                    <div style="color: #666666;">
                       <strong>Escalabilidad</strong> - Arquitectura cloud que crece con tu negocio
                     </div>
                   </div>
@@ -690,12 +702,12 @@
     </section>
 
     <!-- FAQ Section -->
-    <section class="faq-section py-5" style="background-color: #0F0F0F;">
+    <section class="faq-section py-5" style="background-color: #FAFAFA;">
       <div class="container">
         <div class="row">
           <div class="col-12 text-center mb-5">
-            <h2 class="display-5 fw-bold mb-3 text-white">Preguntas Frecuentes</h2>
-            <p class="lead text-light">Resolvemos las dudas más comunes</p>
+            <h2 class="display-5 fw-bold mb-3" style="color: #333333;">Preguntas Frecuentes</h2>
+            <p class="lead" style="color: #666666;">Resolvemos las dudas más comunes</p>
           </div>
         </div>
         <div class="row">
@@ -705,14 +717,13 @@
                 <h2 class="accordion-header" id="faq1">
                 <button class="accordion-button fw-bold" type="button" 
                         data-bs-toggle="collapse" data-bs-target="#collapse1" 
-                        aria-expanded="true" aria-controls="collapse1"
-                        style="background-color: #1A1A1A; color: #FFFFFF; border-color: #333333;">
+                        aria-expanded="true" aria-controls="collapse1">
                     ¿Cuánto tiempo toma implementar Gorda?
                   </button>
                 </h2>
                 <div id="collapse1" class="accordion-collapse collapse show" 
                      aria-labelledby="faq1" data-bs-parent="#faqAccordion">
-                  <div class="accordion-body" style="background-color: #1A1A1A; color: #FFFFFF;">
+                  <div class="accordion-body">
                     La implementación básica toma entre 24-48 horas. Esto incluye la configuración de WhatsApp Business, personalización del chatbot y capacitación del equipo.
                   </div>
                 </div>
@@ -721,14 +732,13 @@
                 <h2 class="accordion-header" id="faq2">
                   <button class="accordion-button collapsed fw-bold" type="button" 
                           data-bs-toggle="collapse" data-bs-target="#collapse2" 
-                          aria-expanded="false" aria-controls="collapse2"
-                          style="background-color: #1A1A1A; color: #FFFFFF; border-color: #333333;">
+                          aria-expanded="false" aria-controls="collapse2">
                     ¿Necesito conocimientos técnicos?
                   </button>
                 </h2>
                 <div id="collapse2" class="accordion-collapse collapse" 
                      aria-labelledby="faq2" data-bs-parent="#faqAccordion">
-                  <div class="accordion-body" style="background-color: #1A1A1A; color: #FFFFFF;">
+                  <div class="accordion-body">
                     No, Gorda está diseñado para ser usado por cualquier persona. Nuestro equipo se encarga de toda la configuración técnica y te capacitamos en el uso de la plataforma.
                   </div>
                 </div>
@@ -737,14 +747,13 @@
                 <h2 class="accordion-header" id="faq3">
                   <button class="accordion-button collapsed fw-bold" type="button" 
                           data-bs-toggle="collapse" data-bs-target="#collapse3" 
-                          aria-expanded="false" aria-controls="collapse3"
-                          style="background-color: #1A1A1A; color: #FFFFFF; border-color: #333333;">
+                          aria-expanded="false" aria-controls="collapse3">
                     ¿Cuántos viajes puede manejar la plataforma?
                   </button>
                 </h2>
                 <div id="collapse3" class="accordion-collapse collapse" 
                      aria-labelledby="faq3" data-bs-parent="#faqAccordion">
-                  <div class="accordion-body" style="background-color: #1A1A1A; color: #FFFFFF;">
+                  <div class="accordion-body">
                     Gorda puede escalar desde pequeñas operaciones (10-50 viajes/día) hasta grandes empresas (10,000+ viajes/día). La infraestructura cloud se adapta automáticamente.
                   </div>
                 </div>
@@ -753,14 +762,13 @@
                 <h2 class="accordion-header" id="faq4">
                   <button class="accordion-button collapsed fw-bold" type="button" 
                           data-bs-toggle="collapse" data-bs-target="#collapse4" 
-                          aria-expanded="false" aria-controls="collapse4"
-                          style="background-color: #1A1A1A; color: #FFFFFF; border-color: #333333;">
+                          aria-expanded="false" aria-controls="collapse4">
                     ¿Qué sucede si tengo problemas técnicos?
                   </button>
                 </h2>
                 <div id="collapse4" class="accordion-collapse collapse" 
                      aria-labelledby="faq4" data-bs-parent="#faqAccordion">
-                  <div class="accordion-body" style="background-color: #1A1A1A; color: #FFFFFF;">
+                  <div class="accordion-body">
                     Ofrecemos soporte técnico 24/7 a través de WhatsApp, email y teléfono. Nuestro equipo de ingenieros resuelve cualquier inconveniente en tiempo real.
                   </div>
                 </div>
@@ -777,13 +785,13 @@
         <div class="row">
           <div class="col-12 text-center">
             <h2 class="display-5 fw-bold mb-3" style="color: #FF5722;">¡Contáctanos Hoy!</h2>
-            <p class="lead mb-4">¿Listo para revolucionar tu empresa de transporte?</p>
+            <p class="lead mb-4" style="color: #666666;">¿Listo para revolucionar tu empresa de transporte?</p>
             <div class="d-flex justify-content-center gap-3 flex-wrap">
               <button class="btn btn-lg" 
                       style="background-color: #FF5722; border-color: #FF5722; color: #FFFFFF; font-weight: 600;">
                 Solicitar Demo
               </button>
-              <button class="btn btn-outline-light btn-lg" 
+              <button class="btn btn-outline-secondary btn-lg" 
                       style="border-color: #FF5722; color: #FF5722; font-weight: 600;">
                 Más Información
               </button>
@@ -802,35 +810,35 @@
               <img src="/gorda.ico" alt="Gorda" class="footer-logo me-2">
               <h5 class="mb-0 fw-bold" style="color: #FF5722;">Gorda</h5>
             </div>
-            <p class="text-light">Plataforma líder en gestión de transporte a través de WhatsApp. Conectamos empresas con sus clientes de manera inteligente.</p>
+            <p>Plataforma líder en gestión de transporte a través de WhatsApp. Conectamos empresas con sus clientes de manera inteligente.</p>
           </div>
           <div class="col-lg-2 col-md-6 mb-4">
             <h6 class="fw-bold mb-3" style="color: #FF5722;">Producto</h6>
             <ul class="list-unstyled">
-              <li><a href="#" class="text-light text-decoration-none">Características</a></li>
-              <li><a href="#" class="text-light text-decoration-none">Precios</a></li>
-              <li><a href="#" class="text-light text-decoration-none">Demo</a></li>
+              <li><a href="#" class="text-decoration-none">Características</a></li>
+              <li><a href="#" class="text-decoration-none">Precios</a></li>
+              <li><a href="#" class="text-decoration-none">Demo</a></li>
             </ul>
           </div>
           <div class="col-lg-2 col-md-6 mb-4">
             <h6 class="fw-bold mb-3" style="color: #FF5722;">Soporte</h6>
             <ul class="list-unstyled">
-              <li><a href="#" class="text-light text-decoration-none">Documentación</a></li>
-              <li><a href="#" class="text-light text-decoration-none">Ayuda</a></li>
-              <li><a href="#" class="text-light text-decoration-none">Contacto</a></li>
+              <li><a href="#" class="text-decoration-none">Documentación</a></li>
+              <li><a href="#" class="text-decoration-none">Ayuda</a></li>
+              <li><a href="#" class="text-decoration-none">Contacto</a></li>
             </ul>
           </div>
           <div class="col-lg-4 mb-4">
             <h6 class="fw-bold mb-3" style="color: #FF5722;">Contacto</h6>
-            <p class="text-light mb-2">📧 devalexandrecr@gmail.com</p>
-            <p class="text-light mb-2">📱 WhatsApp: +57 310 379 4656</p>
-            <p class="text-light">🏢 Popayán, Colombia</p>
+            <p class="mb-2">📧 devalexandrecr@gmail.com</p>
+            <p class="mb-2">📱 WhatsApp: +57 310 379 4656</p>
+            <p>🏢 Popayán, Colombia</p>
           </div>
         </div>
         <hr style="border-color: #FF5722; opacity: 0.3;">
         <div class="row">
           <div class="col-12 text-center">
-            <p class="mb-0 text-light">&copy; 2024 Gorda. Todos los derechos reservados. | Plataforma certificada por Meta Business</p>
+            <p class="mb-0">&copy; 2024 Gorda. Todos los derechos reservados. | Plataforma certificada por Meta Business</p>
           </div>
         </div>
       </div>
