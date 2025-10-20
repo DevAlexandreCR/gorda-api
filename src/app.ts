@@ -1,6 +1,7 @@
 import express, { Application } from 'express'
 import http, { Server as HTTPServer } from 'http'
 import https, { Server as HTTPSServer } from 'https'
+import path from 'path'
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { WhatsAppClient } from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
@@ -56,6 +57,13 @@ app.use(
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
+
+// Serve static files for assets
+app.use('/assets', express.static(path.join(process.cwd(), 'src/assets')))
+app.use('/assets', express.static(path.join(process.cwd(), 'assets')))
+app.use('/assets', express.static(path.join(__dirname, '../assets')))
+
+// Serve other static files
 app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(HomeController)
