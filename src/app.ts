@@ -21,6 +21,7 @@ import controller from './Api/Controllers/Whatsapp/MessageController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
 import NotificationController from './Api/Controllers/Notifications/NotificationController'
 import PlaceController from './Api/Controllers/Places/PlaceController'
+import HomeController from './Api/Controllers/Home/HomeController'
 import Container from './Container/Container'
 import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
@@ -57,6 +58,7 @@ app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
 app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
+app.use(HomeController)
 app.use(controller)
 app.use(polygonController)
 app.use(NotificationController)
