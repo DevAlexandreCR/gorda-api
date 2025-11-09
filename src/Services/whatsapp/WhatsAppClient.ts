@@ -126,16 +126,16 @@ export class WhatsAppClient {
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
     // Reject stickers and courtesy-only text messages
-    if (msg.type === MessageTypes.STICKER) return false
-    if (msg.type === MessageTypes.TEXT && MessageHelper.isCourtesyMessage(msg.body)) return false
+    if (msg.type == MessageTypes.STICKER) return false
+    if (msg.type == MessageTypes.TEXT && MessageHelper.isCourtesyMessage(msg.body)) return false
 
     const session = this.chatBot.findSessionByChatId(msg.from)
     if (session && this.isMessageTypeSupported(msg.type)) return true
     if (this.wpClient.assistant) return msg.type === MessageTypes.LOCATION
     if (this.wpClient.chatBot) {
       return (
-        msg.type === MessageTypes.LOCATION ||
-        (msg.type === MessageTypes.TEXT && !msg.isStatus && !msg.from.includes('-'))
+        msg.type == MessageTypes.LOCATION ||
+        (msg.type == MessageTypes.TEXT && !msg.isStatus && !msg.from.includes('-'))
       )
     }
 
