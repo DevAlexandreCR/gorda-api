@@ -47,13 +47,14 @@ export class BaileysClient implements WPClientInterface {
   private status: WpStates = WpStates.UNPAIRED
   private QR: string | null = null
   private msgQueue = QueueService.getInstance()
-  private QUEUE_NAME = WpClients.BAILEYS + '-msg-queue'
+  private QUEUE_NAME: string
 
   constructor(private wpClient: WpClient) {
     this.logger = P({
       level: config.NODE_ENV === 'production' ? 'error' : 'trace',
     }) as unknown as Logger
     this.store = makeInMemoryStore({ logger: this.logger })
+    this.QUEUE_NAME = WpClients.BAILEYS + '-msg-queue-' + this.wpClient.id
     this.msgQueue.addQueue(this.QUEUE_NAME)
     this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
       const { phoneNumber, message } = data

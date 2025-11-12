@@ -23,8 +23,8 @@ class MessageRepository {
   }
 
   public async addMessage(wpClientId: string, chatId: string, message: Message): Promise<void> {
-    await Firestore.dbMessages(wpClientId, chatId).doc(message.id).set(message)
-    await ChatRepository.updateChat(wpClientId, chatId, message)
+    await Firestore.dbMessages(wpClientId, chatId).doc(message.id).set(message).catch((e) => console.log(e.message))
+    await ChatRepository.updateChat(wpClientId, chatId, message).catch((e) => console.log(e.message))
     return Promise.resolve()
   }
 }

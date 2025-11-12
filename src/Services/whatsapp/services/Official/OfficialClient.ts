@@ -26,7 +26,7 @@ export class OfficialClient implements WPClientInterface {
   private static instances: { [key: string]: OfficialClient } = {}
   private store: Store
   private msgQueue: QueueService = QueueService.getInstance()
-  private QUEUE_NAME = WpClients.OFFICIAL + '-msg-queue'
+  private QUEUE_NAME: string
 
   constructor(private wpClient: WpClient) {
     this.config = {
@@ -38,6 +38,7 @@ export class OfficialClient implements WPClientInterface {
 
     this.store = Store.getInstance()
     this.store.getChats(wpClient.id)
+    this.QUEUE_NAME = WpClients.OFFICIAL + '-msg-queue-' + this.wpClient.id
     this.msgQueue.addQueue(this.QUEUE_NAME)
     this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
       const { phoneNumber, message } = data
