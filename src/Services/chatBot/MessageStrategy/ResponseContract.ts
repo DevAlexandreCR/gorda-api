@@ -1,6 +1,5 @@
 import Session from '../../../Models/Session'
 import { Store } from '../../store/Store'
-import CurrentClient from '../../../Models/Client'
 import Service from '../../../Models/Service'
 import ServiceRepository from '../../../Repositories/ServiceRepository'
 import * as Messages from '../Messages'
@@ -15,11 +14,12 @@ import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { City } from '../../../Interfaces/City'
 import { LatLng } from '../../../Interfaces/LatLng'
 import { PlaceInterface } from '../../../Interfaces/PlaceInterface'
+import { ClientInterface } from '../../../Interfaces/ClientInterface'
 import Container from '../../../Container/Container'
 
 export abstract class ResponseContract {
   protected store: Store = Store.getInstance()
-  protected currentClient: CurrentClient
+  protected currentClient: ClientInterface
 
   abstract messageSupported: Array<string>
 

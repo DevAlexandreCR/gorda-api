@@ -1,8 +1,6 @@
 import Driver from '../../Models/Driver'
 import Container from '../../Container/Container'
 import DriverRepository from '../../Repositories/DriverRepository'
-import ClientRepository from '../../Repositories/ClientRepository'
-import Client from '../../Models/Client'
 import { ChatBotMessage } from '../../Types/ChatBotMessage'
 import SettingsRepository from '../../Repositories/SettingsRepository'
 import { MessagesEnum } from '../chatBot/MessagesEnum'
@@ -22,7 +20,7 @@ import { PlaceInterface } from '../../Interfaces/PlaceInterface'
 export class Store {
   static instance: Store
   drivers: Map<string, Driver> = new Map()
-  clients: Map<string, Client> = new Map()
+  clients: Map<string, ClientInterface> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
   wpChats: Map<string, Chat> = new Map()
@@ -31,6 +29,7 @@ export class Store {
   polygons: Array<Feature<Polygon>> = new Array()
   placeRepository = Container.getPlaceRepository()
   placeSearchRepository = Container.getPlaceSearchRepository()
+  clientRepository = Container.getClientRepository()
 
   private constructor() {
     this.setDrivers()
@@ -47,18 +46,20 @@ export class Store {
   }
 
   private setClients() {
-    ClientRepository.onClient(
-      (client) => {
-        this.clients.set(client.id, client)
-      },
-      (clientId) => {
-        if (clientId) this.clients.delete(clientId)
-      }
-    )
+    this.clientRepository
+      .index()
+      .then((clients) => {
+        clients.forEach((client) => this.cacheClient(client))
+      })
+      .catch((error) => {
+        console.error('Error loading clients from database:', error)
+      })
   }
 
-  createClient(client: WpContactInterface): Promise<ClientInterface> {
-    return ClientRepository.create(client)
+  async createClient(client: WpContactInterface): Promise<ClientInterface> {
+    const createdClient = await this.clientRepository.create(client)
+    this.cacheClient(createdClient)
+    return createdClient
   }
 
   private setDrivers() {
@@ -131,8 +132,39 @@ export class Store {
     return this.drivers.get(driverId) ?? new Driver()
   }
 
-  findClientById(clientId: string): Client | undefined {
-    return this.clients.get(clientId)
+  findClientById(clientId: string): ClientInterface | undefined {
+    if (!clientId) return undefined
+    const normalizedId = this.normalizeClientId(clientId)
+    return (
+      this.clients.get(normalizedId) ??
+      this.clients.get(normalizedId.replace('@c.us', '')) ??
+      this.clients.get(clientId)
+    )
+  }
+
+  private cacheClient(client: ClientInterface): void {
+    const normalizedId = this.normalizeClientId(client.id)
+    if (!normalizedId) return
+
+    this.clients.set(normalizedId, client)
+
+    const numericKey = normalizedId.replace('@c.us', '')
+    if (numericKey) {
+      this.clients.set(numericKey, client)
+    }
+  }
+
+  private normalizeClientId(clientId: string): string {
+    if (!clientId) return ''
+    const trimmed = clientId.trim()
+    if (!trimmed) return ''
+
+    if (trimmed.endsWith('@c.us')) {
+      return trimmed
+    }
+
+    const digits = trimmed.replace(/[^\d]/g, '')
+    return digits ? `${digits}@c.us` : trimmed
   }
 
   findMessageById(msgId: MessagesEnum): ChatBotMessage {

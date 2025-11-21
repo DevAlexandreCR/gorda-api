@@ -1,6 +1,5 @@
 import { ResponseContract } from '../ResponseContract'
 import MessageHelper from '../../../../Helpers/MessageHelper'
-import ClientRepository from '../../../../Repositories/ClientRepository'
 import * as Messages from '../../Messages'
 import * as Sentry from '@sentry/node'
 import { WpMessage } from '../../../../Types/WpMessage'
@@ -52,7 +51,7 @@ export class AskingForName extends ResponseContract {
   private async createClient(messageId: string, name: string): Promise<void> {
     const contact = await this.getContact()
     contact.pushname = MessageHelper.normalizeName(name)
-    this.currentClient = await ClientRepository.create(contact)
+    this.currentClient = await this.store.createClient(contact)
   }
 
   async getContact(): Promise<WpContactInterface> {
