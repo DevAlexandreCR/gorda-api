@@ -1,11 +1,13 @@
 import sequelize from '../Database/sequelize'
 import PlaceRepository from '../Repositories/PlaceRepository'
 import PlaceSearchRepository from '../Repositories/PlaceSearchRepository'
+import ClientRepository from '../Repositories/ClientRepository'
 
 class Container {
   private static sequelizeInstance: typeof sequelize
   private static placeRepository: PlaceRepository
   private static placeSearchRepository: PlaceSearchRepository
+  private static clientRepository: ClientRepository
 
   /**
    * Get or create Sequelize instance
@@ -35,6 +37,16 @@ class Container {
       this.placeSearchRepository = new PlaceSearchRepository(this.getSequelize())
     }
     return this.placeSearchRepository
+  }
+
+  /**
+   * Get or create ClientRepository instance
+   */
+  static getClientRepository(): ClientRepository {
+    if (!this.clientRepository) {
+      this.clientRepository = new ClientRepository(this.getSequelize())
+    }
+    return this.clientRepository
   }
 
   /**
