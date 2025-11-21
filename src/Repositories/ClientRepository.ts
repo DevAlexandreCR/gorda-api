@@ -1,51 +1,128 @@
-import DBService from '../Services/firebase/Database'
-import Client from '../Models/Client'
-import { ClientInterface } from '../Interfaces/ClientInterface'
-import Database from '../Services/firebase/Database'
-import config from '../../config'
+import { Op, Sequelize } from 'sequelize'
 import * as Sentry from '@sentry/node'
+import config from '../../config'
+import SequelizeClient from '../Models/Client'
+import { ClientInterface } from '../Interfaces/ClientInterface'
 import { WpContactInterface } from '../Services/whatsapp/interfaces/WpContactInterface'
 
+interface StoreClientInput {
+  id?: string
+  name: string
+  phone: string
+  photoUrl?: string
+}
+
 class ClientRepository {
-  /* istanbul ignore next */
-  onClient(
-    AddListener: (client: Client) => void,
-    deleteListener: (clientId: string | false) => void
-  ): void {
-    DBService.dbClients().on('child_added', (snapshot) => {
-      const client = snapshot.val() as ClientInterface
-      const clientTmp = new Client()
-      Object.assign(clientTmp, client)
-      AddListener(clientTmp)
+  constructor(private sequelize: Sequelize) {}
+
+  async index(search?: string): Promise<ClientInterface[]> {
+    const normalizedSearch = search?.trim()
+    const where = normalizedSearch
+      ? {
+          [Op.or]: [
+            { name: { [Op.iLike]: `%${normalizedSearch}%` } },
+            { phone: { [Op.iLike]: `%${normalizedSearch}%` } },
+            { id: { [Op.iLike]: `%${normalizedSearch}%` } },
+          ],
+        }
+      : undefined
+
+    const clients = await SequelizeClient.findAll({
+      where,
+      order: [['updatedAt', 'DESC']],
     })
 
-    DBService.dbClients().on('child_changed', (snapshot) => {
-      const client = snapshot.val() as ClientInterface
-      const clientTmp = new Client()
-      Object.assign(clientTmp, client)
-      AddListener(clientTmp)
-    })
+    return clients.map((client) => this.mapClient(client))
+  }
 
-    DBService.dbClients().on('child_removed', (snapshot) => {
-      if (!snapshot.key) return false
-      const client = snapshot.val() as ClientInterface
-      deleteListener(client.id)
+  async findById(id: string): Promise<ClientInterface | null> {
+    const clientId = this.normalizeId(id)
+    if (!clientId) return null
+
+    const client = await SequelizeClient.findByPk(clientId)
+    return client ? this.mapClient(client) : null
+  }
+
+  async findByPhone(phone: string): Promise<ClientInterface | null> {
+    const normalizedPhone = this.normalizePhone(phone)
+    if (!normalizedPhone) return null
+
+    const client = await SequelizeClient.findOne({ where: { phone: normalizedPhone } })
+    return client ? this.mapClient(client) : null
+  }
+
+  async store(clientData: StoreClientInput): Promise<ClientInterface> {
+    const payload = this.buildPayload(clientData)
+    const [client] = await SequelizeClient.upsert(payload, { returning: true })
+    return this.mapClient(client)
+  }
+
+  async create(contact: WpContactInterface): Promise<ClientInterface> {
+    const photoUrl = await this.resolvePhotoUrl(contact)
+    return this.store({
+      id: contact.id,
+      name: contact.pushname ?? 'Usuario',
+      phone: contact.number?.toString() ?? '',
+      photoUrl,
     })
   }
 
-  public async create(contact: WpContactInterface): Promise<ClientInterface> {
-    const newClient: Client = new Client()
-    newClient.id = contact.id
-    newClient.name = contact.pushname ?? contact.pushname
-    newClient.phone = `+${contact.number}`
-    newClient.photoUrl = await contact.getProfilePicUrl()
-    if (!newClient.photoUrl) newClient.photoUrl = config.DEFAULT_CLIENT_PHOTO_URL
-    await Database.dbClients()
-      .child(contact.number)
-      .set(newClient)
-      .catch((e) => Sentry.captureException(e))
-    return newClient
+  private buildPayload(data: StoreClientInput): StoreClientInput & { id: string; phone: string } {
+    const normalizedId = this.normalizeId(data.id ?? data.phone)
+    if (!normalizedId) throw new Error('Client ID is required')
+
+    const normalizedPhone = this.normalizePhone(data.phone)
+    if (!normalizedPhone) throw new Error('Client phone is required')
+
+    return {
+      id: normalizedId,
+      name: data.name?.trim() || 'Usuario',
+      phone: normalizedPhone,
+      photoUrl: data.photoUrl?.trim() || config.DEFAULT_CLIENT_PHOTO_URL,
+    }
+  }
+
+  private normalizeId(rawId?: string): string {
+    if (!rawId) return ''
+    const trimmed = rawId.trim()
+    if (!trimmed) return ''
+
+    if (trimmed.endsWith('@c.us')) return trimmed
+
+    const digits = trimmed.replace(/[^\d]/g, '')
+    if (!digits) return ''
+
+    return `${digits}@c.us`
+  }
+
+  private normalizePhone(rawPhone?: string): string {
+    if (!rawPhone) return ''
+    const trimmed = rawPhone.toString().trim()
+    if (!trimmed) return ''
+
+    const digits = trimmed.replace(/[^\d]/g, '')
+    if (!digits) return ''
+
+    return `+${digits}`
+  }
+
+  private async resolvePhotoUrl(contact: WpContactInterface): Promise<string> {
+    try {
+      const photoUrl = await contact.getProfilePicUrl()
+      return photoUrl || config.DEFAULT_CLIENT_PHOTO_URL
+    } catch (error) {
+      Sentry.captureException(error)
+      return config.DEFAULT_CLIENT_PHOTO_URL
+    }
+  }
+
+  private mapClient(client: SequelizeClient): ClientInterface {
+    const plain = client.get({ plain: true }) as ClientInterface
+    return {
+      ...plain,
+      photoUrl: plain.photoUrl || config.DEFAULT_CLIENT_PHOTO_URL,
+    }
   }
 }
 
-export default new ClientRepository()
+export default ClientRepository
