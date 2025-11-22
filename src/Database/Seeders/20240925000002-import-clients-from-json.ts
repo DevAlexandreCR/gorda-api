@@ -35,8 +35,11 @@ module.exports = {
       const normalizedPhone = getNormalizedPhone(client.phone ?? key)
       if (!normalizedPhone) return acc
 
+      const numericId = getNormalizedId(client.id ?? normalizedPhone.replace('+', ''))
+      if (!numericId) return acc
+
       acc.push({
-        id: client.id ?? `${normalizedPhone.replace('+', '')}@c.us`,
+        id: numericId,
         name: (client.name ?? 'Usuario').trim(),
         phone: normalizedPhone,
         photo_url: '',
@@ -70,4 +73,9 @@ function getNormalizedPhone(value: string): string {
   const digits = (value ?? '').toString().replace(/[^\d]/g, '')
   if (!digits) return ''
   return `+${digits}`
+}
+
+function getNormalizedId(value: string): string {
+  const digits = (value ?? '').toString().replace(/[^\d]/g, '')
+  return digits
 }
