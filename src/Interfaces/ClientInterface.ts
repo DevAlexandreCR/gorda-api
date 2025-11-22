@@ -3,4 +3,6 @@ export interface ClientInterface {
   name: string
   phone: string
   photoUrl: string
+  createdAt?: Date
+  updatedAt?: Date
 }

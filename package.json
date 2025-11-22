@@ -4,7 +4,7 @@
   "description": "WhatsApp chatbot to gorda admin",
   "main": "src/app.ts",
   "scripts": {
-    "build": "tsc -p . && cp -r src/.well-known build/src/.well-known",
+    "build": "tsc -p . && cp -r src/.well-known build/src/.well-known && cp -r src/views build/src/views && cp -r src/assets build/src/assets",
     "serve": "tsc && node build/src/app.js",
     "watch": "nodemon src/app.ts --ignore 'storage/'",
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",

@@ -1,6 +1,7 @@
 import express, { Application } from 'express'
 import http, { Server as HTTPServer } from 'http'
 import https, { Server as HTTPSServer } from 'https'
+import path from 'path'
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { WhatsAppClient } from './Services/whatsapp/WhatsAppClient'
 import config from '../config'
@@ -21,6 +22,7 @@ import controller from './Api/Controllers/Whatsapp/MessageController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
 import NotificationController from './Api/Controllers/Notifications/NotificationController'
 import PlaceController from './Api/Controllers/Places/PlaceController'
+import ClientController from './Api/Controllers/Clients/ClientController'
 import HomeController from './Api/Controllers/Home/HomeController'
 import Container from './Container/Container'
 import { Store } from './Services/store/Store'
@@ -56,6 +58,13 @@ app.use(
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
+
+// Serve static files for assets
+app.use('/assets', express.static(path.join(process.cwd(), 'src/assets')))
+app.use('/assets', express.static(path.join(process.cwd(), 'assets')))
+app.use('/assets', express.static(path.join(__dirname, '../assets')))
+
+// Serve other static files
 app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(HomeController)
@@ -63,6 +72,7 @@ app.use(controller)
 app.use(polygonController)
 app.use(NotificationController)
 app.use('/places', PlaceController)
+app.use('/clients', ClientController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
