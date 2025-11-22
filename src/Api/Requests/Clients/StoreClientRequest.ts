@@ -6,7 +6,6 @@ export const StoreClientRequest = z.object({
       .string()
       .trim()
       .min(5, 'Client ID must have at least 5 characters')
-      .regex(/@c\.us$/, 'Client ID must end with @c.us')
       .optional(),
     name: z
       .string()
