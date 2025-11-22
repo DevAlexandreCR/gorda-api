@@ -84,15 +84,8 @@ class ClientRepository {
 
   private normalizeId(rawId?: string): string {
     if (!rawId) return ''
-    const trimmed = rawId.trim()
-    if (!trimmed) return ''
-
-    if (trimmed.endsWith('@c.us')) return trimmed
-
-    const digits = trimmed.replace(/[^\d]/g, '')
-    if (!digits) return ''
-
-    return `${digits}@c.us`
+    const digits = rawId.toString().replace(/[^\d]/g, '')
+    return digits
   }
 
   private normalizePhone(rawPhone?: string): string {

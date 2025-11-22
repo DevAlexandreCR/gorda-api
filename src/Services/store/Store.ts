@@ -135,11 +135,16 @@ export class Store {
   findClientById(clientId: string): ClientInterface | undefined {
     if (!clientId) return undefined
     const normalizedId = this.normalizeClientId(clientId)
-    return (
-      this.clients.get(normalizedId) ??
-      this.clients.get(normalizedId.replace('@c.us', '')) ??
-      this.clients.get(clientId)
-    )
+    if (normalizedId) {
+      return (
+        this.clients.get(normalizedId) ??
+        this.clients.get(`${normalizedId}@c.us`) ??
+        this.clients.get(`+${normalizedId}`) ??
+        this.clients.get(clientId)
+      )
+    }
+
+    return this.clients.get(clientId)
   }
 
   private cacheClient(client: ClientInterface): void {
@@ -147,24 +152,17 @@ export class Store {
     if (!normalizedId) return
 
     this.clients.set(normalizedId, client)
+    this.clients.set(`${normalizedId}@c.us`, client)
 
-    const numericKey = normalizedId.replace('@c.us', '')
-    if (numericKey) {
-      this.clients.set(numericKey, client)
+    if (client.phone) {
+      this.clients.set(client.phone, client)
     }
   }
 
   private normalizeClientId(clientId: string): string {
     if (!clientId) return ''
-    const trimmed = clientId.trim()
-    if (!trimmed) return ''
-
-    if (trimmed.endsWith('@c.us')) {
-      return trimmed
-    }
-
-    const digits = trimmed.replace(/[^\d]/g, '')
-    return digits ? `${digits}@c.us` : trimmed
+    const digits = clientId.toString().replace(/[^\d]/g, '')
+    return digits
   }
 
   findMessageById(msgId: MessagesEnum): ChatBotMessage {
