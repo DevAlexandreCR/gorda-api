@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Release Notes for 1.6.x
 
+## [1.6.2 (2025-11-29)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.6.2...v1.6.1)
+
+### Chagend
+
+- change db clients to postgres [#112](https://github.com/DevAlexandreCR/gorda-api/pull/112)
+
+
 ## [1.6.1 (2025-10-18)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.6.1...v1.6.0)
 
 ### Added

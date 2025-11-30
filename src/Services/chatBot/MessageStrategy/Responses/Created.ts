@@ -7,7 +7,6 @@ import { NotificationType } from '../../../../Types/NotificationType'
 import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import MessageHelper from '../../../../Helpers/MessageHelper'
-import ClientRepository from '../../../../Repositories/ClientRepository'
 import { WpContactInterface } from '../../../../Services/whatsapp/interfaces/WpContactInterface'
 import { MessageHandler } from '../../ai/MessageHandler'
 import { GordaChatBot } from '../../ai/Services/GordaChatBot'
@@ -38,7 +37,7 @@ export class Created extends ResponseContract {
   private async createClient(messageId: string, name: string): Promise<void> {
     const contact = await this.getContact()
     contact.pushname = MessageHelper.normalizeName(name)
-    this.currentClient = await ClientRepository.create(contact)
+    this.currentClient = await this.store.createClient(contact)
   }
 
   async getContact(): Promise<WpContactInterface> {

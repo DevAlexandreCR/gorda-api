@@ -22,6 +22,7 @@ import controller from './Api/Controllers/Whatsapp/MessageController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
 import NotificationController from './Api/Controllers/Notifications/NotificationController'
 import PlaceController from './Api/Controllers/Places/PlaceController'
+import ClientController from './Api/Controllers/Clients/ClientController'
 import HomeController from './Api/Controllers/Home/HomeController'
 import Container from './Container/Container'
 import { Store } from './Services/store/Store'
@@ -71,6 +72,7 @@ app.use(controller)
 app.use(polygonController)
 app.use(NotificationController)
 app.use('/places', PlaceController)
+app.use('/clients', ClientController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
