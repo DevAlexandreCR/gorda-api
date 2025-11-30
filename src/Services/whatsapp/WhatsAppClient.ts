@@ -287,7 +287,7 @@ export class WhatsAppClient {
             await this.sendMessage(clientId, msg)
           }
         }
-      })
+      }).catch((e) => console.log('cancelTimeout Error', this.wpClient.alias, e.message))
     }, config.CANCEL_TIMEOUT as number)
   }
 
