@@ -35,6 +35,7 @@ This document explains the agents (long-running services, jobs, and helper modul
 | PopulateMetrics | `PopulateMetrics.ts` | Aggregates usage metrics into analytics tables or Firebase. | Cron / manual.
 | SetDynamicMinFeeJob | `SetDynamicMinFeeJob.ts` | Adjusts minimum ride fee based on demand windows. | Cron.
 | SetDynamicMultiplierFeeJob | `SetDynamicMultiplierFeeJob.ts` | Maintains surge multipliers per branch. | Cron.
+| CancelPendingServicesJob | `CancelPendingServicesJob.ts` | Auto-cancels pending services older than 15 minutes to prevent stale ride requests. | Cron (every 5 minutes).
 | RemoveConnectedDrivers | `RemoveConnectedDrivers.ts` | Runs both as scheduled task and callable helper for incident response. | Cron + manual.
 
 `Schedule.ts` exports the cron definitions that wire these jobs to `node-cron`. Each job usually coordinates with repositories (`SessionRepository`, `DriverRepository`, etc.) and may enqueue notifications through WhatsApp or Firebase.
@@ -77,7 +78,13 @@ This document explains the agents (long-running services, jobs, and helper modul
 4. **Queue Health**: Inspect BullMQ dashboard (if configured) or Redis metrics, especially before marketing campaigns.
 5. **Backups**: Keep current dumps of PostgreSQL (migrations + data) and Firebase service accounts. Rotate SSL certificates referenced in `config.APP_DOMAIN`.
 
-## 8. Adding a New Agent
+## 8. Code Style Guidelines
+
+- **Comments**: Avoid unnecessary comments. Code should be self-explanatory through clear naming and structure.
+- **Necessary Comments**: When comments are needed (complex business logic, non-obvious behavior, or API quirks), write them in English.
+- **Language**: All code, variable names, function names, and documentation must be in English for consistency across the codebase.
+
+## 9. Adding a New Agent
 
 1. Define the responsibility and data flow (HTTP, queue, cron, or helper).
 2. Create a service module under `src/Services/<agent>` with clear interfaces.
