@@ -9,6 +9,7 @@ import ChatRepository from '../../Repositories/ChatRepository'
 import { Chat } from '../../Interfaces/Chat'
 import DateHelper from '../../Helpers/DateHelper'
 import { ClientInterface } from '../../Interfaces/ClientInterface'
+import { WhatsAppClientDictionary } from '../../Interfaces/WhatsAppClientDiccionary'
 import { WpContactInterface } from '../whatsapp/interfaces/WpContactInterface'
 import { MessageTypes } from '../whatsapp/constants/MessageTypes'
 import { Branch } from '../../Interfaces/Branch'
@@ -25,6 +26,7 @@ export class Store {
   wpClients: ClientDictionary = {}
   wpChats: Map<string, Chat> = new Map()
   branches: Map<string, Branch> = new Map()
+  whatsappClients: WhatsAppClientDictionary = {}
   cities: Map<string, City> = new Map()
   polygons: Array<Feature<Polygon>> = new Array()
   placeRepository = Container.getPlaceRepository()
@@ -246,5 +248,13 @@ export class Store {
       suggestions: searchResult.suggestions,
       hasExactMatch: searchResult.hasExactMatch
     }
+  }
+
+  registerWhatsAppClient(clientId: string, whatsappClient: any): void {
+    this.whatsappClients[clientId] = whatsappClient
+  }
+
+  getWhatsAppClient(clientId: string): any | undefined {
+    return this.whatsappClients[clientId]
   }
 }

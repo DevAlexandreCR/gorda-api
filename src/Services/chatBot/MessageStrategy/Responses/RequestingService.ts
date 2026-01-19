@@ -53,6 +53,11 @@ export class RequestingService extends ResponseContract {
       const newCreatedAt = dayjs().unix()
       this.service.created_at = newCreatedAt
       await Database.dbServices().child(this.service.id).update({ created_at: newCreatedAt })
+
+      const whatsappClient = this.store.getWhatsAppClient(this.session.wp_client_id)
+      if (whatsappClient) {
+        whatsappClient.cancelTimeout(this.service.id, this.session.chat_id)
+      }
     }
   }
 
