@@ -35,7 +35,7 @@ export class RequestingService extends ResponseContract {
     } else if (actionKey === 'INSIST') {
       await this.restartService()
       await this.sendMessage(
-        Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
+        Messages.getSingleMessage(MessagesEnum.INSISTING)
       )
     } else {
       await this.sendMessage(
