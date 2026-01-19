@@ -7,6 +7,8 @@ import Service from '../../../../Models/Service'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { MessagesEnum } from '../../MessagesEnum'
 import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
+import dayjs from 'dayjs'
+import Database from '../../../firebase/Database'
 
 export class RequestingService extends ResponseContract {
   private service: Service
@@ -15,10 +17,26 @@ export class RequestingService extends ResponseContract {
 
   public async processMessage(message: WpMessage): Promise<void> {
     await this.setService()
+
+    let actionKey = ''
+
+    // Check if message is from an interactive button
+    if (message.type === MessageTypes.INTERACTIVE && message.interactiveReply) {
+      if (message.interactiveReply.button_reply) {
+        actionKey = message.interactiveReply.button_reply.id.toUpperCase()
+      }
+    }
+
     const body = message.msg.toLowerCase()
-    if (body.includes(MessageHelper.CANCEL)) {
+
+    if (body.includes(MessageHelper.CANCEL) || actionKey === 'CANCEL') {
       await this.cancelService()
       await this.session.setStatus(Session.STATUS_COMPLETED)
+    } else if (actionKey === 'INSIST') {
+      await this.restartService()
+      await this.sendMessage(
+        Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
+      )
     } else {
       await this.sendMessage(
         Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL_WHILE_FIND_DRIVER)
@@ -28,6 +46,14 @@ export class RequestingService extends ResponseContract {
 
   cancelService(): Promise<void> {
     return this.service.cancel()
+  }
+
+  async restartService(): Promise<void> {
+    if (this.service && this.service.id) {
+      const newCreatedAt = dayjs().unix()
+      this.service.created_at = newCreatedAt
+      await Database.dbServices().child(this.service.id).update({ created_at: newCreatedAt })
+    }
   }
 
   async setService(): Promise<void> {
