@@ -11,6 +11,7 @@ import MessageHelper from '../../../Helpers/MessageHelper'
 
 const controller = Router()
 const store = Store.getInstance()
+const MAX_MESSAGE_AGE_MINUTES = 20
 
 controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
   const { body } = req
@@ -62,18 +63,30 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
           console.log('Empty message body received, ignoring.')
           return
         }
-        const type: MessageTypes = message.type
-          ? message.type
+        const messageTimestamp =
+          typeof message.timestamp === 'string' ? parseInt(message.timestamp, 10) : message.timestamp
+        const currentTimestamp = Math.floor(Date.now() / 1000)
+        const messageAgeMinutes = (currentTimestamp - messageTimestamp) / 60
+
+        if (messageAgeMinutes > MAX_MESSAGE_AGE_MINUTES) {
+          console.log(
+            `Old message ignored. Age: ${messageAgeMinutes.toFixed(2)} minutes. Message ID: ${message.id}`
+          )
+          responseMessages.push(`Old message ignored: ${message.id}`)
+          return
+        }
+
+        const type: MessageTypes = message.text?.body
+          ? MessageTypes.TEXT
           : message.location
             ? MessageTypes.LOCATION
-            : MessageTypes.UNKNOWN
+            : message.type
+              ? message.type
+              : MessageTypes.UNKNOWN
         const wpMessage = new WpMessageAdapter(
           {
             id: message.id,
-            timestamp:
-              typeof message.timestamp === 'string'
-                ? parseInt(message.timestamp)
-                : message.timestamp,
+            timestamp: messageTimestamp,
             from: message.from + '@c.us',
             type: type,
             isStatus: false,
@@ -98,9 +111,8 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
 
         await MessageRepository.addMessage(wpClient.id, chat.id, {
           id: wpMessage.id,
-          created_at:
-            typeof message.timestamp === 'string' ? parseInt(message.timestamp) : message.timestamp,
-          type: message.type ? message.type : message.location ? 'location' : 'unknown',
+          created_at: messageTimestamp,
+          type: type,
           body: wpMessage.body,
           location: wpMessage.location ?? null,
           fromMe: false,
@@ -110,11 +122,13 @@ controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
 
         wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
 
-        if (
-          type !== MessageTypes.TEXT &&
-          type !== MessageTypes.LOCATION &&
-          type !== MessageTypes.INTERACTIVE
-        ) {
+        const hasTextContent = message.text?.body?.trim()
+        const isProcessableType =
+          type === MessageTypes.TEXT ||
+          type === MessageTypes.LOCATION ||
+          type === MessageTypes.INTERACTIVE
+
+        if (!hasTextContent && !isProcessableType) {
           const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
           wpClientService.sendMessage(wpMessage.from, msg)
         }
