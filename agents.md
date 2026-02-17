@@ -83,6 +83,7 @@ This document explains the agents (long-running services, jobs, and helper modul
 - **Comments**: Avoid unnecessary comments. Code should be self-explanatory through clear naming and structure.
 - **Necessary Comments**: When comments are needed (complex business logic, non-obvious behavior, or API quirks), write them in English.
 - **Language**: All code, variable names, function names, and documentation must be in English for consistency across the codebase.
+- **Documentation & Plans**: All planning documents, technical specifications, and implementation plans must be written in English and stored in the `/docs` directory. Plans should include problem description, proposed solution, implementation steps, test cases, and rollback procedures.
 
 ## 9. Adding a New Agent
 
