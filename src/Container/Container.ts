@@ -70,8 +70,12 @@ class Container {
     try {
       // Test database connection and sync models
       await this.getSequelize().authenticate()
-      await this.getSequelize().sync({ alter: true })
-      console.log('Database connected and models synchronized successfully')
+      if (process.env.NODE_ENV !== 'production') {
+        await this.getSequelize().sync({ alter: true })
+        console.log('Database connected and models synchronized successfully')
+      } else {
+        console.log('Database connected successfully (production mode, sync skipped)')
+      }
     } catch (error) {
       console.error('Database connection failed:', error)
       throw error

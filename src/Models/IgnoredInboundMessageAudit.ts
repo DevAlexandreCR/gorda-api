@@ -114,10 +114,20 @@ IgnoredInboundMessageAudit.init(
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     indexes: [
-      { fields: ['received_at'] },
-      { fields: ['wp_client_id', 'received_at'] },
-      { fields: ['provider', 'received_at'] },
-      { unique: true, fields: ['wp_client_id', 'provider', 'message_id', 'reason'] },
+      { name: 'ignored_inbound_messages_audit_received_at', fields: ['received_at'] },
+      {
+        name: 'ignored_inbound_messages_audit_wp_client_id_received_at',
+        fields: ['wp_client_id', 'received_at'],
+      },
+      {
+        name: 'ignored_inbound_messages_audit_provider_received_at',
+        fields: ['provider', 'received_at'],
+      },
+      {
+        name: 'ignored_inbound_messages_audit_unique_message_reason',
+        unique: true,
+        fields: ['wp_client_id', 'provider', 'message_id', 'reason'],
+      },
     ],
   }
 )
