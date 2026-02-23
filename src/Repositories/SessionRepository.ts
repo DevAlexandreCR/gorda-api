@@ -140,12 +140,25 @@ class SessionRepository {
     }
   }
 
-  public async addMsg(sessionId: string, msg: WpMessage): Promise<string> {
+  public async addMsg(sessionId: string, msg: WpMessage): Promise<{ created: boolean; id: string }> {
     const ref = Firestore.dbSessions().doc(sessionId).collection('messages').doc(msg.id)
-    return await ref
+    return ref
       .create({ ...msg })
-      .then(() => Promise.resolve(ref.id))
-      .catch((e) => Promise.resolve(e))
+      .then(() => Promise.resolve({ created: true, id: ref.id }))
+      .catch((error: any) => {
+        const code = String(error?.code ?? '')
+        const message = String(error?.message ?? '')
+        const alreadyExists =
+          code === '6' ||
+          code === 'already-exists' ||
+          message.toLowerCase().includes('already exists')
+
+        if (alreadyExists) {
+          return Promise.resolve({ created: false, id: ref.id })
+        }
+
+        return Promise.reject(error)
+      })
   }
 
   public async setProcessedMsgs(sessionId: string, msgs: WpMessage[]): Promise<void> {

@@ -27,6 +27,10 @@ import { WpClients } from './constants/WPClients'
 import { MessageTypes } from './constants/MessageTypes'
 import { spawn } from 'child_process'
 import MessageHelper from '../../Helpers/MessageHelper'
+import InboundMessageMetrics from './monitoring/InboundMessageMetrics'
+import { InboundMessagePolicy } from './policies/InboundMessagePolicy'
+import InboundMessageDedupCache from './policies/InboundMessageDedupCache'
+import IgnoredInboundMessageAuditRepository from '../../Repositories/IgnoredInboundMessageAuditRepository'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -110,6 +114,12 @@ export class WhatsAppClient {
       msg.from,
       msg.body.substring(0, 50)
     )
+
+    if (this.client.serviceName !== WpClients.OFFICIAL) {
+      const shouldProcess = await this.shouldProcessInboundMessage(msg)
+      if (!shouldProcess) return
+    }
+
     if (this.wpClient.full) {
       await this.sendMessage(msg.from, Messages.getSingleMessage(MessagesEnum.FULL_CLIENT)).catch((e =>
         console.log(
@@ -122,6 +132,117 @@ export class WhatsAppClient {
     } else if (this.isProcessableMsg(msg)) {
       await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
     }
+  }
+
+  private async shouldProcessInboundMessage(msg: WpMessageInterface): Promise<boolean> {
+    const messageId = this.resolveInboundMessageId(msg.id)
+    const provider = this.client.serviceName
+    const policyDecision = InboundMessagePolicy.evaluate(msg.timestamp)
+    const maxAgeMinutes = Number(config.INBOUND_MESSAGE_MAX_AGE_MINUTES) || 120
+
+    if (
+      policyDecision.reason === 'invalid_timestamp_processed' ||
+      policyDecision.reason === 'future_timestamp_processed'
+    ) {
+      InboundMessageMetrics.increment({
+        provider,
+        wpClientId: this.wpClient.id,
+        reason: policyDecision.reason,
+      })
+      console.log(
+        '[InboundMessageTimestampAnomaly]',
+        JSON.stringify({
+          provider,
+          wpClientId: this.wpClient.id,
+          messageId,
+          from: msg.from,
+          reason: policyDecision.reason,
+          rawTimestamp: msg.timestamp ?? null,
+          normalizedTimestamp: policyDecision.normalizedTimestamp,
+          ageMinutes: policyDecision.ageMinutes,
+          maxAgeMinutes,
+          at: new Date().toISOString(),
+        })
+      )
+    }
+
+    if (policyDecision.action === 'ignore') {
+      InboundMessageMetrics.increment({
+        provider,
+        wpClientId: this.wpClient.id,
+        reason: 'old_message',
+      })
+      await IgnoredInboundMessageAuditRepository.recordIgnoredEvent({
+        wpClientId: this.wpClient.id,
+        provider,
+        messageId,
+        chatId: msg.from,
+        rawTimestamp: msg.timestamp ?? null,
+        messageType: msg.type,
+        reason: 'old_message',
+        messageAgeMinutes: policyDecision.ageMinutes,
+        messageTimestamp: policyDecision.normalizedTimestamp,
+      })
+      console.log(
+        '[InboundMessageIgnored]',
+        JSON.stringify({
+          provider,
+          wpClientId: this.wpClient.id,
+          messageId,
+          from: msg.from,
+          reason: 'old_message',
+          rawTimestamp: msg.timestamp ?? null,
+          normalizedTimestamp: policyDecision.normalizedTimestamp,
+          ageMinutes: policyDecision.ageMinutes,
+          maxAgeMinutes,
+          at: new Date().toISOString(),
+        })
+      )
+      return false
+    }
+
+    const dedupDecision = InboundMessageDedupCache.evaluate(this.wpClient.id, messageId)
+    if (dedupDecision.action === 'ignore') {
+      InboundMessageMetrics.increment({
+        provider,
+        wpClientId: this.wpClient.id,
+        reason: 'duplicate_message',
+      })
+      await IgnoredInboundMessageAuditRepository.recordIgnoredEvent({
+        wpClientId: this.wpClient.id,
+        provider,
+        messageId,
+        chatId: msg.from,
+        rawTimestamp: msg.timestamp ?? null,
+        messageType: msg.type,
+        reason: 'duplicate_message',
+        messageAgeMinutes: policyDecision.ageMinutes,
+        messageTimestamp: policyDecision.normalizedTimestamp,
+      })
+      console.log(
+        '[InboundMessageIgnored]',
+        JSON.stringify({
+          provider,
+          wpClientId: this.wpClient.id,
+          messageId,
+          from: msg.from,
+          reason: 'duplicate_message',
+          rawTimestamp: msg.timestamp ?? null,
+          normalizedTimestamp: policyDecision.normalizedTimestamp,
+          ageMinutes: policyDecision.ageMinutes,
+          maxAgeMinutes,
+          at: new Date().toISOString(),
+        })
+      )
+      return false
+    }
+
+    return true
+  }
+
+  private resolveInboundMessageId(messageId?: string): string {
+    if (messageId && messageId.trim()) return messageId.trim()
+    return `unknown-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   }
 
   isProcessableMsg(msg: WpMessageInterface): boolean {

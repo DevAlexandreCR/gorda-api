@@ -93,7 +93,12 @@ export default class Session implements SessionInterface {
     }
 
     await SessionRepository.addMsg(this.id, wpMessage)
-      .then(async (key) => {
+      .then(async (result) => {
+        if (!result.created) {
+          return
+        }
+
+        const key = result.id
         if (wpMessage.type === MessageTypes.LOCATION) {
           this.messages.set(key, wpMessage)
           clearTimeout(this.processorTimeout)

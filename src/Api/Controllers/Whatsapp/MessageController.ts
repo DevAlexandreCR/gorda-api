@@ -4,140 +4,263 @@ import { Request, Response, Router } from 'express'
 import { WpEvents } from '../../../Services/whatsapp/constants/WpEvents'
 import { Store } from '../../../Services/store/Store'
 import MessageRepository from '../../../Repositories/MessageRepository'
+import IgnoredInboundMessageAuditRepository from '../../../Repositories/IgnoredInboundMessageAuditRepository'
 import config from '../../../../config'
 import { MessageTypes } from '../../../Services/whatsapp/constants/MessageTypes'
 import { MessagesEnum } from '../../../Services/chatBot/MessagesEnum'
 import MessageHelper from '../../../Helpers/MessageHelper'
+import InboundMessageMetrics from '../../../Services/whatsapp/monitoring/InboundMessageMetrics'
+import { InboundMessagePolicy } from '../../../Services/whatsapp/policies/InboundMessagePolicy'
+import InboundMessageDedupCache from '../../../Services/whatsapp/policies/InboundMessageDedupCache'
+import { WpClients } from '../../../Services/whatsapp/constants/WPClients'
 
 const controller = Router()
 const store = Store.getInstance()
-const MAX_MESSAGE_AGE_MINUTES = 20
 
-controller.post('/whatsapp/webhook', async (req: Request, res: Response) => {
-  const { body } = req
-  const entries = body.entry
-  const responseMessages: Array<string> = ['ok']
-  entries.forEach((entry: any) => {
-    const changes = entry.changes
+type WebhookMessage = {
+  id: string
+  timestamp?: number | string
+  from: string
+  type?: string
+  text?: { body?: string }
+  location?: { name?: string; latitude: number; longitude: number }
+  interactive?: any
+}
 
-    changes.forEach((change: any) => {
-      if (change.field !== 'messages') {
-        console.log('no message notification')
-        responseMessages.push('no message notification')
-        return
+controller.post('/whatsapp/webhook', (req: Request, res: Response) => {
+  res.status(200).json({ messages: ['ok'] })
+
+  void processWebhookPayload(req.body).catch((error: any) => {
+    console.log('[WhatsAppWebhook] Failed to process payload', error?.message ?? error)
+  })
+})
+
+async function processWebhookPayload(body: any): Promise<void> {
+  const entries = Array.isArray(body?.entry) ? body.entry : []
+
+  for (const entry of entries) {
+    const changes = Array.isArray(entry?.changes) ? entry.changes : []
+    for (const change of changes) {
+      if (change?.field !== 'messages') {
+        continue
       }
+
       const value = change.value
-      if (value.errors) {
-        console.log('Message error', JSON.stringify(value.errors))
-        responseMessages.push('Message with errors')
-        return
+      if (value?.errors) {
+        console.log('[WhatsAppWebhook] Message error', JSON.stringify(value.errors))
+        continue
       }
 
-      if (!value.messages) {
-        console.log('No messages', JSON.stringify(value))
-        responseMessages.push('No Messages')
-        return
+      const messages = Array.isArray(value?.messages) ? value.messages : []
+      if (messages.length === 0) {
+        continue
       }
+
       const profileName = value.contacts ? value.contacts[0]?.profile?.name : undefined
-      const wpClient = store.wpClients[value.metadata.phone_number_id] ?? null
+      const wpClient = store.wpClients[value?.metadata?.phone_number_id] ?? null
       if (!wpClient) {
-        console.log('wpClient not found')
-        responseMessages.push('wpClient not found')
-
-        return
+        console.log('[WhatsAppWebhook] wpClient not found')
+        continue
       }
+
       const wpClientService = OfficialClient.getInstance(wpClient)
-
-      const messages = value.messages
-
-      messages.forEach(async (message: any) => {
-        if (message.text && message.text.body === 'PING') {
-          console.log('PING message received, ignoring.')
-          return
+      for (const message of messages) {
+        try {
+          await processOfficialMessage(message, profileName, wpClient.id, wpClientService)
+        } catch (error: any) {
+          console.log('[WhatsAppWebhook] Error processing message', {
+            messageId: message?.id,
+            wpClientId: wpClient.id,
+            error: error?.message ?? error,
+          })
         }
-        if (message.type === 'system') {
-          console.log('System message received, ignoring.')
-          return
-        }
-        if (message.text && !message.text.body?.trim()) {
-          console.log('Empty message body received, ignoring.')
-          return
-        }
-        const messageTimestamp =
-          typeof message.timestamp === 'string' ? parseInt(message.timestamp, 10) : message.timestamp
-        const currentTimestamp = Math.floor(Date.now() / 1000)
-        const messageAgeMinutes = (currentTimestamp - messageTimestamp) / 60
+      }
+    }
+  }
+}
 
-        if (messageAgeMinutes > MAX_MESSAGE_AGE_MINUTES) {
-          console.log(
-            `Old message ignored. Age: ${messageAgeMinutes.toFixed(2)} minutes. Message ID: ${message.id}`
-          )
-          responseMessages.push(`Old message ignored: ${message.id}`)
-          return
-        }
+async function processOfficialMessage(
+  message: WebhookMessage,
+  profileName: string | undefined,
+  wpClientId: string,
+  wpClientService: OfficialClient
+): Promise<void> {
+  if (message.text && message.text.body === 'PING') {
+    return
+  }
 
-        const type: MessageTypes = message.text?.body
-          ? MessageTypes.TEXT
-          : message.location
-            ? MessageTypes.LOCATION
-            : message.type
-              ? message.type
-              : MessageTypes.UNKNOWN
-        const wpMessage = new WpMessageAdapter(
-          {
-            id: message.id,
-            timestamp: messageTimestamp,
-            from: message.from + '@c.us',
-            type: type,
-            isStatus: false,
-            body: message.text?.body ?? type,
-            location: message.location
-              ? {
-                name: message.location?.name ?? MessageHelper.LOCATION_NO_NAME,
-                lat: message.location?.latitude,
-                lng: message.location?.longitude,
-              }
-              : undefined,
-            interactiveReply: message.interactive ?? null,
-          },
-          wpClientService
-        )
+  if (message.type === 'system') {
+    return
+  }
 
-        if (wpMessage.interactiveReply) {
-          wpMessage.body = wpMessage.interactiveReply.button_reply?.id ?? wpMessage.body
-        }
+  if (message.text && !message.text.body?.trim()) {
+    return
+  }
 
-        const chat = await store.getChatById(wpClient.id, message.from, profileName)
+  const provider = WpClients.OFFICIAL
+  const messageId = resolveMessageId(message.id)
+  const policyDecision = InboundMessagePolicy.evaluate(message.timestamp)
+  const maxAgeMinutes = Number(config.INBOUND_MESSAGE_MAX_AGE_MINUTES) || 120
 
-        await MessageRepository.addMessage(wpClient.id, chat.id, {
-          id: wpMessage.id,
-          created_at: messageTimestamp,
-          type: type,
-          body: wpMessage.body,
-          location: wpMessage.location ?? null,
-          fromMe: false,
-          interactiveReply: wpMessage.interactiveReply,
-          interactive: null,
-        })
-
-        wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
-
-        const hasTextContent = message.text?.body?.trim()
-        const isProcessableType =
-          type === MessageTypes.TEXT ||
-          type === MessageTypes.LOCATION ||
-          type === MessageTypes.INTERACTIVE
-
-        if (!hasTextContent && !isProcessableType) {
-          const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
-          wpClientService.sendMessage(wpMessage.from, msg)
-        }
-      })
+  if (
+    policyDecision.reason === 'invalid_timestamp_processed' ||
+    policyDecision.reason === 'future_timestamp_processed'
+  ) {
+    InboundMessageMetrics.increment({
+      provider,
+      wpClientId,
+      reason: policyDecision.reason,
     })
+    console.log(
+      '[InboundMessageTimestampAnomaly]',
+      JSON.stringify({
+        provider,
+        wpClientId,
+        messageId,
+        from: message.from,
+        reason: policyDecision.reason,
+        rawTimestamp: message.timestamp ?? null,
+        normalizedTimestamp: policyDecision.normalizedTimestamp,
+        ageMinutes: policyDecision.ageMinutes,
+        maxAgeMinutes,
+        at: new Date().toISOString(),
+      })
+    )
+  }
+
+  if (policyDecision.action === 'ignore') {
+    InboundMessageMetrics.increment({
+      provider,
+      wpClientId,
+      reason: 'old_message',
+    })
+    await IgnoredInboundMessageAuditRepository.recordIgnoredEvent({
+      wpClientId,
+      provider,
+      messageId,
+      chatId: message.from,
+      rawTimestamp: message.timestamp ?? null,
+      messageType: message.type ?? null,
+      reason: 'old_message',
+      messageAgeMinutes: policyDecision.ageMinutes,
+      messageTimestamp: policyDecision.normalizedTimestamp,
+    })
+    console.log(
+      '[InboundMessageIgnored]',
+      JSON.stringify({
+        provider,
+        wpClientId,
+        messageId,
+        from: message.from,
+        reason: 'old_message',
+        rawTimestamp: message.timestamp ?? null,
+        normalizedTimestamp: policyDecision.normalizedTimestamp,
+        ageMinutes: policyDecision.ageMinutes,
+        maxAgeMinutes,
+        at: new Date().toISOString(),
+      })
+    )
+    return
+  }
+
+  const dedupDecision = InboundMessageDedupCache.evaluate(wpClientId, messageId)
+  if (dedupDecision.action === 'ignore') {
+    InboundMessageMetrics.increment({
+      provider,
+      wpClientId,
+      reason: 'duplicate_message',
+    })
+    await IgnoredInboundMessageAuditRepository.recordIgnoredEvent({
+      wpClientId,
+      provider,
+      messageId,
+      chatId: message.from,
+      rawTimestamp: message.timestamp ?? null,
+      messageType: message.type ?? null,
+      reason: 'duplicate_message',
+      messageAgeMinutes: policyDecision.ageMinutes,
+      messageTimestamp: policyDecision.normalizedTimestamp,
+    })
+    console.log(
+      '[InboundMessageIgnored]',
+      JSON.stringify({
+        provider,
+        wpClientId,
+        messageId,
+        from: message.from,
+        reason: 'duplicate_message',
+        rawTimestamp: message.timestamp ?? null,
+        normalizedTimestamp: policyDecision.normalizedTimestamp,
+        ageMinutes: policyDecision.ageMinutes,
+        maxAgeMinutes,
+        at: new Date().toISOString(),
+      })
+    )
+    return
+  }
+
+  const messageTimestamp = policyDecision.normalizedTimestamp ?? Math.floor(Date.now() / 1000)
+
+  const type: MessageTypes = message.text?.body
+    ? MessageTypes.TEXT
+    : message.location
+      ? MessageTypes.LOCATION
+      : message.type
+        ? (message.type as MessageTypes)
+        : MessageTypes.UNKNOWN
+  const wpMessage = new WpMessageAdapter(
+    {
+      id: messageId,
+      timestamp: messageTimestamp,
+      from: message.from + '@c.us',
+      type: type,
+      isStatus: false,
+      body: message.text?.body ?? type,
+      location: message.location
+        ? {
+          name: message.location?.name ?? MessageHelper.LOCATION_NO_NAME,
+          lat: message.location?.latitude,
+          lng: message.location?.longitude,
+        }
+        : undefined,
+      interactiveReply: message.interactive ?? null,
+    },
+    wpClientService
+  )
+
+  if (wpMessage.interactiveReply) {
+    wpMessage.body = wpMessage.interactiveReply.button_reply?.id ?? wpMessage.body
+  }
+
+  const chat = await store.getChatById(wpClientId, message.from, profileName)
+
+  await MessageRepository.addMessage(wpClientId, chat.id, {
+    id: wpMessage.id,
+    created_at: messageTimestamp,
+    type: type,
+    body: wpMessage.body,
+    location: wpMessage.location ?? null,
+    fromMe: false,
+    interactiveReply: wpMessage.interactiveReply,
+    interactive: null,
   })
 
-  return res.status(200).json({ messages: responseMessages })
-})
+  wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
+
+  const hasTextContent = message.text?.body?.trim()
+  const isProcessableType =
+    type === MessageTypes.TEXT || type === MessageTypes.LOCATION || type === MessageTypes.INTERACTIVE
+
+  if (!hasTextContent && !isProcessableType) {
+    const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
+    wpClientService.sendMessage(wpMessage.from, msg)
+  }
+}
+
+function resolveMessageId(messageId?: string): string {
+  if (messageId && messageId.trim()) return messageId.trim()
+  return `unknown-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
 
 controller.get('/whatsapp/webhook', async (req: Request, res: Response) => {
   console.log('webhook get', req.query)
