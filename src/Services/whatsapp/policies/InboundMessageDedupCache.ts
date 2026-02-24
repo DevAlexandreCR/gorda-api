@@ -8,7 +8,7 @@ export type InboundDedupDecision = {
 
 class InboundMessageDedupCache {
   private readonly dedupMap = new Map<string, number>()
-  private readonly defaultTtlSeconds = 21600
+  private readonly defaultTtlSeconds = 259200
   private readonly cleanupIntervalMs = 60000
   private lastCleanupAt = 0
 
