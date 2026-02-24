@@ -53,17 +53,11 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
     },
   })
 
-  await queryInterface.addIndex('ignored_inbound_messages_audit', ['received_at'])
-  await queryInterface.addIndex('ignored_inbound_messages_audit', ['wp_client_id', 'received_at'])
-  await queryInterface.addIndex('ignored_inbound_messages_audit', ['provider', 'received_at'])
-  await queryInterface.addIndex(
-    'ignored_inbound_messages_audit',
-    ['wp_client_id', 'provider', 'message_id', 'reason'],
-    {
-      unique: true,
-      name: 'ignored_inbound_messages_audit_unique_message_reason',
-    }
-  )
+  const sq = queryInterface.sequelize
+  await sq.query(`CREATE INDEX IF NOT EXISTS "ignored_inbound_messages_audit_received_at" ON "ignored_inbound_messages_audit" ("received_at")`)
+  await sq.query(`CREATE INDEX IF NOT EXISTS "ignored_inbound_messages_audit_wp_client_id_received_at" ON "ignored_inbound_messages_audit" ("wp_client_id", "received_at")`)
+  await sq.query(`CREATE INDEX IF NOT EXISTS "ignored_inbound_messages_audit_provider_received_at" ON "ignored_inbound_messages_audit" ("provider", "received_at")`)
+  await sq.query(`CREATE UNIQUE INDEX IF NOT EXISTS "ignored_inbound_messages_audit_unique_message_reason" ON "ignored_inbound_messages_audit" ("wp_client_id", "provider", "message_id", "reason")`)
 }
 
 export async function down(queryInterface: QueryInterface): Promise<void> {

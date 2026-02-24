@@ -1,4 +1,5 @@
 import config from '../../../../config'
+import ProcessedInboundMessageRepository from '../../../Repositories/ProcessedInboundMessageRepository'
 
 export type InboundDedupDecision = {
   action: 'process' | 'ignore'
@@ -11,7 +12,7 @@ class InboundMessageDedupCache {
   private readonly cleanupIntervalMs = 60000
   private lastCleanupAt = 0
 
-  evaluate(wpClientId: string, messageId: string): InboundDedupDecision {
+  async evaluate(wpClientId: string, messageId: string): Promise<InboundDedupDecision> {
     if (!wpClientId || !messageId) {
       return { action: 'process', reason: 'processable' }
     }
@@ -19,15 +20,38 @@ class InboundMessageDedupCache {
     const now = Date.now()
     this.evictExpiredEntries(now)
     const key = `${wpClientId}:${messageId}`
-    const expiresAt = this.dedupMap.get(key)
 
+    // L1: in-memory cache hit
+    const expiresAt = this.dedupMap.get(key)
     if (expiresAt && expiresAt > now) {
       return { action: 'ignore', reason: 'duplicate_message' }
     }
 
+    // L2: persistent PostgreSQL lookup (fail-open on error)
+    try {
+      const existsInDb = await ProcessedInboundMessageRepository.exists(wpClientId, messageId)
+      if (existsInDb) {
+        // Repopulate L1 so subsequent checks are fast
+        const ttlSeconds = this.getTtlSeconds()
+        this.dedupMap.set(key, now + ttlSeconds * 1000)
+        return { action: 'ignore', reason: 'duplicate_message' }
+      }
+    } catch (error: any) {
+      console.log('[InboundMessageDedupCache] L2 lookup failed, proceeding (fail-open)', error?.message)
+    }
+
+    // New message — register in L1 (L2 registration is handled by the caller via recordProcessed)
     const ttlSeconds = this.getTtlSeconds()
     this.dedupMap.set(key, now + ttlSeconds * 1000)
     return { action: 'process', reason: 'processable' }
+  }
+
+  async recordProcessed(wpClientId: string, messageId: string, provider: string): Promise<void> {
+    try {
+      await ProcessedInboundMessageRepository.record(wpClientId, messageId, provider)
+    } catch (error: any) {
+      console.log('[InboundMessageDedupCache] L2 record failed', error?.message)
+    }
   }
 
   private evictExpiredEntries(now: number): void {

@@ -201,7 +201,7 @@ export class WhatsAppClient {
       return false
     }
 
-    const dedupDecision = InboundMessageDedupCache.evaluate(this.wpClient.id, messageId)
+    const dedupDecision = await InboundMessageDedupCache.evaluate(this.wpClient.id, messageId)
     if (dedupDecision.action === 'ignore') {
       InboundMessageMetrics.increment({
         provider,
@@ -236,6 +236,8 @@ export class WhatsAppClient {
       )
       return false
     }
+
+    await InboundMessageDedupCache.recordProcessed(this.wpClient.id, messageId, provider)
 
     return true
   }

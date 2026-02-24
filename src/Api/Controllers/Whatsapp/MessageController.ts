@@ -163,7 +163,7 @@ async function processOfficialMessage(
     return
   }
 
-  const dedupDecision = InboundMessageDedupCache.evaluate(wpClientId, messageId)
+  const dedupDecision = await InboundMessageDedupCache.evaluate(wpClientId, messageId)
   if (dedupDecision.action === 'ignore') {
     InboundMessageMetrics.increment({
       provider,
@@ -198,6 +198,8 @@ async function processOfficialMessage(
     )
     return
   }
+
+  await InboundMessageDedupCache.recordProcessed(wpClientId, messageId, provider)
 
   const messageTimestamp = policyDecision.normalizedTimestamp ?? Math.floor(Date.now() / 1000)
 
