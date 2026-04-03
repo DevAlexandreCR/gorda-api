@@ -2,12 +2,18 @@ import sequelize from '../Database/sequelize'
 import PlaceRepository from '../Repositories/PlaceRepository'
 import PlaceSearchRepository from '../Repositories/PlaceSearchRepository'
 import ClientRepository from '../Repositories/ClientRepository'
+import MasterDataRepository from '../Repositories/MasterDataRepository'
+import UserRecordRepository from '../Repositories/UserRecordRepository'
+import DriverRecordRepository from '../Repositories/DriverRecordRepository'
 
 class Container {
   private static sequelizeInstance: typeof sequelize
   private static placeRepository: PlaceRepository
   private static placeSearchRepository: PlaceSearchRepository
   private static clientRepository: ClientRepository
+  private static masterDataRepository: MasterDataRepository
+  private static userRecordRepository: UserRecordRepository
+  private static driverRecordRepository: DriverRecordRepository
 
   /**
    * Get or create Sequelize instance
@@ -47,6 +53,27 @@ class Container {
       this.clientRepository = new ClientRepository(this.getSequelize())
     }
     return this.clientRepository
+  }
+
+  static getMasterDataRepository(): MasterDataRepository {
+    if (!this.masterDataRepository) {
+      this.masterDataRepository = new MasterDataRepository(this.getSequelize())
+    }
+    return this.masterDataRepository
+  }
+
+  static getUserRecordRepository(): UserRecordRepository {
+    if (!this.userRecordRepository) {
+      this.userRecordRepository = new UserRecordRepository()
+    }
+    return this.userRecordRepository
+  }
+
+  static getDriverRecordRepository(): DriverRecordRepository {
+    if (!this.driverRecordRepository) {
+      this.driverRecordRepository = new DriverRecordRepository()
+    }
+    return this.driverRecordRepository
   }
 
   /**

@@ -1,8 +1,6 @@
 import Driver from '../../Models/Driver'
 import Container from '../../Container/Container'
-import DriverRepository from '../../Repositories/DriverRepository'
 import { ChatBotMessage } from '../../Types/ChatBotMessage'
-import SettingsRepository from '../../Repositories/SettingsRepository'
 import { MessagesEnum } from '../chatBot/MessagesEnum'
 import { ClientDictionary } from '../../Interfaces/ClientDiccionary'
 import ChatRepository from '../../Repositories/ChatRepository'
@@ -17,6 +15,7 @@ import { City } from '../../Interfaces/City'
 import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
 import { PlaceInterface } from '../../Interfaces/PlaceInterface'
+import { WpClient } from '../../Interfaces/WpClient'
 
 export class Store {
   static instance: Store
@@ -32,12 +31,12 @@ export class Store {
   placeRepository = Container.getPlaceRepository()
   placeSearchRepository = Container.getPlaceSearchRepository()
   clientRepository = Container.getClientRepository()
+  driverRepository = Container.getDriverRecordRepository()
+  masterDataRepository = Container.getMasterDataRepository()
+  private wpClientListeners: Array<(clients: ClientDictionary) => void> = []
 
   private constructor() {
-    this.setDrivers()
-    this.updateDrivers()
     this.setClients()
-    this.listenMessages()
   }
 
   public static getInstance(): Store {
@@ -65,28 +64,51 @@ export class Store {
   }
 
   private setDrivers() {
-    DriverRepository.getAll((driver) => {
+    this.driverRepository.index().then((drivers) => {
+      this.drivers.clear()
+      drivers.forEach((driverData) => {
+        const driver = this.driverRepository.toDriverModel(driverData)
+        if (!driver.id) return
+        this.drivers.set(driver.id, driver)
+      })
+    })
+  }
+
+  async refreshDrivers(): Promise<void> {
+    const drivers = await this.driverRepository.index()
+    this.drivers.clear()
+    drivers.forEach((driverData) => {
+      const driver = this.driverRepository.toDriverModel(driverData)
       this.drivers.set(driver.id!, driver)
     })
   }
 
-  private updateDrivers() {
-    DriverRepository.updateDriver((driver) => {
-      this.drivers.set(driver.id!, driver)
-    })
+  async refreshMessages(): Promise<void> {
+    this.messages = await this.masterDataRepository.getChatBotMessagesMap()
   }
 
-  private listenMessages(): void {
-    SettingsRepository.getChatBotMessages((messages) => {
-      this.messages = messages
+  async refreshWpClients(): Promise<ClientDictionary> {
+    const clients = await this.masterDataRepository.listWpClients()
+    const mappedClients: ClientDictionary = {}
+
+    clients.forEach((client: WpClient) => {
+      mappedClients[client.id] = client
     })
+
+    this.wpClients = mappedClients
+    this.wpClientListeners.forEach((listener) => listener(this.wpClients))
+    return this.wpClients
   }
 
   getWpClients(listener?: (clients: ClientDictionary) => void): void {
-    SettingsRepository.getWpClients((clients: ClientDictionary) => {
-      this.wpClients = clients
-      if (listener) listener(clients)
-    })
+    if (listener) {
+      this.wpClientListeners.push(listener)
+      if (Object.keys(this.wpClients).length > 0) {
+        listener(this.wpClients)
+      }
+    }
+
+    void this.refreshWpClients()
   }
 
   getChats(wpClientId: string): void {
@@ -188,21 +210,21 @@ export class Store {
     return placeRepository.findById(placeId)
   }
 
-  getBranches(): void {
-    SettingsRepository.getBranches((branches) => {
-      branches.forEach((branch) => {
-        this.branches.set(branch.id, branch)
-        Array.from(branch.cities).forEach(([id, city]) => {
-          this.cities.set(city.id, city)
-          const coordinates: GeoJSON.Position[] = []
+  async getBranches(): Promise<void> {
+    const branches = await this.masterDataRepository.getBranches()
+    this.branches.clear()
+    this.cities.clear()
 
-          if (city.polygon.length == 0) return
+    branches.forEach((branch) => {
+      this.branches.set(branch.id, branch)
+      branch.cities.forEach((city) => {
+        this.cities.set(city.id, city)
+        const coordinates: GeoJSON.Position[] = []
 
-          Array.from(city.polygon.values()).forEach((latLng: LatLng) => {
-            coordinates.push([latLng.lng, latLng.lat])
-          })
+        if (city.polygon.length == 0) return
 
-          // this.polygons.push(polygon([coordinates], { name: city.id }))
+        Array.from(city.polygon.values()).forEach((latLng: LatLng) => {
+          coordinates.push([latLng.lng, latLng.lat])
         })
       })
     })
@@ -215,7 +237,7 @@ export class Store {
   findCountryByCity(cityId: string): string {
     let country = ''
     this.branches.forEach((branch) => {
-      if (branch.cities.has(cityId)) {
+      if (branch.cities.some((city) => city.id === cityId)) {
         country = branch.id
       }
     })

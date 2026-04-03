@@ -29,6 +29,11 @@ import { Store } from './Services/store/Store'
 import { ChatBotMessage } from './Types/ChatBotMessage'
 import { MessagesEnum } from './Services/chatBot/MessagesEnum'
 import cors from 'cors'
+import MasterDataController from './Api/Controllers/MasterData/MasterDataController'
+import PublicMasterDataController from './Api/Controllers/MasterData/PublicMasterDataController'
+import UsersController from './Api/Controllers/Users/UsersController'
+import DriversController, { PublicDriversController } from './Api/Controllers/Drivers/DriversController'
+import type { CorsOptions } from 'cors'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -37,6 +42,7 @@ Locale.getInstance()
 
 const app: Application = express()
 let wpServices: WhatsAppClientDictionary = {}
+const localOriginPattern = /^http?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
 
 Sentry.init({
   dsn: config.SENTRY_DSN,
@@ -48,13 +54,25 @@ Sentry.init({
   tracesSampleRate: 0.8,
 })
 
-app.use(
-  cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+if (config.NODE_ENV !== 'production') {
+  const localCorsOptions: CorsOptions = {
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true)
+        return
+      }
+
+      callback(null, localOriginPattern.test(origin))
+    },
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Accept', 'Authorization', 'Content-Type', 'baggage', 'sentry-trace'],
     credentials: true,
-  })
-)
+    optionsSuccessStatus: 204,
+  }
+
+  app.use(cors(localCorsOptions))
+  app.options('*', cors(localCorsOptions))
+}
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())
@@ -73,6 +91,11 @@ app.use(polygonController)
 app.use(NotificationController)
 app.use('/places', PlaceController)
 app.use('/clients', ClientController)
+app.use('/master-data', MasterDataController)
+app.use('/public/master-data', PublicMasterDataController)
+app.use('/users', UsersController)
+app.use('/drivers', DriversController)
+app.use('/public/drivers', PublicDriversController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)
@@ -90,8 +113,12 @@ server.listen(config.PORT, async () => {
     process.exit(1)
   })
 
-  store.getBranches()
+  await store.refreshDrivers()
+  await store.refreshMessages()
+  await store.getBranches()
   store.getWpClients((clients: ClientDictionary) => {
+    const activeClientIds = new Set(Object.keys(clients))
+
     Object.values(clients).forEach((client: WpClient) => {
       if (!wpServices[client.id]) {
         const wpService = new WhatsAppClient(client)
@@ -102,6 +129,19 @@ server.listen(config.PORT, async () => {
       } else {
         wpServices[client.id].setWpClient(client)
       }
+    })
+
+    Object.keys(wpServices).forEach(async (clientId) => {
+      if (activeClientIds.has(clientId)) return
+
+      try {
+        wpServices[clientId].deleting = true
+        await wpServices[clientId].logout()
+      } catch (error) {
+        console.error(`Error shutting down WhatsApp client ${clientId}:`, error)
+      }
+
+      delete wpServices[clientId]
     })
   })
   const removeDrivers = new RemoveConnectedDrivers()

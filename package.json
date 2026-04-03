@@ -9,7 +9,14 @@
     "watch": "nodemon src/app.ts --ignore 'storage/'",
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
-    "format:all": "prettier --write \"./**/*.{ts,js,json}\" --ignore-path .gitignore"
+    "format:all": "prettier --write \"./**/*.{ts,js,json}\" --ignore-path .gitignore",
+    "backfill:phase1:users": "ts-node src/Migration/phase1MasterDataBackfill.ts users",
+    "backfill:phase1:drivers": "ts-node src/Migration/phase1MasterDataBackfill.ts drivers",
+    "backfill:phase1:wp-clients": "ts-node src/Migration/phase1MasterDataBackfill.ts wp_clients",
+    "backfill:phase1:ride-fees": "ts-node src/Migration/phase1MasterDataBackfill.ts ride_fees",
+    "backfill:phase1:chatbot-messages": "ts-node src/Migration/phase1MasterDataBackfill.ts chatbot_messages",
+    "backfill:phase1:branches": "ts-node src/Migration/phase1MasterDataBackfill.ts branches",
+    "backfill:phase1:all": "ts-node src/Migration/phase1MasterDataBackfill.ts all"
   },
   "keywords": [
     "chat",

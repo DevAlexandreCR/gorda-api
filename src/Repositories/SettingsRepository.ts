@@ -1,123 +1,85 @@
-import Database from '../Services/firebase/Database'
+import Container from '../Container/Container'
 import { ClientDictionary } from '../Interfaces/ClientDiccionary'
 import { WpClient } from '../Interfaces/WpClient'
 import { ChatBotMessage } from '../Types/ChatBotMessage'
-import Firestore from '../Services/firebase/Firestore'
 import { MessagesEnum } from '../Services/chatBot/MessagesEnum'
 import { Branch } from '../Interfaces/Branch'
 import { LatLng } from '../Interfaces/LatLng'
-import { City } from '../Interfaces/City'
 import { RideFeeInterface } from '../Types/RideFeeInterface'
-import { DataSnapshot } from 'firebase-admin/database'
-import { Interactive } from '../Services/whatsapp/services/Official/Constants/Interactive'
 
 class SettingsRepository {
-  /* istanbul ignore next */
   async enableWpNotifications(clientId: string, enable: boolean): Promise<void> {
-    await Database.dbWpClients().child(clientId).child('wpNotifications').set(enable)
+    await Container.getMasterDataRepository().updateWpClient(clientId, {
+      wpNotifications: enable,
+    })
   }
 
-  /* istanbul ignore next */
   getWpClients(listener: (clients: ClientDictionary) => void): void {
-    Database.dbWpClients().on('value', (snapshot) => {
+    Container.getMasterDataRepository()
+      .listWpClients()
+      .then((wpClients) => {
       const clients: ClientDictionary = {}
-      snapshot.forEach((data) => {
-        if (data.key) clients[data.key] = <WpClient>data.val()
-      })
-      listener(clients)
-    })
-  }
-
-  /* istanbul ignore next */
-  getChatBotMessages(listener: (messages: Map<MessagesEnum, ChatBotMessage>) => void): void {
-    Firestore.dbChatBotMessages().onSnapshot((snapshot) => {
-      const msgs = new Map<MessagesEnum, ChatBotMessage>()
-      snapshot.forEach((doc) => {
-        const data = doc.data()
-        const interactive = data.interactive as Interactive | null
-
-        const chatBotMessage: ChatBotMessage = {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          message: data.message,
-          enabled: data.enabled,
-          interactive: interactive,
-        }
-        const messageEnumValue: MessagesEnum | undefined = Object.values(MessagesEnum).find(
-          (value) => value === doc.id
-        )
-        if (messageEnumValue) {
-          msgs.set(messageEnumValue, chatBotMessage)
-        } else {
-          console.warn(`Unknown enum value: ${doc.id}`)
-        }
-      })
-      listener(msgs)
-    })
-  }
-
-  /* istanbul ignore next */
-  getBranches(listener: (branches: Map<string, Branch>) => void): void {
-    Database.dbBranches().on('value', (snapshot) => {
-      const branches: Map<string, Branch> = new Map()
-      snapshot.forEach((data) => {
-        const branchData = data.val()
-        const branch: Branch = {
-          id: branchData.id,
-          calling_code: branchData.calling_code,
-          currency_code: branchData.currency_code,
-          country: branchData.country,
-          cities: new Map(),
-        }
-        if (!branchData.cities) return
-        Object.entries<City>(branchData.cities).forEach(([id, city]) => {
-          if (!city.polygon) {
-            city.polygon = []
-          }
-          branch.cities.set(id, city)
+        wpClients.forEach((client: WpClient) => {
+          clients[client.id] = client
         })
-        branches.set(branchData.id, branch)
+        listener(clients)
       })
-      listener(branches)
-    })
+      .catch((error) => {
+        console.error('Error loading wp clients from SQL:', error)
+        listener({})
+      })
+  }
+
+  getChatBotMessages(listener: (messages: Map<MessagesEnum, ChatBotMessage>) => void): void {
+    Container.getMasterDataRepository()
+      .getChatBotMessagesMap()
+      .then((messages) => {
+        listener(messages)
+      })
+      .catch((error) => {
+        console.error('Error loading chatbot messages from SQL:', error)
+        listener(new Map())
+      })
+  }
+
+  getBranches(listener: (branches: Branch[]) => void): void {
+    Container.getMasterDataRepository()
+      .getBranches()
+      .then((branches) => {
+        listener(branches)
+      })
+      .catch((error) => {
+        console.error('Error loading branches from SQL:', error)
+        listener([])
+      })
   }
 
   async getFees(): Promise<RideFeeInterface> {
-    const snapshot: DataSnapshot = await Database.dbRideFees().once('value')
-    return <RideFeeInterface>snapshot.val()
+    return Container.getMasterDataRepository().buildPricingSnapshot()
   }
 
   async setMinFee(fee: number): Promise<void> {
-    return Database.dbRideFees()
-      .child('fees_minimum')
-      .set(fee)
-      .catch((error) => {
-        console.error('Error setting min fee', error)
-      })
+    const rideFees = await Container.getMasterDataRepository().getRideFees()
+    await Container.getMasterDataRepository().updateRideFees({
+      ...rideFees,
+      fees_minimum: fee,
+    })
   }
 
   async setMultiplier(fee: number): Promise<void> {
-    return Database.dbRideFees()
-      .child('fee_multiplier')
-      .set(fee)
-      .catch((error) => {
-        console.error('Error setting multiplier fee', error)
-      })
+    const rideFees = await Container.getMasterDataRepository().getRideFees()
+    await Container.getMasterDataRepository().updateRideFees({
+      ...rideFees,
+      fee_multiplier: fee,
+    })
   }
 
-  /* istanbul ignore next */
   async setCoordinates(
     branchId: string,
     cityId: string,
     coordinates: Array<LatLng>
   ): Promise<void> {
-    return Database.dbBranches()
-      .child(branchId)
-      .child('cities')
-      .child(cityId)
-      .child('polygon')
-      .set(coordinates)
+    await Container.getMasterDataRepository().updateCityPolygon(branchId, cityId, coordinates)
   }
 }
 export default new SettingsRepository()
