@@ -2,11 +2,15 @@ import dayjs from 'dayjs'
 import Container from '../Container/Container'
 import Database from '../Services/firebase/Database'
 import Firestore from '../Services/firebase/Firestore'
+import { Store } from '../Services/store/Store'
 import UserRecord from '../Models/UserRecord'
 import DriverRecord from '../Models/DriverRecord'
 import BranchModel from '../Models/Branch'
 import CityModel from '../Models/City'
 import ChatBotMessageRecord from '../Models/ChatBotMessageRecord'
+import WpClientRecord from '../Models/WpClientRecord'
+import RideFeeSettingRecord from '../Models/RideFeeSettingRecord'
+import RideFeeDynamicMultiplierRecord from '../Models/RideFeeDynamicMultiplierRecord'
 import { RideFeeInterface } from '../Types/RideFeeInterface'
 
 type Dataset =
@@ -17,6 +21,120 @@ type Dataset =
   | 'chatbot_messages'
   | 'branches'
   | 'all'
+
+async function logValidationOutputs(): Promise<void> {
+  const masterDataRepository = Container.getMasterDataRepository()
+  const rowCounts = {
+    users: await UserRecord.count(),
+    drivers: await DriverRecord.count(),
+    wp_clients: await WpClientRecord.count(),
+    ride_fee_settings: await RideFeeSettingRecord.count(),
+    ride_fee_dynamic_multipliers: await RideFeeDynamicMultiplierRecord.count(),
+    chatbot_messages: await ChatBotMessageRecord.count(),
+    branches: await BranchModel.count(),
+    cities: await CityModel.count(),
+  }
+
+  console.log('Phase 1 row counts:', JSON.stringify(rowCounts, null, 2))
+
+  const user = await UserRecord.findOne({ order: [['created_at', 'ASC']] })
+  const driver = await DriverRecord.findOne({ order: [['created_at', 'ASC']] })
+  const client = await WpClientRecord.findOne({ order: [['id', 'ASC']] })
+  const message = await ChatBotMessageRecord.findOne({ order: [['id', 'ASC']] })
+  const branches = await masterDataRepository.getBranches()
+  const rideFees = await masterDataRepository.getRideFees()
+  const rideFeesSnapshot = await masterDataRepository.buildPricingSnapshot()
+  const firstBranch = branches[0]
+  const firstCity = firstBranch?.cities[0]
+
+  console.log(
+    'Phase 1 spot checks:',
+    JSON.stringify(
+      {
+        user: user
+          ? {
+              id: user.get('id'),
+              email: user.get('email'),
+              enabled_at: user.get('enabled_at'),
+            }
+          : null,
+        driver: driver
+          ? {
+              id: driver.get('id'),
+              email: driver.get('email'),
+              paymentMode: driver.get('paymentMode'),
+              balance: driver.get('balance'),
+              enabled_at: driver.get('enabled_at'),
+            }
+          : null,
+        wp_client: client
+          ? {
+              id: client.get('id'),
+              alias: client.get('alias'),
+              wpNotifications: client.get('wpNotifications'),
+              service: client.get('service'),
+            }
+          : null,
+        ride_fees: {
+          price_kilometer: rideFees.price_kilometer,
+          fees_base: rideFees.fees_base,
+          fees_min_day: rideFees.fees_min_day,
+          dynamic_multipliers: rideFees.dynamic_multipliers.length,
+        },
+        ride_fees_snapshot: {
+          fees_minimum: rideFeesSnapshot.fees_minimum,
+          fee_multiplier: rideFeesSnapshot.fee_multiplier,
+        },
+        chatbot_message: message
+          ? {
+              id: message.get('id'),
+              enabled: message.get('enabled'),
+            }
+          : null,
+        branch: firstBranch
+          ? {
+              id: firstBranch.id,
+              country: firstBranch.country,
+              currency_code: firstBranch.currency_code,
+            }
+          : null,
+        city: firstCity
+          ? {
+              id: firstCity.id,
+              branchId: firstCity.branchId,
+              percentage: firstCity.percentage,
+              location: firstCity.location,
+              polygon_points: firstCity.polygon.length,
+            }
+          : null,
+      },
+      null,
+      2
+    )
+  )
+}
+
+async function logCacheValidationOutputs(): Promise<void> {
+  const store = Store.getInstance()
+
+  await store.refreshMessages()
+  await store.refreshWpClients()
+  await store.getBranches()
+
+  console.log(
+    'Phase 1 SQL cache validation:',
+    JSON.stringify(
+      {
+        chatbot_messages: store.messages.size,
+        wp_clients: Object.keys(store.wpClients).length,
+        branches: store.branches.size,
+        cities: store.cities.size,
+      },
+      null,
+      2
+    )
+  )
+}
 
 async function backfillUsers(): Promise<void> {
   const snapshot = await Database.db.ref('users').once('value')
@@ -233,6 +351,8 @@ async function main(): Promise<void> {
       throw new Error(`Unsupported dataset: ${dataset}`)
   }
 
+  await logValidationOutputs()
+  await logCacheValidationOutputs()
   console.log(`Phase 1 backfill completed at ${dayjs().toISOString()}`)
   await Container.cleanup()
 }

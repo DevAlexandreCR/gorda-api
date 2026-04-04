@@ -66,6 +66,9 @@ class DriverRecordRepository {
     if (!driver) return null
 
     driver.balance = balance
+    if (balance <= 0) {
+      driver.enabled_at = 0
+    }
     await driver.save()
     return this.mapDriver(driver)
   }
