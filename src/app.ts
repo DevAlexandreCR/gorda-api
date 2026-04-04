@@ -32,7 +32,10 @@ import cors from 'cors'
 import MasterDataController from './Api/Controllers/MasterData/MasterDataController'
 import PublicMasterDataController from './Api/Controllers/MasterData/PublicMasterDataController'
 import UsersController from './Api/Controllers/Users/UsersController'
-import DriversController, { PublicDriversController } from './Api/Controllers/Drivers/DriversController'
+import DriversController, {
+  PublicDriversController,
+} from './Api/Controllers/Drivers/DriversController'
+import DriverAppController from './Api/Controllers/Drivers/DriverAppController'
 import type { CorsOptions } from 'cors'
 
 dayjs.extend(utc)
@@ -96,6 +99,7 @@ app.use('/public/master-data', PublicMasterDataController)
 app.use('/users', UsersController)
 app.use('/drivers', DriversController)
 app.use('/public/drivers', PublicDriversController)
+app.use('/driver-app', DriverAppController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)

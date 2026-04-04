@@ -5,6 +5,8 @@ import ClientRepository from '../Repositories/ClientRepository'
 import MasterDataRepository from '../Repositories/MasterDataRepository'
 import UserRecordRepository from '../Repositories/UserRecordRepository'
 import DriverRecordRepository from '../Repositories/DriverRecordRepository'
+import DriverTokenRecordRepository from '../Repositories/DriverTokenRecordRepository'
+import ServiceHistoryRepository from '../Repositories/ServiceHistoryRepository'
 
 class Container {
   private static sequelizeInstance: typeof sequelize
@@ -14,6 +16,8 @@ class Container {
   private static masterDataRepository: MasterDataRepository
   private static userRecordRepository: UserRecordRepository
   private static driverRecordRepository: DriverRecordRepository
+  private static driverTokenRecordRepository: DriverTokenRecordRepository
+  private static serviceHistoryRepository: ServiceHistoryRepository
 
   /**
    * Get or create Sequelize instance
@@ -74,6 +78,20 @@ class Container {
       this.driverRecordRepository = new DriverRecordRepository()
     }
     return this.driverRecordRepository
+  }
+
+  static getDriverTokenRecordRepository(): DriverTokenRecordRepository {
+    if (!this.driverTokenRecordRepository) {
+      this.driverTokenRecordRepository = new DriverTokenRecordRepository()
+    }
+    return this.driverTokenRecordRepository
+  }
+
+  static getServiceHistoryRepository(): ServiceHistoryRepository {
+    if (!this.serviceHistoryRepository) {
+      this.serviceHistoryRepository = new ServiceHistoryRepository()
+    }
+    return this.serviceHistoryRepository
   }
 
   /**

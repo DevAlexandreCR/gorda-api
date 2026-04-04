@@ -6,7 +6,7 @@ export interface ServiceInterface {
   id: string | null
   status: string
   start_loc: PlaceInterface
-  end_loc: PlaceInterface
+  end_loc: PlaceInterface | null
   phone: string
   name: string
   comment: string | null
@@ -14,5 +14,6 @@ export interface ServiceInterface {
   metadata: Metadata
   driver_id: string | null
   client_id: string
+  wp_client_id?: string | null
   created_at: number
 }

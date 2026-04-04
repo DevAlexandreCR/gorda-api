@@ -16,7 +16,8 @@
     "backfill:phase1:ride-fees": "ts-node src/Migration/phase1MasterDataBackfill.ts ride_fees",
     "backfill:phase1:chatbot-messages": "ts-node src/Migration/phase1MasterDataBackfill.ts chatbot_messages",
     "backfill:phase1:branches": "ts-node src/Migration/phase1MasterDataBackfill.ts branches",
-    "backfill:phase1:all": "ts-node src/Migration/phase1MasterDataBackfill.ts all"
+    "backfill:phase1:all": "ts-node src/Migration/phase1MasterDataBackfill.ts all",
+    "backfill:phase3:driver-tokens": "ts-node src/Migration/phase3DriverTokensBackfill.ts"
   },
   "keywords": [
     "chat",

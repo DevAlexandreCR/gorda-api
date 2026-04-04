@@ -1,5 +1,9 @@
 export type Metadata = {
-  arrived_at: number
-  start_trip_at: number
-  end_trip_at: number
+  arrived_at?: number | null
+  start_trip_at?: number | null
+  end_trip_at?: number | null
+  route?: string | null
+  trip_fee?: number | null
+  trip_distance?: number | null
+  trip_multiplier?: number | null
 }

@@ -14,6 +14,13 @@ export default class Admin {
   public fcm: Messaging
 
   constructor() {
+    if (config.NODE_ENV !== 'production' && config.AUTHENTICATION_EMULATOR_HOST) {
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = String(config.AUTHENTICATION_EMULATOR_HOST).replace(
+        /^https?:\/\//,
+        ''
+      )
+    }
+
     this.app = initializeApp({
       credential: cert(config.GOOGLE_APPLICATION_CREDENTIALS),
       projectId: config.FIREBASE_PROJECT_ID,

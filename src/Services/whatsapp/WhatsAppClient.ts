@@ -121,14 +121,15 @@ export class WhatsAppClient {
     }
 
     if (this.wpClient.full) {
-      await this.sendMessage(msg.from, Messages.getSingleMessage(MessagesEnum.FULL_CLIENT)).catch((e =>
-        console.log(
-          'sendMessage FULL_CLIENT Error',
-          this.wpClient.alias,
-          msg.from,
-          JSON.stringify(e)
-        )
-      ))
+      await this.sendMessage(msg.from, Messages.getSingleMessage(MessagesEnum.FULL_CLIENT)).catch(
+        (e) =>
+          console.log(
+            'sendMessage FULL_CLIENT Error',
+            this.wpClient.alias,
+            msg.from,
+            JSON.stringify(e)
+          )
+      )
     } else if (this.isProcessableMsg(msg)) {
       await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
     }
@@ -403,14 +404,16 @@ export class WhatsAppClient {
 
   cancelTimeout = (serviceId: string, clientId: string): void => {
     setTimeout(async () => {
-      await ServiceRepository.findServiceStatusById(serviceId).then(async (status) => {
-        if (status === Service.STATUS_PENDING) {
-          const msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL)
-          if (msg.enabled) {
-            await this.sendMessage(clientId, msg)
+      await ServiceRepository.findServiceStatusById(serviceId)
+        .then(async (status) => {
+          if (status === Service.STATUS_PENDING) {
+            const msg = Messages.getSingleMessage(MessagesEnum.ASK_FOR_CANCEL)
+            if (msg.enabled) {
+              await this.sendMessage(clientId, msg)
+            }
           }
-        }
-      }).catch((e) => console.log('cancelTimeout Error', this.wpClient.alias, e.message))
+        })
+        .catch((e) => console.log('cancelTimeout Error', this.wpClient.alias, e.message))
     }, config.CANCEL_TIMEOUT as number)
   }
 
@@ -464,7 +467,7 @@ export class WhatsAppClient {
             message = msg
             mustSend = msg.enabled && !this.wpClient.wpNotifications
           }
-        } else if (service.metadata.arrived_at > 0 && !service.metadata.start_trip_at) {
+        } else if ((service.metadata?.arrived_at ?? 0) > 0 && !service.metadata?.start_trip_at) {
           if (!session.notifications.arrived) {
             await session.setNotification(NotificationType.arrived)
             msg = Messages.getSingleMessage(MessagesEnum.DRIVER_ARRIVED)

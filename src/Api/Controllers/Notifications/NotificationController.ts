@@ -1,9 +1,8 @@
 import { Request, Response, Router } from 'express'
 import { Store } from '../../../Services/store/Store'
-import DriverRepository from '../../../Repositories/DriverRepository'
 import FCM from '../../../Services/firebase/FCM'
 import { FCMNotification } from '../../../Types/FCMNotifications'
-import { title } from 'process'
+import Container from '../../../Container/Container'
 
 const controller = Router()
 const store = Store.getInstance()
@@ -68,11 +67,11 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
     }
     const { id, name } = driver
 
-    const token = await DriverRepository.getToken(id!!)
-    if (!token) {
+    const driverToken = await Container.getDriverTokenRecordRepository().findByDriverId(id!!)
+    if (!driverToken) {
       return res.status(404).json({ error: 'Driver token not found' })
     }
-    await FCM.sendNotificationTo(token, {
+    await FCM.sendNotificationTo(driverToken.token, {
       title: message.title || 'New Message',
       body: message.body || 'You have a new message',
       data: {
