@@ -10,10 +10,11 @@ export interface SessionInterface {
   status: string
   placeOptions?: Array<PlaceOption>
   place: PlaceInterface | null
-  chat: WpChatInterface
+  chat?: WpChatInterface
   wp_client_id: string
   chat_id: string
   service_id: string | null
+  assigned_at?: number
   created_at: number
   updated_at: number | null
   notifications: WpNotifications

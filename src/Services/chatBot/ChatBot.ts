@@ -4,6 +4,8 @@ import { SessionInterface } from '../../Interfaces/SessionInterface'
 import { Agreement } from './MessageStrategy/Responses/Agreement'
 import { WPClientInterface } from '../whatsapp/interfaces/WPClientInterface'
 import { WpMessageInterface } from '../whatsapp/interfaces/WpMessageInterface'
+import ChatIdHelper from '../../Helpers/ChatIdHelper'
+import { WpClients } from '../whatsapp/constants/WPClients'
 
 export default class ChatBot {
   private readonly wpClient: WPClientInterface
@@ -16,11 +18,16 @@ export default class ChatBot {
   }
 
   private async syncSessions(): Promise<void> {
-    await SessionRepository.getActiveSessions().then(async (sessions) => {
+    await SessionRepository.getActiveSessions(this.wpClientId).then(async (sessions) => {
       sessions.forEach((sessionData) => {
         const session = new Session(sessionData.chat_id)
         Object.assign(session, sessionData)
-        this.wpClient.getChatById(session.chat_id).then((chat) => {
+        const providerChatId = ChatIdHelper.toProviderChatId(
+          session.chat_id,
+          this.wpClient.serviceName as WpClients
+        )
+
+        this.wpClient.getChatById(providerChatId).then((chat) => {
           session.setChat(chat)
           session.syncMessages(true).then(() => {
             this.sessions.set(session.id, session)
@@ -35,7 +42,11 @@ export default class ChatBot {
       SessionRepository.sessionActiveListener(this.wpClientId, async (type, session) => {
         switch (type) {
           case 'added':
-            const chat = await this.wpClient.getChatById(session.chat_id)
+            const providerChatId = ChatIdHelper.toProviderChatId(
+              session.chat_id,
+              this.wpClient.serviceName as WpClients
+            )
+            const chat = await this.wpClient.getChatById(providerChatId)
             session.setChat(chat)
             session.setWpClientId(this.wpClientId)
             this.sessions.set(session.id, session)
@@ -73,10 +84,11 @@ export default class ChatBot {
   }
 
   private async findOrCreateSession(chatId: string, message: WpMessageInterface): Promise<Session> {
-    let session = this.findSessionByChatId(chatId)
+    const normalizedChatId = ChatIdHelper.normalize(chatId)
+    let session = this.findSessionByChatId(normalizedChatId)
 
     if (!session) {
-      const newSession = new Session(chatId)
+      const newSession = new Session(normalizedChatId)
       newSession.setWpClientId(this.wpClientId)
       // if (this.isAgreement(message.body)) {
       //   newSession.status = Session.STATUS_AGREEMENT // TODO: Handle agreement status
@@ -103,9 +115,11 @@ export default class ChatBot {
   }
 
   findSessionByChatId(chatId: string): Session | null {
+    const normalizedChatId = ChatIdHelper.normalize(chatId)
+
     for (const [_, session] of this.sessions.entries()) {
       if (
-        session.chat_id === chatId &&
+        session.chat_id === normalizedChatId &&
         this.isSessionActive(session) &&
         session.wp_client_id === this.wpClientId
       ) {

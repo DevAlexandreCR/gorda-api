@@ -1,78 +1,131 @@
+import { randomUUID } from 'crypto'
+import { Op } from 'sequelize'
 import Database from '../Services/firebase/Database'
 import { SessionInterface } from '../Interfaces/SessionInterface'
 import Session from '../Models/Session'
 import { WpMessage } from '../Types/WpMessage'
-import Firestore from '../Services/firebase/Firestore'
 import { WpNotifications } from '../Types/WpNotifications'
 import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
 import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
+import ChatSessionRecord from '../Models/ChatSessionRecord'
+import WhatsappMessageRecord from '../Models/WhatsappMessageRecord'
+import ChatIdHelper from '../Helpers/ChatIdHelper'
+import ChatRealtimeGateway from '../Services/whatsapp/ChatRealtimeGateway'
+import ChatRepository from './ChatRepository'
 
 class SessionRepository {
   public async findSessionByChatId(chatId: string): Promise<SessionInterface | null> {
-    let val: SessionInterface | null = null
-    const snapshot = await Firestore.dbSessions()
-      .where('chat_id', '==', chatId)
-      .where('status', 'not-in', [Session.STATUS_COMPLETED])
-      .orderBy('status')
-      .orderBy('chat_id')
-      .limit(1)
-      .get()
-    snapshot.forEach((snapshot) => {
-      val = <SessionInterface>snapshot.data()
+    const normalizedChatId = ChatIdHelper.normalize(chatId)
+    const sessionRecord = await ChatSessionRecord.findOne({
+      where: {
+        chatId: normalizedChatId,
+        status: {
+          [Op.notIn]: [Session.STATUS_COMPLETED],
+        },
+      },
+      order: [['created_at', 'DESC']],
     })
-    return val
+
+    return sessionRecord ? this.mapSession(sessionRecord) : null
+  }
+
+  public async findSessionById(sessionId: string): Promise<SessionInterface | null> {
+    const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
+    return sessionRecord ? this.mapSession(sessionRecord) : null
   }
 
   public async updateId(session: SessionInterface): Promise<SessionInterface> {
-    await Firestore.dbSessions().doc(session.id).set({
-      id: session.id,
-    })
+    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+    if (!sessionRecord) {
+      return session
+    }
+
+    sessionRecord.assigned_at = session.assigned_at ?? sessionRecord.assigned_at
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+    await this.emitSessionUpdate(this.mapSession(sessionRecord))
+
     return session
   }
 
   public async getMessages(sessionId: string): Promise<Map<string, WpMessage>> {
     const messages: Map<string, WpMessage> = new Map()
-    await Firestore.dbSessions()
-      .doc(sessionId)
-      .collection('messages')
-      .orderBy('created_at')
-      .get()
-      .then((data) => {
-        data.forEach((snapshot) => {
-          messages.set(snapshot.id, <WpMessage>snapshot.data())
-        })
+    const records = await WhatsappMessageRecord.findAll({
+      where: { chatSessionId: sessionId },
+      order: [['created_at', 'ASC'], ['id', 'ASC']],
+    })
+
+    records.forEach((record) => {
+      messages.set(record.messageId, {
+        created_at: Number(record.created_at),
+        id: record.messageId,
+        type: record.type,
+        msg: record.body,
+        processed: Boolean(record.processed),
+        location: record.location ?? null,
+        interactiveReply: record.interactiveReply ?? null,
+        interactive: record.interactive ?? null,
       })
+    })
 
     return messages
   }
 
   public async updateStatus(session: SessionInterface): Promise<SessionInterface> {
-    await Firestore.dbSessions().doc(session.id).update({
-      status: session.status,
-    })
+    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+    if (!sessionRecord) {
+      return session
+    }
+
+    sessionRecord.status = session.status
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+
+    const mappedSession = this.mapSession(sessionRecord)
+    await this.emitSessionUpdate(mappedSession)
+
     return session
   }
 
   public async updateService(session: SessionInterface): Promise<SessionInterface> {
-    await Firestore.dbSessions().doc(session.id).update({
-      service_id: session.service_id,
-    })
+    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+    if (!sessionRecord) {
+      return session
+    }
+
+    sessionRecord.service_id = session.service_id
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+    await this.emitSessionUpdate(this.mapSession(sessionRecord))
+
     return session
   }
 
   public async updatePlace(session: SessionInterface): Promise<SessionInterface> {
-    await Firestore.dbSessions()
-      .doc(session.id)
-      .update({
-        place: { ...session.place },
-      })
+    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+    if (!sessionRecord) {
+      return session
+    }
+
+    sessionRecord.place = session.place ? { ...session.place } : null
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+    await this.emitSessionUpdate(this.mapSession(sessionRecord))
+
     return session
   }
 
   public async updatePlaceOptions(session: SessionInterface): Promise<SessionInterface> {
-    await Firestore.dbSessions().doc(session.id).update({
-      placeOptions: session.placeOptions,
-    })
+    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+    if (!sessionRecord) {
+      return session
+    }
+
+    sessionRecord.placeOptions = session.placeOptions ?? []
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+    await this.emitSessionUpdate(this.mapSession(sessionRecord))
+
     return session
   }
 
@@ -80,58 +133,85 @@ class SessionRepository {
     sessionId: string,
     notifications: WpNotifications
   ): Promise<void> {
-    await Firestore.dbSessions().doc(sessionId).update({
-      notifications: notifications,
-    })
+    const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
+    if (!sessionRecord) {
+      return
+    }
+
+    sessionRecord.notifications = notifications
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+    await this.emitSessionUpdate(this.mapSession(sessionRecord))
   }
 
   public async create(session: SessionInterface): Promise<SessionInterface> {
-    const res = Firestore.dbSessions().doc()
-    session.id = res.id
-    const sessionData = { ...session }
-    delete sessionData.messages
-    await res.create({ ...sessionData }).catch((e) => console.log(e))
+    const record = await ChatSessionRecord.create({
+      id: session.id || randomUUID(),
+      wpClientId: session.wp_client_id,
+      chatId: ChatIdHelper.normalize(session.chat_id),
+      status: session.status,
+      service_id: session.service_id,
+      place: session.place ? { ...session.place } : null,
+      placeOptions: session.placeOptions ?? [],
+      notifications: session.notifications,
+      assigned_at: session.assigned_at ?? 0,
+      created_at: session.created_at,
+      updated_at: session.updated_at ?? null,
+    })
 
-    return session
+    const mappedSession = this.mapSession(record)
+    ChatRealtimeGateway.emitSessionEvent('added', mappedSession)
+    await ChatRepository.emitAdminChat(mappedSession.wp_client_id, mappedSession.chat_id)
+
+    return mappedSession
   }
 
-  public async getActiveSessions(): Promise<Array<SessionInterface>> {
-    const res = await Firestore.dbSessions()
-      .orderBy('status')
-      .where('status', 'not-in', [Session.STATUS_COMPLETED])
-      .get()
-    const sessions = Array<SessionInterface>()
-    res.docs.forEach((snapshot) => {
-      const session = <SessionInterface>snapshot.data()
-      sessions.push(session)
+  public async getActiveSessions(wpClientId?: string): Promise<Array<SessionInterface>> {
+    const where = {
+      ...(wpClientId ? { wpClientId } : {}),
+      status: {
+        [Op.notIn]: [Session.STATUS_COMPLETED],
+      },
+    }
+
+    const records = await ChatSessionRecord.findAll({
+      where,
+      order: [['created_at', 'DESC']],
     })
-    return sessions
+
+    return records.map((record) => this.mapSession(record))
   }
 
   public sessionActiveListener(
     wpClientId: string,
     listener: (type: string, session: Session) => void
   ): void {
-    Firestore.dbSessions()
-      .where('status', 'not-in', [Session.STATUS_COMPLETED])
-      .where('wp_client_id', '==', wpClientId)
-      .onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const sessionInterface = <SessionInterface>change.doc.data()
-          const session = new Session(sessionInterface.chat_id)
-          Object.assign(session, sessionInterface)
-          listener(change.type, session)
-        })
-      })
+    ChatRealtimeGateway.onSessionEvent((type, sessionData) => {
+      if (sessionData.wp_client_id !== wpClientId) {
+        return
+      }
+
+      const session = new Session(sessionData.chat_id)
+      Object.assign(session, sessionData)
+      listener(type, session)
+    })
   }
 
   public async closeAbandoned(sessions: Array<SessionInterface>): Promise<void> {
-    const batch = Firestore.fs.batch()
-    sessions.forEach((session) => {
-      const sessionRef = Firestore.dbSessions().doc(session.id)
-      batch.update(sessionRef, { status: Session.STATUS_COMPLETED })
-    })
-    await batch.commit()
+    for (const session of sessions) {
+      const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+      if (!sessionRecord) {
+        continue
+      }
+
+      sessionRecord.status = Session.STATUS_COMPLETED
+      sessionRecord.updated_at = Date.now()
+      await sessionRecord.save()
+
+      const mappedSession = this.mapSession(sessionRecord)
+      ChatRealtimeGateway.emitSessionEvent('removed', mappedSession)
+      await ChatRepository.emitAdminChat(mappedSession.wp_client_id, mappedSession.chat_id)
+    }
   }
 
   public async addChat(msg: WpMessageInterface): Promise<void> {
@@ -141,34 +221,111 @@ class SessionRepository {
   }
 
   public async addMsg(sessionId: string, msg: WpMessage): Promise<{ created: boolean; id: string }> {
-    const ref = Firestore.dbSessions().doc(sessionId).collection('messages').doc(msg.id)
-    return ref
-      .create({ ...msg })
-      .then(() => Promise.resolve({ created: true, id: ref.id }))
-      .catch((error: any) => {
-        const code = String(error?.code ?? '')
-        const message = String(error?.message ?? '')
-        const alreadyExists =
-          code === '6' ||
-          code === 'already-exists' ||
-          message.toLowerCase().includes('already exists')
+    const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
+    if (!sessionRecord) {
+      throw new Error(`Session ${sessionId} not found`)
+    }
 
-        if (alreadyExists) {
-          return Promise.resolve({ created: false, id: ref.id })
-        }
+    const [messageRecord, created] = await WhatsappMessageRecord.findOrCreate({
+      where: {
+        wpClientId: sessionRecord.wpClientId,
+        messageId: msg.id,
+      },
+      defaults: {
+        wpClientId: sessionRecord.wpClientId,
+        chatId: sessionRecord.chatId,
+        chatSessionId: sessionId,
+        messageId: msg.id,
+        created_at: msg.created_at,
+        type: msg.type,
+        body: msg.msg,
+        fromMe: false,
+        processed: msg.processed,
+        location: msg.location,
+        interactive: msg.interactive,
+        interactiveReply: msg.interactiveReply,
+      },
+    })
 
-        return Promise.reject(error)
-      })
+    const shouldProcess = created || messageRecord.chatSessionId !== sessionId
+
+    messageRecord.chatId = sessionRecord.chatId
+    messageRecord.chatSessionId = sessionId
+    messageRecord.created_at = msg.created_at
+    messageRecord.type = msg.type
+    messageRecord.body = msg.msg
+    messageRecord.processed = msg.processed
+    messageRecord.location = msg.location
+    messageRecord.interactive = msg.interactive
+    messageRecord.interactiveReply = msg.interactiveReply
+    await messageRecord.save()
+
+    return {
+      created: shouldProcess,
+      id: messageRecord.messageId,
+    }
   }
 
   public async setProcessedMsgs(sessionId: string, msgs: WpMessage[]): Promise<void> {
-    const batch = Firestore.fs.batch()
-    msgs.forEach((msg) => {
-      const msgRef = Firestore.dbSessions().doc(sessionId).collection('messages').doc(msg.id)
+    const messageIds = msgs.map((msg) => msg.id)
+    if (messageIds.length === 0) {
+      return
+    }
 
-      batch.update(msgRef, { processed: true })
-    })
-    await batch.commit()
+    const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
+    if (!sessionRecord) {
+      return
+    }
+
+    await WhatsappMessageRecord.update(
+      { processed: true, chatSessionId: sessionId },
+      {
+        where: {
+          wpClientId: sessionRecord.wpClientId,
+          messageId: {
+            [Op.in]: messageIds,
+          },
+        },
+      }
+    )
+  }
+
+  public async claimSupport(sessionId: string): Promise<SessionInterface | null> {
+    const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
+    if (!sessionRecord) {
+      return null
+    }
+
+    sessionRecord.status = Session.STATUS_SUPPORT
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+
+    const mappedSession = this.mapSession(sessionRecord)
+    await this.emitSessionUpdate(mappedSession)
+
+    return mappedSession
+  }
+
+  private mapSession(record: ChatSessionRecord): SessionInterface {
+    return {
+      id: record.id,
+      status: record.status,
+      placeOptions: record.placeOptions ?? [],
+      place: record.place ?? null,
+      wp_client_id: record.wpClientId,
+      chat_id: record.chatId,
+      service_id: record.service_id,
+      notifications: record.notifications,
+      assigned_at: Number(record.assigned_at ?? 0),
+      created_at: Number(record.created_at),
+      updated_at: record.updated_at === null ? null : Number(record.updated_at),
+    }
+  }
+
+  private async emitSessionUpdate(session: SessionInterface): Promise<void> {
+    const eventType = session.status === Session.STATUS_COMPLETED ? 'removed' : 'modified'
+    ChatRealtimeGateway.emitSessionEvent(eventType, session)
+    await ChatRepository.emitAdminChat(session.wp_client_id, session.chat_id)
   }
 }
 

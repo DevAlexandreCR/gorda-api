@@ -19,6 +19,7 @@ import { WhatsAppClientDictionary } from './Interfaces/WhatsAppClientDiccionary'
 import { ClientDictionary } from './Interfaces/ClientDiccionary'
 import { requiredClientId } from './Middlewares/HasData'
 import controller from './Api/Controllers/Whatsapp/MessageController'
+import AdminChatController from './Api/Controllers/Whatsapp/AdminChatController'
 import polygonController from './Api/Controllers/Polygons/PolygonController'
 import NotificationController from './Api/Controllers/Notifications/NotificationController'
 import PlaceController from './Api/Controllers/Places/PlaceController'
@@ -37,6 +38,7 @@ import DriversController, {
 } from './Api/Controllers/Drivers/DriversController'
 import DriverAppController from './Api/Controllers/Drivers/DriverAppController'
 import type { CorsOptions } from 'cors'
+import ChatRealtimeGateway from './Services/whatsapp/ChatRealtimeGateway'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -90,6 +92,7 @@ app.use(express.static(__dirname, { dotfiles: 'allow' }))
 app.use(express.json())
 app.use(HomeController)
 app.use(controller)
+app.use('/whatsapp', AdminChatController)
 app.use(polygonController)
 app.use(NotificationController)
 app.use('/places', PlaceController)
@@ -109,6 +112,7 @@ const store = Store.getInstance()
 const io: SocketIOServer = new SocketIOServer()
 io.attach(server, { cors: { origin: true } })
 io.attach(serverSSL, { cors: { origin: true } })
+ChatRealtimeGateway.setSocketServer(io)
 server.listen(config.PORT, async () => {
   console.log('listen: ', config.PORT)
 
@@ -217,7 +221,7 @@ io.on('connection', async (socket: Socket) => {
         description: 'Mensaje enviado desde el panel de control',
         interactive: null,
       }
-      await wpServices[clientId].sendMessage(chatId, message)
+      await wpServices[wpClient].sendMessage(chatId, message)
     }
   })
 

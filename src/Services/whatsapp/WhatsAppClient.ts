@@ -27,10 +27,13 @@ import { WpClients } from './constants/WPClients'
 import { MessageTypes } from './constants/MessageTypes'
 import { spawn } from 'child_process'
 import MessageHelper from '../../Helpers/MessageHelper'
+import DateHelper from '../../Helpers/DateHelper'
 import InboundMessageMetrics from './monitoring/InboundMessageMetrics'
 import { InboundMessagePolicy } from './policies/InboundMessagePolicy'
 import InboundMessageDedupCache from './policies/InboundMessageDedupCache'
 import IgnoredInboundMessageAuditRepository from '../../Repositories/IgnoredInboundMessageAuditRepository'
+import ChatIdHelper from '../../Helpers/ChatIdHelper'
+import MessageRepository from '../../Repositories/MessageRepository'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -130,8 +133,43 @@ export class WhatsAppClient {
             JSON.stringify(e)
           )
       )
-    } else if (this.isProcessableMsg(msg)) {
-      await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
+    } else {
+      if (this.client.serviceName !== WpClients.OFFICIAL) {
+        const chat = await msg.getChat()
+        const contact = await chat.getContact().catch(() => null)
+        const normalizedChatId = ChatIdHelper.normalize(msg.from)
+        const profileName =
+          contact?.pushname ||
+          this.store.findClientById(normalizedChatId)?.name ||
+          `Chat ${normalizedChatId}`
+        const storedChat = await this.store.getChatById(this.wpClient.id, msg.from, profileName)
+
+        await MessageRepository.addMessage(
+          this.wpClient.id,
+          storedChat.id,
+          {
+            id: msg.id,
+            created_at: msg.timestamp,
+            type: msg.type,
+            body:
+              msg.type === MessageTypes.INTERACTIVE
+                ? msg.interactiveReply?.button_reply?.id ?? msg.body
+                : msg.body,
+            fromMe: false,
+            location: msg.location ?? null,
+            interactive: null,
+            interactiveReply: msg.interactiveReply,
+          },
+          {
+            clientName: profileName,
+            processed: false,
+          }
+        )
+      }
+
+      if (this.isProcessableMsg(msg)) {
+        await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
+      }
     }
   }
 
@@ -507,11 +545,14 @@ export class WhatsAppClient {
   }
 
   async sendMessage(chatId: string, message: ChatBotMessage): Promise<void> {
-    await this.client.sendMessage(chatId, message).catch((e) => {
+    const normalizedChatId = ChatIdHelper.normalize(chatId)
+    const providerChatId = ChatIdHelper.toProviderChatId(normalizedChatId, this.client.serviceName)
+
+    await this.client.sendMessage(providerChatId, message).catch((e) => {
       console.log(
         'sendMessage Error' + message.message.substring(0, 20),
         this.wpClient.alias,
-        chatId,
+        providerChatId,
         JSON.stringify(e)
       )
       Sentry.captureException(e)
@@ -521,8 +562,29 @@ export class WhatsAppClient {
       }
     })
 
+    if (this.client.serviceName !== WpClients.OFFICIAL) {
+      await MessageRepository.addMessage(
+        this.wpClient.id,
+        normalizedChatId,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          created_at: DateHelper.unix(),
+          type: MessageTypes.TEXT,
+          body: message.message,
+          fromMe: true,
+          location: undefined,
+          interactive: message.interactive ?? null,
+          interactiveReply: null,
+        },
+        {
+          clientName: this.store.findClientById(normalizedChatId)?.name ?? `Chat ${normalizedChatId}`,
+          processed: true,
+        }
+      )
+    }
+
     if (this.client.serviceName != WpClients.OFFICIAL) {
-      await this.client.getChatById(chatId).then(async (chat) => {
+      await this.client.getChatById(providerChatId).then(async (chat) => {
         setTimeout(async () => {
           await chat.archive().catch((e) => console.log(e.message))
         }, config.ARCHIVE_CHAT_TIMEOUT as number)

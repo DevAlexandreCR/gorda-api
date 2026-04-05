@@ -16,6 +16,7 @@ import { LatLng } from '../../Interfaces/LatLng'
 import { Feature, Polygon, Position } from 'geojson'
 import { PlaceInterface } from '../../Interfaces/PlaceInterface'
 import { WpClient } from '../../Interfaces/WpClient'
+import ChatIdHelper from '../../Helpers/ChatIdHelper'
 
 export class Store {
   static instance: Store
@@ -124,13 +125,14 @@ export class Store {
     chatId: string,
     profileName: string = 'Usuario'
   ): Promise<Chat> {
-    const chat = this.wpChats.get(chatId.replace('@c.us', ''))
+    const normalizedChatId = ChatIdHelper.normalize(chatId)
+    const chat = this.wpChats.get(normalizedChatId)
 
     if (chat) {
       return chat
     } else {
-      return await ChatRepository.addChat(wpClientId, {
-        id: chatId.replace('@c.us', ''),
+      const createdChat = await ChatRepository.addChat(wpClientId, {
+        id: normalizedChatId,
         created_at: DateHelper.unix(),
         updated_at: DateHelper.unix(),
         archived: false,
@@ -138,13 +140,15 @@ export class Store {
           created_at: DateHelper.unix(),
           body: MessagesEnum.DEFAULT_MESSAGE,
           fromMe: true,
-          id: chatId.replace('@c.us', ''),
+          id: normalizedChatId,
           type: MessageTypes.TEXT,
           interactive: null,
           interactiveReply: null,
         },
         clientName: profileName,
       })
+      this.wpChats.set(createdChat.id, createdChat)
+      return createdChat
     }
   }
 
