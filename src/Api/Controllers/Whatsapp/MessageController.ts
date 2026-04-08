@@ -66,6 +66,7 @@ async function processWebhookPayload(body: any): Promise<void> {
       const wpClientService = OfficialClient.getInstance(wpClient)
       for (const message of messages) {
         try {
+          console.log('[WhatsAppWebhook] Processing message', JSON.parse(JSON.stringify(message)))
           await processOfficialMessage(message, profileName, wpClient.id, wpClientService)
         } catch (error: any) {
           console.log('[WhatsAppWebhook] Error processing message', {
