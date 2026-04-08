@@ -37,6 +37,9 @@ import DriversController, {
   PublicDriversController,
 } from './Api/Controllers/Drivers/DriversController'
 import DriverAppController from './Api/Controllers/Drivers/DriverAppController'
+import ServiceHistoryController from './Api/Controllers/Services/ServiceHistoryController'
+import MetricsController from './Api/Controllers/Metrics/MetricsController'
+import ServiceHistoryInternalController from './Api/Controllers/Internal/ServiceHistoryInternalController'
 import type { CorsOptions } from 'cors'
 import ChatRealtimeGateway from './Services/whatsapp/ChatRealtimeGateway'
 
@@ -103,6 +106,9 @@ app.use('/users', UsersController)
 app.use('/drivers', DriversController)
 app.use('/public/drivers', PublicDriversController)
 app.use('/driver-app', DriverAppController)
+app.use('/services', ServiceHistoryController)
+app.use('/metrics', MetricsController)
+app.use('/internal/service-history', ServiceHistoryInternalController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)

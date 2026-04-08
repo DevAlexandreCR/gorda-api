@@ -4,7 +4,15 @@ import { ServiceInterface } from '../Interfaces/ServiceInterface'
 
 type ServiceHistoryCreationAttributes = Optional<
   ServiceInterface,
-  'comment' | 'amount' | 'driver_id' | 'end_loc' | 'wp_client_id'
+  | 'comment'
+  | 'amount'
+  | 'driver_id'
+  | 'end_loc'
+  | 'wp_client_id'
+  | 'created_by'
+  | 'assigned_by'
+  | 'canceled_by'
+  | 'terminated_by'
 >
 
 class ServiceHistoryRecord
@@ -24,6 +32,10 @@ class ServiceHistoryRecord
   public client_id!: string
   public wp_client_id!: string | null
   public created_at!: number
+  public created_by!: string | null
+  public assigned_by!: string | null
+  public canceled_by!: string | null
+  public terminated_by!: string | null
   public readonly updated_at!: Date
 }
 
@@ -88,6 +100,26 @@ ServiceHistoryRecord.init(
     created_at: {
       type: DataTypes.BIGINT,
       allowNull: false,
+    },
+    created_by: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
+    assigned_by: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
+    canceled_by: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
+    terminated_by: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
     },
     updated_at: {
       type: DataTypes.DATE,

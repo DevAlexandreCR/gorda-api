@@ -1,12 +1,10 @@
 import { randomUUID } from 'crypto'
 import { Op } from 'sequelize'
-import Database from '../Services/firebase/Database'
 import { SessionInterface } from '../Interfaces/SessionInterface'
 import Session from '../Models/Session'
 import { WpMessage } from '../Types/WpMessage'
 import { WpNotifications } from '../Types/WpNotifications'
 import { MessageTypes } from '../Services/whatsapp/constants/MessageTypes'
-import { WpMessageInterface } from '../Services/whatsapp/interfaces/WpMessageInterface'
 import ChatSessionRecord from '../Models/ChatSessionRecord'
 import WhatsappMessageRecord from '../Models/WhatsappMessageRecord'
 import ChatIdHelper from '../Helpers/ChatIdHelper'
@@ -211,12 +209,6 @@ class SessionRepository {
       const mappedSession = this.mapSession(sessionRecord)
       ChatRealtimeGateway.emitSessionEvent('removed', mappedSession)
       await ChatRepository.emitAdminChat(mappedSession.wp_client_id, mappedSession.chat_id)
-    }
-  }
-
-  public async addChat(msg: WpMessageInterface): Promise<void> {
-    if (msg.type === MessageTypes.TEXT) {
-      await Database.db.ref('chats').child(msg.from.replace(/\D/g, '')).push(msg.body)
     }
   }
 

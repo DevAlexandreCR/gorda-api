@@ -7,6 +7,7 @@ import UserRecordRepository from '../Repositories/UserRecordRepository'
 import DriverRecordRepository from '../Repositories/DriverRecordRepository'
 import DriverTokenRecordRepository from '../Repositories/DriverTokenRecordRepository'
 import ServiceHistoryRepository from '../Repositories/ServiceHistoryRepository'
+import ServiceMetricsDailyRepository from '../Repositories/ServiceMetricsDailyRepository'
 
 class Container {
   private static sequelizeInstance: typeof sequelize
@@ -18,6 +19,7 @@ class Container {
   private static driverRecordRepository: DriverRecordRepository
   private static driverTokenRecordRepository: DriverTokenRecordRepository
   private static serviceHistoryRepository: ServiceHistoryRepository
+  private static serviceMetricsDailyRepository: ServiceMetricsDailyRepository
 
   /**
    * Get or create Sequelize instance
@@ -92,6 +94,13 @@ class Container {
       this.serviceHistoryRepository = new ServiceHistoryRepository()
     }
     return this.serviceHistoryRepository
+  }
+
+  static getServiceMetricsDailyRepository(): ServiceMetricsDailyRepository {
+    if (!this.serviceMetricsDailyRepository) {
+      this.serviceMetricsDailyRepository = new ServiceMetricsDailyRepository()
+    }
+    return this.serviceMetricsDailyRepository
   }
 
   /**
