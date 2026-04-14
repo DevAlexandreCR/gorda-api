@@ -18,12 +18,15 @@ import { ClientInterface } from '../../../Interfaces/ClientInterface'
 import Container from '../../../Container/Container'
 
 export abstract class ResponseContract {
-  protected store: Store = Store.getInstance()
   protected currentClient: ClientInterface
 
   abstract messageSupported: Array<string>
 
   constructor(public session: Session) { }
+
+  protected get store(): Store {
+    return Store.getInstance()
+  }
 
   abstract processMessage(message: WpMessage): Promise<void>
 
