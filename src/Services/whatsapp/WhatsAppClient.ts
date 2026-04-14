@@ -153,7 +153,7 @@ export class WhatsAppClient {
             type: msg.type,
             body:
               msg.type === MessageTypes.INTERACTIVE
-                ? msg.interactiveReply?.button_reply?.id ?? msg.body
+                ? (msg.interactiveReply?.button_reply?.id ?? msg.body)
                 : msg.body,
             fromMe: false,
             location: msg.location ?? null,
@@ -577,7 +577,8 @@ export class WhatsAppClient {
           interactiveReply: null,
         },
         {
-          clientName: this.store.findClientById(normalizedChatId)?.name ?? `Chat ${normalizedChatId}`,
+          clientName:
+            this.store.findClientById(normalizedChatId)?.name ?? `Chat ${normalizedChatId}`,
           processed: true,
         }
       )

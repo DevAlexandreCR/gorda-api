@@ -37,6 +37,13 @@ class DriverTokenRecordRepository {
     return driverToken ? (driverToken.get({ plain: true }) as DriverTokenInterface) : null
   }
 
+  async findAll(): Promise<DriverTokenInterface[]> {
+    const driverTokens = await DriverTokenRecord.findAll()
+    return driverTokens.map(
+      (driverToken) => driverToken.get({ plain: true }) as DriverTokenInterface
+    )
+  }
+
   async deleteByDriverId(driverId: string): Promise<boolean> {
     const deletedRows = await DriverTokenRecord.destroy({
       where: { driver_id: driverId },

@@ -10,6 +10,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
     "format:all": "prettier --write \"./**/*.{ts,js,json}\" --ignore-path .gitignore",
+    "migrate:sql:development": "NODE_ENV=development sequelize-cli db:migrate --env development",
+    "migrate:sql:production": "NODE_ENV=production sequelize-cli db:migrate --env production",
     "backfill:phase1:users": "ts-node src/Migration/phase1MasterDataBackfill.ts users",
     "backfill:phase1:drivers": "ts-node src/Migration/phase1MasterDataBackfill.ts drivers",
     "backfill:phase1:wp-clients": "ts-node src/Migration/phase1MasterDataBackfill.ts wp_clients",
@@ -20,7 +22,9 @@
     "backfill:phase2:service-history": "ts-node src/Migration/phase2ServiceHistoryBackfill.ts service_history",
     "backfill:phase2:service-metrics": "ts-node src/Migration/phase2ServiceHistoryBackfill.ts service_metrics",
     "backfill:phase2:all": "ts-node src/Migration/phase2ServiceHistoryBackfill.ts all",
-    "backfill:phase3:driver-tokens": "ts-node src/Migration/phase3DriverTokensBackfill.ts"
+    "backfill:phase3:driver-tokens": "ts-node src/Migration/phase3DriverTokensBackfill.ts",
+    "release:sql:production": "NODE_ENV=production npm run migrate:sql:production && NODE_ENV=production npm run backfill:phase1:all && NODE_ENV=production npm run backfill:phase2:all && NODE_ENV=production npm run backfill:phase3:driver-tokens",
+    "verify:release": "npm run build && npm run format:check"
   },
   "keywords": [
     "chat",

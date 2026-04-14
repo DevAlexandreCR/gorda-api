@@ -66,10 +66,12 @@ export class Created extends ResponseContract {
         const searchResult = await this.store.findPlacesWithSuggestions(response.place)
 
         if (searchResult.place && searchResult.hasExactMatch) {
-          await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(async () => {
-            await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
-            await this.session.setPlace(searchResult.place!)
-          })
+          await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(
+            async () => {
+              await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
+              await this.session.setPlace(searchResult.place!)
+            }
+          )
         } else if (searchResult.place && !searchResult.hasExactMatch) {
           const wpClient = this.store.wpClients[this.session.wp_client_id]
           const confirmationMessage = PlaceSuggestionHelper.createConfirmationMessage(
@@ -82,7 +84,7 @@ export class Created extends ResponseContract {
 
             // Store candidate place as option 0 (special case for confirmation)
             const placeOptions: PlaceOption[] = [
-              { option: 0, placeId: `confirm:${searchResult.place!.id}` }
+              { option: 0, placeId: `confirm:${searchResult.place!.id}` },
             ]
 
             // Add suggestions as additional options if available
@@ -100,7 +102,7 @@ export class Created extends ResponseContract {
             searchResult.suggestions.map((suggestion, index) => ({
               option: index + 1,
               placeId: suggestion.id,
-              placeName: suggestion.name
+              placeName: suggestion.name,
             })),
             response.place,
             wpClient?.service,
@@ -110,10 +112,12 @@ export class Created extends ResponseContract {
             await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
 
             // Store each suggestion as a separate PlaceOption
-            const placeOptions: PlaceOption[] = searchResult.suggestions.map((suggestion, index) => ({
-              option: index + 1,
-              placeId: suggestion.id
-            }))
+            const placeOptions: PlaceOption[] = searchResult.suggestions.map(
+              (suggestion, index) => ({
+                option: index + 1,
+                placeId: suggestion.id,
+              })
+            )
 
             await this.session.setPlaceOptions(placeOptions)
           })

@@ -27,7 +27,9 @@ class ChatRealtimeGateway {
     this.emitter.emit('session-event', { type, session })
   }
 
-  onSessionEvent(listener: (type: SessionEventType, session: SessionInterface) => void): () => void {
+  onSessionEvent(
+    listener: (type: SessionEventType, session: SessionInterface) => void
+  ): () => void {
     const handler = ({ type, session }: { type: SessionEventType; session: SessionInterface }) => {
       listener(type, session)
     }

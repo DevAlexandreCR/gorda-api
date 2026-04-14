@@ -37,14 +37,14 @@ class PlaceSearchRepository {
       const contentMatch = await this.contentSearch(normalizedQuery, cityId)
 
       const allResults = [
-        ...exactMatch.map(r => ({ ...r, score: r.score + 1.0, search_type: 'exact' })),
-        ...keywordMatch.map(r => ({ ...r, score: r.score + 0.8, search_type: 'keyword' })),
-        ...fuzzyMatch.map(r => ({ ...r, score: r.score + 0.6, search_type: 'fuzzy' })),
-        ...contentMatch.map(r => ({ ...r, score: r.score + 0.4, search_type: 'content' }))
+        ...exactMatch.map((r) => ({ ...r, score: r.score + 1.0, search_type: 'exact' })),
+        ...keywordMatch.map((r) => ({ ...r, score: r.score + 0.8, search_type: 'keyword' })),
+        ...fuzzyMatch.map((r) => ({ ...r, score: r.score + 0.6, search_type: 'fuzzy' })),
+        ...contentMatch.map((r) => ({ ...r, score: r.score + 0.4, search_type: 'content' })),
       ]
 
       const uniqueResults = this.removeDuplicates(allResults)
-        .filter(r => r.score >= minScore)
+        .filter((r) => r.score >= minScore)
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
 
@@ -82,7 +82,9 @@ class PlaceSearchRepository {
     if (keywords.length === 0) return []
 
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
-    const keywordConditions = keywords.map((_, i) => `LOWER(name) LIKE LOWER(:keyword${i})`).join(' OR ')
+    const keywordConditions = keywords
+      .map((_, i) => `LOWER(name) LIKE LOWER(:keyword${i})`)
+      .join(' OR ')
 
     const sql = `
       SELECT id, name, lat, lng, city_id, 
@@ -94,7 +96,7 @@ class PlaceSearchRepository {
 
     const replacements: any = {
       cityId,
-      keywordScore: keywords.length > 0 ? (1.0 / keywords.length) : 0.5
+      keywordScore: keywords.length > 0 ? 1.0 / keywords.length : 0.5,
     }
     keywords.forEach((keyword, i) => {
       replacements[`keyword${i}`] = `%${keyword}%`
@@ -155,7 +157,7 @@ class PlaceSearchRepository {
         exactQuery: query,
         startQuery: `${query}%`,
         containsQuery: `%${query}%`,
-        cityId
+        cityId,
       },
       type: QueryTypes.SELECT,
     })
@@ -186,7 +188,7 @@ class PlaceSearchRepository {
     return query
       .toLowerCase()
       .split(/\s+/)
-      .filter(word => word.length > 2 && !stopWords.includes(word))
+      .filter((word) => word.length > 2 && !stopWords.includes(word))
       .slice(0, 3)
   }
 
@@ -209,27 +211,33 @@ class PlaceSearchRepository {
   /**
    * Search with alternative suggestions
    */
-  async searchWithSuggestions(query: string, options: SearchOptions = {}): Promise<{
+  async searchWithSuggestions(
+    query: string,
+    options: SearchOptions = {}
+  ): Promise<{
     results: SearchResult[]
-    suggestions: Array<{ id: string, name: string }>
+    suggestions: Array<{ id: string; name: string }>
     hasExactMatch: boolean
   }> {
     const results = await this.smartSearch(query, options)
-    const hasExactMatch = results.some(r => r.search_type === 'exact')
+    const hasExactMatch = results.some((r) => r.search_type === 'exact')
 
     const suggestions = hasExactMatch ? [] : await this.generateSuggestions(query, options.cityId)
 
     return {
       results,
       suggestions,
-      hasExactMatch
+      hasExactMatch,
     }
   }
 
   /**
    * Generate alternative suggestions
    */
-  private async generateSuggestions(query: string, cityId?: string): Promise<Array<{ id: string, name: string }>> {
+  private async generateSuggestions(
+    query: string,
+    cityId?: string
+  ): Promise<Array<{ id: string; name: string }>> {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
@@ -242,12 +250,15 @@ class PlaceSearchRepository {
     `
 
     try {
-      const results = await this.sequelize.query<{ id: string, name: string, sim_score: number }>(sql, {
-        replacements: { query, cityId },
-        type: QueryTypes.SELECT,
-      })
+      const results = await this.sequelize.query<{ id: string; name: string; sim_score: number }>(
+        sql,
+        {
+          replacements: { query, cityId },
+          type: QueryTypes.SELECT,
+        }
+      )
 
-      return results.map(r => ({ id: r.id, name: r.name }))
+      return results.map((r) => ({ id: r.id, name: r.name }))
     } catch (error) {
       console.error('Error in generateSuggestions:', error, 'Query:', query, 'CityId:', cityId)
       return []

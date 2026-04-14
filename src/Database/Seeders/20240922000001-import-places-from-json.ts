@@ -37,7 +37,11 @@ module.exports = {
       name: place.name,
       lat: place.lat,
       lng: place.lng,
-      location: queryInterface.sequelize.fn('ST_GeomFromText', `POINT(${place.lng} ${place.lat})`, 4326),
+      location: queryInterface.sequelize.fn(
+        'ST_GeomFromText',
+        `POINT(${place.lng} ${place.lat})`,
+        4326
+      ),
       city_id: 'popayan', // Assuming all places are in Popayan based on existing seeders
       created_at: new Date(),
       updated_at: new Date(),
@@ -59,7 +63,7 @@ module.exports = {
     await queryInterface.bulkDelete(
       'places',
       {
-        city_id: 'popayan'
+        city_id: 'popayan',
       },
       {}
     )

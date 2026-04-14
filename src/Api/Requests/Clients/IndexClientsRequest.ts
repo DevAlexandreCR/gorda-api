@@ -2,10 +2,7 @@ import { z } from 'zod'
 
 export const IndexClientsRequest = z.object({
   query: z.object({
-    search: z
-      .string()
-      .trim()
-      .optional(),
+    search: z.string().trim().optional(),
   }),
 })
 

@@ -38,8 +38,12 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
   })
 
   const sq = queryInterface.sequelize
-  await sq.query(`CREATE INDEX IF NOT EXISTS "processed_inbound_messages_processed_at" ON "processed_inbound_messages" ("processed_at")`)
-  await sq.query(`CREATE UNIQUE INDEX IF NOT EXISTS "processed_inbound_messages_unique_wp_client_message" ON "processed_inbound_messages" ("wp_client_id", "message_id")`)
+  await sq.query(
+    `CREATE INDEX IF NOT EXISTS "processed_inbound_messages_processed_at" ON "processed_inbound_messages" ("processed_at")`
+  )
+  await sq.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "processed_inbound_messages_unique_wp_client_message" ON "processed_inbound_messages" ("wp_client_id", "message_id")`
+  )
 }
 
 export async function down(queryInterface: QueryInterface): Promise<void> {

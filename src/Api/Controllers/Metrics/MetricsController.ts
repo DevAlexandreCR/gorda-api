@@ -25,7 +25,10 @@ controller.get('/global', async (req: Request, res: Response) => {
       })
     }
 
-    const metrics = await Container.getServiceMetricsDailyRepository().listGlobal(startDate, endDate)
+    const metrics = await Container.getServiceMetricsDailyRepository().listGlobal(
+      startDate,
+      endDate
+    )
 
     return res.status(200).json({
       success: true,

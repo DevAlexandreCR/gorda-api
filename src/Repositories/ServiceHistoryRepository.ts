@@ -41,7 +41,8 @@ class ServiceHistoryRepository {
     const direction = filters.direction ?? 'next'
     const perPage = filters.perPage ?? 20
     const where = this.buildWhere(filters)
-    const isPrevPage = direction === 'prev' && filters.cursorCreated !== undefined && filters.cursorId
+    const isPrevPage =
+      direction === 'prev' && filters.cursorCreated !== undefined && filters.cursorId
     const order: any = isPrevPage
       ? [
           ['created_at', 'ASC'],
@@ -74,10 +75,13 @@ class ServiceHistoryRepository {
         ['driver_id', 'driverId'],
         [fn('COUNT', col('id')), 'count'],
       ],
-      where: this.buildWhere({
-        ...filters,
-        status: 'terminated',
-      }, true),
+      where: this.buildWhere(
+        {
+          ...filters,
+          status: 'terminated',
+        },
+        true
+      ),
       group: ['driver_id'],
       order: [literal('"count" DESC'), ['driver_id', 'ASC']],
       limit: 5,

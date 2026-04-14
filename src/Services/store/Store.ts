@@ -252,27 +252,30 @@ export class Store {
     const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
       cityId: cityId || 'popayan',
       limit: 1,
-      minScore: 0.3
+      minScore: 0.3,
     })
 
     return searchResult.results[0] || null
   }
 
-  async findPlacesWithSuggestions(placeName: string, cityId?: string): Promise<{
+  async findPlacesWithSuggestions(
+    placeName: string,
+    cityId?: string
+  ): Promise<{
     place: PlaceInterface | null
-    suggestions: Array<{ id: string, name: string }>
+    suggestions: Array<{ id: string; name: string }>
     hasExactMatch: boolean
   }> {
     const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
       cityId: cityId || 'popayan',
       limit: 5,
-      minScore: 0.2
+      minScore: 0.2,
     })
 
     return {
       place: searchResult.results[0] || null,
       suggestions: searchResult.suggestions,
-      hasExactMatch: searchResult.hasExactMatch
+      hasExactMatch: searchResult.hasExactMatch,
     }
   }
 

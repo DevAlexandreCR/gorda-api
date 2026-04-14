@@ -3,8 +3,10 @@ import sequelize from '../Database/sequelize'
 import City from './City'
 import { PlaceInterface } from '../Interfaces/PlaceInterface'
 
-interface PlaceCreationAttributes
-  extends Optional<PlaceInterface, 'id' | 'createdAt' | 'updatedAt'> {}
+interface PlaceCreationAttributes extends Optional<
+  PlaceInterface,
+  'id' | 'createdAt' | 'updatedAt'
+> {}
 
 class Place extends Model<PlaceInterface, PlaceCreationAttributes> implements PlaceInterface {
   public id!: string

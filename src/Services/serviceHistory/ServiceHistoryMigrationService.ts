@@ -28,7 +28,9 @@ class ServiceHistoryMigrationService {
     return HISTORY_BOUNDARY
   }
 
-  isEligibleFinalService(service: ServiceInterface | null | undefined): service is ServiceInterface {
+  isEligibleFinalService(
+    service: ServiceInterface | null | undefined
+  ): service is ServiceInterface {
     if (!service?.id) return false
     if (!FINAL_STATUSES.includes(service.status)) return false
     return Number(service.created_at) >= HISTORY_BOUNDARY
@@ -43,7 +45,9 @@ class ServiceHistoryMigrationService {
     return this.upsertEligibleService(service)
   }
 
-  async upsertEligibleService(service: ServiceInterface | null | undefined): Promise<FinalizeResult> {
+  async upsertEligibleService(
+    service: ServiceInterface | null | undefined
+  ): Promise<FinalizeResult> {
     if (!service) {
       return {
         eligible: false,

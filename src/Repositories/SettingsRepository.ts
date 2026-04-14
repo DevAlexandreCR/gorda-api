@@ -18,7 +18,7 @@ class SettingsRepository {
     Container.getMasterDataRepository()
       .listWpClients()
       .then((wpClients) => {
-      const clients: ClientDictionary = {}
+        const clients: ClientDictionary = {}
         wpClients.forEach((client: WpClient) => {
           clients[client.id] = client
         })

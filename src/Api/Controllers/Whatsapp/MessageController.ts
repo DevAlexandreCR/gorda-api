@@ -221,10 +221,10 @@ async function processOfficialMessage(
       body: message.text?.body ?? type,
       location: message.location
         ? {
-          name: message.location?.name ?? MessageHelper.LOCATION_NO_NAME,
-          lat: message.location?.latitude,
-          lng: message.location?.longitude,
-        }
+            name: message.location?.name ?? MessageHelper.LOCATION_NO_NAME,
+            lat: message.location?.latitude,
+            lng: message.location?.longitude,
+          }
         : undefined,
       interactiveReply: message.interactive ?? null,
     },
@@ -252,7 +252,9 @@ async function processOfficialMessage(
 
   const hasTextContent = message.text?.body?.trim()
   const isProcessableType =
-    type === MessageTypes.TEXT || type === MessageTypes.LOCATION || type === MessageTypes.INTERACTIVE
+    type === MessageTypes.TEXT ||
+    type === MessageTypes.LOCATION ||
+    type === MessageTypes.INTERACTIVE
 
   if (!hasTextContent && !isProcessableType) {
     const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)

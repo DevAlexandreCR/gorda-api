@@ -7,10 +7,7 @@ type UserCreationAttributes = Optional<
   'password' | 'photoUrl' | 'enabled_at' | 'created_at' | 'roles'
 >
 
-class UserRecord
-  extends Model<UserInterface, UserCreationAttributes>
-  implements UserInterface
-{
+class UserRecord extends Model<UserInterface, UserCreationAttributes> implements UserInterface {
   public id!: string
   public name!: string
   public email!: string

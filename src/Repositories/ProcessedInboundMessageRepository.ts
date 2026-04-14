@@ -16,7 +16,9 @@ class ProcessedInboundMessageRepository {
       messageId,
       provider,
       processedAt: new Date(),
-    }).catch((error) => console.log('[ProcessedInboundMessageRepository] record error', error.message))
+    }).catch((error) =>
+      console.log('[ProcessedInboundMessageRepository] record error', error.message)
+    )
   }
 
   public async purgeOlderThanMinutes(minutes: number): Promise<number> {

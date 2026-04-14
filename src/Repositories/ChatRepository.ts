@@ -42,7 +42,9 @@ class ChatRepository {
       }
     })
 
-    return chatRecords.map((chatRecord) => this.mapChat(chatRecord, sessionByChatId.get(chatRecord.chatId)))
+    return chatRecords.map((chatRecord) =>
+      this.mapChat(chatRecord, sessionByChatId.get(chatRecord.chatId))
+    )
   }
 
   public async findChat(wpClientId: string, chatId: string): Promise<Chat | null> {
@@ -193,10 +195,7 @@ class ChatRepository {
     return chat
   }
 
-  private mapChat(
-    record: WhatsappChatRecord,
-    activeSession?: ActiveChatSessionSummary
-  ): Chat {
+  private mapChat(record: WhatsappChatRecord, activeSession?: ActiveChatSessionSummary): Chat {
     return {
       id: record.chatId,
       created_at: Number(record.created_at),

@@ -39,5 +39,5 @@ module.exports = {
   AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
   AI_SERVICE_API_KEY: process.env.AI_SERVICE_API_KEY || 'admin-token',
   DATABASE_URL: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/gorda',
-  SERVER_API_KEY: process.env.SERVER_API_KEY || 'your-secret-api-key-here'
+  SERVER_API_KEY: process.env.SERVER_API_KEY
 }

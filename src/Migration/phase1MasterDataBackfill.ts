@@ -291,7 +291,10 @@ async function backfillBranches(): Promise<void> {
 
     Object.entries(value.cities ?? {}).forEach(([cityId, cityValue]: [string, any]) => {
       const location = cityValue.location ?? { lat: 0, lng: 0 }
-      const polygonCoordinates = (cityValue.polygon ?? []).map((point: any) => [point.lng, point.lat])
+      const polygonCoordinates = (cityValue.polygon ?? []).map((point: any) => [
+        point.lng,
+        point.lat,
+      ])
       operations.push(
         CityModel.upsert({
           id: cityId,
@@ -301,10 +304,13 @@ async function backfillBranches(): Promise<void> {
             type: 'Point',
             coordinates: [location.lng ?? 0, location.lat ?? 0],
           },
-          polygon: polygonCoordinates.length > 0 ? {
-            type: 'Polygon',
-            coordinates: [polygonCoordinates],
-          } : null,
+          polygon:
+            polygonCoordinates.length > 0
+              ? {
+                  type: 'Polygon',
+                  coordinates: [polygonCoordinates],
+                }
+              : null,
           branchId: child.key as string,
         })
       )

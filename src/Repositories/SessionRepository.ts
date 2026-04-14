@@ -50,7 +50,10 @@ class SessionRepository {
     const messages: Map<string, WpMessage> = new Map()
     const records = await WhatsappMessageRecord.findAll({
       where: { chatSessionId: sessionId },
-      order: [['created_at', 'ASC'], ['id', 'ASC']],
+      order: [
+        ['created_at', 'ASC'],
+        ['id', 'ASC'],
+      ],
     })
 
     records.forEach((record) => {
@@ -212,7 +215,10 @@ class SessionRepository {
     }
   }
 
-  public async addMsg(sessionId: string, msg: WpMessage): Promise<{ created: boolean; id: string }> {
+  public async addMsg(
+    sessionId: string,
+    msg: WpMessage
+  ): Promise<{ created: boolean; id: string }> {
     const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
     if (!sessionRecord) {
       throw new Error(`Session ${sessionId} not found`)

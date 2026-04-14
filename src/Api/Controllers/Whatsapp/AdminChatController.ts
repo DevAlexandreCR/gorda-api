@@ -27,23 +27,29 @@ controller.get('/clients/:wpClientId/chats', async (req: Request, res: Response)
   }
 })
 
-controller.get('/clients/:wpClientId/chats/:chatId/messages', async (req: Request, res: Response) => {
-  try {
-    const messages = await MessageRepository.listMessages(req.params.wpClientId, req.params.chatId)
+controller.get(
+  '/clients/:wpClientId/chats/:chatId/messages',
+  async (req: Request, res: Response) => {
+    try {
+      const messages = await MessageRepository.listMessages(
+        req.params.wpClientId,
+        req.params.chatId
+      )
 
-    return res.status(200).json({
-      success: true,
-      data: { messages },
-    })
-  } catch (error) {
-    console.error('Error fetching whatsapp messages:', error)
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      data: {},
-    })
+      return res.status(200).json({
+        success: true,
+        data: { messages },
+      })
+    } catch (error) {
+      console.error('Error fetching whatsapp messages:', error)
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        data: {},
+      })
+    }
   }
-})
+)
 
 controller.patch('/clients/:wpClientId/chats/:chatId', async (req: Request, res: Response) => {
   try {
@@ -57,7 +63,9 @@ controller.patch('/clients/:wpClientId/chats/:chatId', async (req: Request, res:
       })
     }
 
-    const chat = await ChatRepository.updateChat(req.params.wpClientId, req.params.chatId, { archived })
+    const chat = await ChatRepository.updateChat(req.params.wpClientId, req.params.chatId, {
+      archived,
+    })
 
     if (!chat) {
       return res.status(404).json({

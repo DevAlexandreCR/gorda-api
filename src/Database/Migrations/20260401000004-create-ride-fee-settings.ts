@@ -37,12 +37,12 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
       allowNull: false,
       defaultValue: 0,
     },
-    "fees_DxF": {
+    fees_DxF: {
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0,
     },
-    "fees_night_DxF": {
+    fees_night_DxF: {
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0,

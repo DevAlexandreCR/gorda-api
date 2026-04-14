@@ -22,7 +22,7 @@ export abstract class ResponseContract {
 
   abstract messageSupported: Array<string>
 
-  constructor(public session: Session) { }
+  constructor(public session: Session) {}
 
   protected get store(): Store {
     return Store.getInstance()

@@ -6,6 +6,43 @@ import Container from '../../../Container/Container'
 
 const controller = Router()
 const store = Store.getInstance()
+const DRIVER_FCM_BATCH_SIZE = 500
+
+function buildDriverNotificationPayload(message: FCMNotification): FCMNotification {
+  return {
+    title: message.title || 'New Message',
+    body: message.body || 'You have a new message',
+    data: {
+      ...message.data,
+      title: message.title || 'New Message',
+      body: message.body || 'You have a new message',
+      type: 'alert',
+    },
+  }
+}
+
+async function sendNotificationToDriverTokens(tokens: string[], message: FCMNotification) {
+  const payload = buildDriverNotificationPayload(message)
+  let delivered = 0
+  let failed = 0
+
+  for (let index = 0; index < tokens.length; index += DRIVER_FCM_BATCH_SIZE) {
+    const batch = tokens.slice(index, index + DRIVER_FCM_BATCH_SIZE)
+    const results = await Promise.allSettled(
+      batch.map((token) => FCM.sendNotificationTo(token, payload))
+    )
+
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        delivered += 1
+        return
+      }
+      failed += 1
+    })
+  }
+
+  return { delivered, failed }
+}
 
 controller.post('/messages/drivers', async (req: Request, res: Response) => {
   const { body } = req
@@ -43,51 +80,61 @@ controller.post('/messages/drivers', async (req: Request, res: Response) => {
   }
 
   if (!to) {
-    FCM.sendDifusionNotification('drivers', {
-      title: message.title || 'New Message',
-      body: message.body || 'You have a new message',
-      data: {
-        ...message.data,
-        title: message.title || 'New Message',
-        body: message.body || 'You have a new message',
-        type: 'alert',
-      },
-    })
-      .then(() => {
-        return res.status(200).json({ message: 'Notification sent to all drivers' })
-      })
-      .catch((error) => {
-        console.error('Error sending notification to drivers:', error)
-        return res.status(500).json({ error: 'Error sending notification to drivers' })
-      })
-  } else {
-    const driver = store.drivers.get(to)
-    if (!driver) {
-      return res.status(404).json({ error: 'Driver not found' })
-    }
-    const { id, name } = driver
+    try {
+      const driverTokens = await Container.getDriverTokenRecordRepository().findAll()
+      const tokens = Array.from(
+        new Set(
+          driverTokens
+            .map((driverToken) => driverToken.token)
+            .filter((token): token is string => typeof token === 'string' && token.length > 0)
+        )
+      )
 
-    const driverToken = await Container.getDriverTokenRecordRepository().findByDriverId(id!!)
-    if (!driverToken) {
-      return res.status(404).json({ error: 'Driver token not found' })
+      if (!tokens.length) {
+        return res.status(200).json({
+          message: 'No driver tokens available for notification delivery',
+          delivered: 0,
+          failed: 0,
+        })
+      }
+
+      const result = await sendNotificationToDriverTokens(tokens, message)
+
+      if (!result.delivered && result.failed) {
+        return res.status(500).json({
+          error: 'Error sending notification to drivers',
+          delivered: 0,
+          failed: result.failed,
+        })
+      }
+
+      return res.status(200).json({
+        message: 'Notification sent to all drivers',
+        delivered: result.delivered,
+        failed: result.failed,
+      })
+    } catch (error) {
+      console.error('Error sending notification to drivers:', error)
+      return res.status(500).json({ error: 'Error sending notification to drivers' })
     }
-    await FCM.sendNotificationTo(driverToken.token, {
-      title: message.title || 'New Message',
-      body: message.body || 'You have a new message',
-      data: {
-        ...message.data,
-        title: message.title || 'New Message',
-        body: message.body || 'You have a new message',
-        type: 'alert',
-      },
-    })
-      .then(() => {
-        return res.status(200).json({ message: `Notification sent to driver ${name}` })
-      })
-      .catch((error) => {
-        console.error(`Error sending notification to driver ${name} (${id}):`, error)
-        return res.status(500).json({ error: `Error sending notification to driver ${name}` })
-      })
+  }
+
+  const driver = store.drivers.get(to)
+  if (!driver) {
+    return res.status(404).json({ error: 'Driver not found' })
+  }
+  const { id, name } = driver
+
+  const driverToken = await Container.getDriverTokenRecordRepository().findByDriverId(id!!)
+  if (!driverToken) {
+    return res.status(404).json({ error: 'Driver token not found' })
+  }
+  try {
+    await FCM.sendNotificationTo(driverToken.token, buildDriverNotificationPayload(message))
+    return res.status(200).json({ message: `Notification sent to driver ${name}` })
+  } catch (error) {
+    console.error(`Error sending notification to driver ${name} (${id}):`, error)
+    return res.status(500).json({ error: `Error sending notification to driver ${name}` })
   }
 })
 

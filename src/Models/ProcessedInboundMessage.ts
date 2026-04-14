@@ -9,7 +9,8 @@ type ProcessedInboundMessageCreationAttributes = Optional<
 
 class ProcessedInboundMessage
   extends Model<ProcessedInboundMessageInterface, ProcessedInboundMessageCreationAttributes>
-  implements ProcessedInboundMessageInterface {
+  implements ProcessedInboundMessageInterface
+{
   public id!: number
   public wpClientId!: string
   public messageId!: string

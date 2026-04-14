@@ -41,5 +41,5 @@ module.exports = {
     await queryInterface.sequelize.query('DROP INDEX IF EXISTS places_name_gin_trgm_idx;')
     await queryInterface.sequelize.query('DROP INDEX IF EXISTS places_name_ilike_idx;')
     await queryInterface.sequelize.query('DROP FUNCTION IF EXISTS normalize_text(TEXT);')
-  }
+  },
 }

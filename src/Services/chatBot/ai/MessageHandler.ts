@@ -6,7 +6,7 @@ import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { AxiosDefaults, AxiosError, AxiosResponse } from 'axios'
 
 export class MessageHandler {
-  constructor(private client: MessageHandlerInterface) { }
+  constructor(private client: MessageHandlerInterface) {}
 
   async handleMessage(
     message: string,

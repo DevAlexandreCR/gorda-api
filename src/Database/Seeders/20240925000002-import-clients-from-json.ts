@@ -63,7 +63,10 @@ module.exports = {
       return
     }
 
-    const existingIds = await findExistingIds(queryInterface, records.map((record) => record.id))
+    const existingIds = await findExistingIds(
+      queryInterface,
+      records.map((record) => record.id)
+    )
     const newRecords = records.filter((record) => !existingIds.has(record.id))
 
     if (!newRecords.length) {
@@ -103,7 +106,10 @@ function getNormalizedId(value: string): string {
   return digits
 }
 
-async function findExistingIds(queryInterface: QueryInterface, ids: string[]): Promise<Set<string>> {
+async function findExistingIds(
+  queryInterface: QueryInterface,
+  ids: string[]
+): Promise<Set<string>> {
   const idSet = new Set<string>()
   if (!ids.length) return idSet
 

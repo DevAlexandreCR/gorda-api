@@ -7,7 +7,7 @@ export class PlaceSuggestionHelper {
    * Creates place suggestion message adapted to WhatsApp client type
    */
   static createSuggestionMessage(
-    placeOptions: Array<{ option: number, placeId: string, placeName: string }>,
+    placeOptions: Array<{ option: number; placeId: string; placeName: string }>,
     originalQuery: string,
     wpClientService: WpClients,
     sessionData?: { id: string }
@@ -32,14 +32,14 @@ export class PlaceSuggestionHelper {
    * Creates interactive message with buttons for official API (1-2 suggestions)
    */
   private static createInteractiveButtonMessage(
-    placeOptions: Array<{ option: number, placeId: string, placeName: string }>,
+    placeOptions: Array<{ option: number; placeId: string; placeName: string }>,
     originalQuery: string,
     sessionData?: { id: string }
   ): ChatBotMessage {
     const interactive: Interactive = {
       type: 'button',
       body: {
-        text: `No encontré exactamente "${originalQuery}". ¿Te refieres a alguno de estos lugares?`
+        text: `No encontré exactamente "${originalQuery}". ¿Te refieres a alguno de estos lugares?`,
       },
       action: {
         buttons: [
@@ -47,21 +47,24 @@ export class PlaceSuggestionHelper {
             type: 'reply' as const,
             reply: {
               id: placeOption.option.toString(),
-              title: placeOption.placeName.length > 20 ? placeOption.placeName.substring(0, 17) + '...' : placeOption.placeName
-            }
+              title:
+                placeOption.placeName.length > 20
+                  ? placeOption.placeName.substring(0, 17) + '...'
+                  : placeOption.placeName,
+            },
           })),
           {
             type: 'reply' as const,
             reply: {
               id: 'none',
-              title: 'Ninguno de estos'
-            }
-          }
-        ]
+              title: 'Ninguno de estos',
+            },
+          },
+        ],
       },
       footer: {
-        text: 'Selecciona una opción'
-      }
+        text: 'Selecciona una opción',
+      },
     }
 
     return {
@@ -70,7 +73,7 @@ export class PlaceSuggestionHelper {
       description: 'Interactive message with place suggestions',
       message: `No encontré exactamente "${originalQuery}". Por favor selecciona una opción:`,
       enabled: true,
-      interactive
+      interactive,
     }
   }
 
@@ -78,36 +81,41 @@ export class PlaceSuggestionHelper {
    * Creates interactive list message for multiple suggestions (3-5 options)
    */
   private static createInteractiveListMessage(
-    placeOptions: Array<{ option: number, placeId: string, placeName: string }>,
+    placeOptions: Array<{ option: number; placeId: string; placeName: string }>,
     originalQuery: string,
     sessionData?: { id: string }
   ): ChatBotMessage {
     const interactive: Interactive = {
       type: 'list',
       body: {
-        text: `No encontré exactamente "${originalQuery}". ¿Te refieres a alguno de estos lugares?`
+        text: `No encontré exactamente "${originalQuery}". ¿Te refieres a alguno de estos lugares?`,
       },
       action: {
         button: 'Seleccionar lugar',
-        sections: [{
-          title: 'Lugares encontrados',
-          rows: [
-            ...placeOptions.map((placeOption) => ({
-              id: placeOption.option.toString(),
-              title: placeOption.placeName.length > 20 ? placeOption.placeName.substring(0, 20) + '...' : placeOption.placeName,
-              description: placeOption.placeName.length > 20 ? placeOption.placeName : undefined
-            })),
-            {
-              id: 'none',
-              title: 'Ninguna de estas',
-              description: 'Buscar otro lugar'
-            }
-          ]
-        }]
+        sections: [
+          {
+            title: 'Lugares encontrados',
+            rows: [
+              ...placeOptions.map((placeOption) => ({
+                id: placeOption.option.toString(),
+                title:
+                  placeOption.placeName.length > 20
+                    ? placeOption.placeName.substring(0, 20) + '...'
+                    : placeOption.placeName,
+                description: placeOption.placeName.length > 20 ? placeOption.placeName : undefined,
+              })),
+              {
+                id: 'none',
+                title: 'Ninguna de estas',
+                description: 'Buscar otro lugar',
+              },
+            ],
+          },
+        ],
       },
       footer: {
-        text: 'Selecciona una opción'
-      }
+        text: 'Selecciona una opción',
+      },
     }
 
     return {
@@ -116,7 +124,7 @@ export class PlaceSuggestionHelper {
       description: 'Interactive list message with place suggestions',
       message: `No encontré exactamente "${originalQuery}". Por favor selecciona una opción:`,
       enabled: true,
-      interactive
+      interactive,
     }
   }
 
@@ -124,7 +132,7 @@ export class PlaceSuggestionHelper {
    * Creates text message for other client types
    */
   private static createTextMessage(
-    placeOptions: Array<{ option: number, placeId: string, placeName: string }>,
+    placeOptions: Array<{ option: number; placeId: string; placeName: string }>,
     originalQuery: string
   ): ChatBotMessage {
     const limitedOptions = placeOptions.slice(0, 5)
@@ -141,7 +149,7 @@ export class PlaceSuggestionHelper {
       description: 'Text message with place suggestions',
       message,
       enabled: true,
-      interactive: null
+      interactive: null,
     }
   }
 
@@ -159,7 +167,7 @@ export class PlaceSuggestionHelper {
       const interactive: Interactive = {
         type: 'button',
         body: {
-          text: `¿Te refieres a "${placeName}"?`
+          text: `¿Te refieres a "${placeName}"?`,
         },
         action: {
           buttons: [
@@ -167,21 +175,21 @@ export class PlaceSuggestionHelper {
               type: 'reply',
               reply: {
                 id: '1',
-                title: 'Sí, ese es'
-              }
+                title: 'Sí, ese es',
+              },
             },
             {
               type: 'reply',
               reply: {
                 id: '2',
-                title: 'No, otro lugar'
-              }
-            }
-          ]
+                title: 'No, otro lugar',
+              },
+            },
+          ],
         },
         footer: {
-          text: 'Confirma tu selección'
-        }
+          text: 'Confirma tu selección',
+        },
       }
 
       return {
@@ -190,7 +198,7 @@ export class PlaceSuggestionHelper {
         description: 'Interactive place confirmation message',
         message: `¿Te refieres a "${placeName}"?`,
         enabled: true,
-        interactive
+        interactive,
       }
     } else {
       return {
@@ -199,7 +207,7 @@ export class PlaceSuggestionHelper {
         description: 'Text place confirmation message',
         message: `¿Te refieres a "${placeName}"?\n\n1. Sí, ese es\n2. No, otro lugar\n\nResponde con el número de tu elección.`,
         enabled: true,
-        interactive: null
+        interactive: null,
       }
     }
   }

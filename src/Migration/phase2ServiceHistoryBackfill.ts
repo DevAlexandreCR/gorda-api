@@ -13,8 +13,15 @@ type Phase2Dataset = 'service_history' | 'service_metrics' | 'all'
 const DATASET = (process.argv[2] ?? 'all') as Phase2Dataset
 const service = new ServiceHistoryMigrationService()
 
-async function backfillServiceHistory(): Promise<{ scanned: number; upserted: number; skipped: number }> {
-  const snapshot = await Database.dbServices().orderByChild('created_at').startAt(service.getBoundaryUnix()).once('value')
+async function backfillServiceHistory(): Promise<{
+  scanned: number
+  upserted: number
+  skipped: number
+}> {
+  const snapshot = await Database.dbServices()
+    .orderByChild('created_at')
+    .startAt(service.getBoundaryUnix())
+    .once('value')
   let scanned = 0
   let upserted = 0
   let skipped = 0

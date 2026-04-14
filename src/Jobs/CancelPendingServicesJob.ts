@@ -7,7 +7,7 @@ const PENDING_SERVICE_TIMEOUT = 15 * 60 * 1000
 
 function isServiceExpired(createdAt: number): boolean {
   const now = dayjs().unix() * 1000
-  const serviceAge = now - (createdAt * 1000)
+  const serviceAge = now - createdAt * 1000
 
   return serviceAge > PENDING_SERVICE_TIMEOUT
 }
@@ -34,7 +34,9 @@ export async function cancelPendingServices(): Promise<void> {
       const service = services[serviceId]
 
       if (isServiceExpired(service.created_at)) {
-        console.log(`Canceling expired service ${serviceId} (created at: ${dayjs.unix(service.created_at).format('YYYY-MM-DD HH:mm:ss')})`)
+        console.log(
+          `Canceling expired service ${serviceId} (created at: ${dayjs.unix(service.created_at).format('YYYY-MM-DD HH:mm:ss')})`
+        )
 
         cancelPromises.push(
           Database.dbServices()

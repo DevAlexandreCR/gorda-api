@@ -13,8 +13,10 @@ interface CityAttributes {
   updatedAt?: Date
 }
 
-interface CityCreationAttributes
-  extends Optional<CityAttributes, 'polygon' | 'createdAt' | 'updatedAt'> {}
+interface CityCreationAttributes extends Optional<
+  CityAttributes,
+  'polygon' | 'createdAt' | 'updatedAt'
+> {}
 
 class City extends Model<CityAttributes, CityCreationAttributes> implements CityAttributes {
   public id!: string

@@ -20,7 +20,7 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 
 class MasterDataRepository {
-  constructor(private sequelize: Sequelize) { }
+  constructor(private sequelize: Sequelize) {}
 
   async listWpClients(): Promise<WpClient[]> {
     const clients = await WpClientRecord.findAll({
@@ -100,7 +100,10 @@ class MasterDataRepository {
 
     const multipliers = await RideFeeDynamicMultiplierRecord.findAll({
       where: { setting_id: settings.id },
-      order: [['position', 'ASC'], ['id', 'ASC']],
+      order: [
+        ['position', 'ASC'],
+        ['id', 'ASC'],
+      ],
     })
 
     return {
@@ -143,7 +146,9 @@ class MasterDataRepository {
     return this.getRideFees()
   }
 
-  async buildPricingSnapshot(at: dayjs.Dayjs = dayjs().tz('America/Bogota')): Promise<RideFeeInterface> {
+  async buildPricingSnapshot(
+    at: dayjs.Dayjs = dayjs().tz('America/Bogota')
+  ): Promise<RideFeeInterface> {
     const settings = await this.getRideFees()
     let minimum = settings.fees_min_day
     let multiplier = 1

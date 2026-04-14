@@ -4,10 +4,7 @@ import { ClientInterface } from '../Interfaces/ClientInterface'
 
 type ClientCreationAttributes = Optional<ClientInterface, 'photoUrl' | 'createdAt' | 'updatedAt'>
 
-class Client
-  extends Model<ClientInterface, ClientCreationAttributes>
-  implements ClientInterface
-{
+class Client extends Model<ClientInterface, ClientCreationAttributes> implements ClientInterface {
   public id!: string
   public name!: string
   public phone!: string

@@ -8,10 +8,7 @@ type WpClientCreationAttributes = Optional<
   'full' | 'wpNotifications' | 'chatBot' | 'assistant'
 >
 
-class WpClientRecord
-  extends Model<WpClient, WpClientCreationAttributes>
-  implements WpClient
-{
+class WpClientRecord extends Model<WpClient, WpClientCreationAttributes> implements WpClient {
   public id!: string
   public alias!: string
   public wpNotifications!: boolean

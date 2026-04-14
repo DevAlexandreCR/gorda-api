@@ -28,7 +28,10 @@ class MessageRepository {
         wpClientId,
         chatId: normalizedChatId,
       },
-      order: [['created_at', 'ASC'], ['id', 'ASC']],
+      order: [
+        ['created_at', 'ASC'],
+        ['id', 'ASC'],
+      ],
       limit,
     })
 

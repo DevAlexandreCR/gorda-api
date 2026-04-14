@@ -7,10 +7,7 @@ import { PlaceSuggestionHelper } from '../../PlaceSuggestionHelper'
 import { PlaceOption } from '../../../../Interfaces/PlaceOption'
 
 export class ChoosingPlace extends ResponseContract {
-  public messageSupported: Array<string> = [
-    MessageTypes.TEXT,
-    MessageTypes.INTERACTIVE,
-  ]
+  public messageSupported: Array<string> = [MessageTypes.TEXT, MessageTypes.INTERACTIVE]
 
   public async processMessage(message: WpMessage): Promise<void> {
     this.setCurrentClient(this.session.chat_id)
@@ -20,7 +17,7 @@ export class ChoosingPlace extends ResponseContract {
       sessionId: this.session.id,
       sessionStatus: this.session.status,
       hasPlaceOptions: !!this.session.placeOptions,
-      placeOptionsLength: this.session.placeOptions?.length || 0
+      placeOptionsLength: this.session.placeOptions?.length || 0,
     })
 
     const placeOptions = this.session.placeOptions
@@ -34,15 +31,17 @@ export class ChoosingPlace extends ResponseContract {
     }
 
     console.log('📋 PlaceOptions details:', {
-      placeOptions: placeOptions.map(opt => ({
+      placeOptions: placeOptions.map((opt) => ({
         option: opt.option,
         placeId: opt.placeId,
-        isConfirmation: opt.placeId.startsWith('confirm:')
-      }))
+        isConfirmation: opt.placeId.startsWith('confirm:'),
+      })),
     })
 
     // Check if this is a confirmation scenario (has option 0 with confirm: prefix)
-    const confirmationOption = placeOptions.find(opt => opt.option === 0 && opt.placeId.startsWith('confirm:'))
+    const confirmationOption = placeOptions.find(
+      (opt) => opt.option === 0 && opt.placeId.startsWith('confirm:')
+    )
     const isConfirmationMode = !!confirmationOption
 
     const isFromButton = message.type === MessageTypes.INTERACTIVE && !!message.interactiveReply
@@ -53,7 +52,7 @@ export class ChoosingPlace extends ResponseContract {
       console.log('🔍 Interactive Reply Debug:', {
         type: message.interactiveReply.type,
         button_reply: message.interactiveReply.button_reply,
-        list_reply: message.interactiveReply.list_reply
+        list_reply: message.interactiveReply.list_reply,
       })
 
       if (message.interactiveReply.button_reply?.id) {
@@ -82,7 +81,9 @@ export class ChoosingPlace extends ResponseContract {
     placeOptions: PlaceOption[]
   ): Promise<void> {
     // Get the candidate place ID from option 0
-    const confirmationOption = placeOptions.find(opt => opt.option === 0 && opt.placeId.startsWith('confirm:'))
+    const confirmationOption = placeOptions.find(
+      (opt) => opt.option === 0 && opt.placeId.startsWith('confirm:')
+    )
     if (!confirmationOption) {
       await this.askForLocationAgain()
       return
@@ -97,7 +98,7 @@ export class ChoosingPlace extends ResponseContract {
     }
 
     // Get suggestions from other options (option > 0)
-    const suggestionOptions = placeOptions.filter(opt => opt.option > 0)
+    const suggestionOptions = placeOptions.filter((opt) => opt.option > 0)
 
     const userSelection = this.parseConfirmationFromOptions(
       isFromButton ? interactiveReplyId : message.msg,
@@ -108,7 +109,7 @@ export class ChoosingPlace extends ResponseContract {
     console.log('🔍 Confirmation Debug:', {
       confirmationValue: userSelection.confirmationValue,
       candidatePlace: candidatePlace?.name,
-      userSelection
+      userSelection,
     })
 
     if (userSelection.confirmationValue !== null) {
@@ -122,7 +123,7 @@ export class ChoosingPlace extends ResponseContract {
         // User said NO, show suggestions if available
         if (suggestionOptions && suggestionOptions.length > 0) {
           // Get actual place data for suggestions
-          const suggestions: Array<{ id: string, name: string }> = []
+          const suggestions: Array<{ id: string; name: string }> = []
           for (const option of suggestionOptions) {
             const place = await this.store.findPlaceById(option.placeId)
             if (place) {
@@ -136,7 +137,7 @@ export class ChoosingPlace extends ResponseContract {
               suggestions.map((suggestion, index) => ({
                 option: index + 1,
                 placeId: suggestion.id,
-                placeName: suggestion.name
+                placeName: suggestion.name,
               })),
               candidatePlace.name,
               wpClient?.service,
@@ -146,7 +147,7 @@ export class ChoosingPlace extends ResponseContract {
               // Store suggestions as individual PlaceOption entries
               const newPlaceOptions: PlaceOption[] = suggestions.map((suggestion, index) => ({
                 option: index + 1,
-                placeId: suggestion.id
+                placeId: suggestion.id,
               }))
               await this.session.setPlaceOptions(newPlaceOptions)
             })
@@ -176,17 +177,20 @@ export class ChoosingPlace extends ResponseContract {
     // Convert PlaceOption entries to suggestion format for parseUserSelection
     // Sort by option number to ensure correct order for numbered selection
     const sortedPlaceOptions = placeOptions
-      .filter(opt => opt.option > 0) // Exclude confirmation options (option 0)
+      .filter((opt) => opt.option > 0) // Exclude confirmation options (option 0)
       .sort((a, b) => a.option - b.option)
 
     console.log('🔍 Converting PlaceOptions to suggestions:', {
       placeOptionsCount: placeOptions.length,
       sortedOptionsCount: sortedPlaceOptions.length,
-      placeOptions: placeOptions.map(opt => ({ option: opt.option, placeId: opt.placeId })),
-      sortedOptions: sortedPlaceOptions.map(opt => ({ option: opt.option, placeId: opt.placeId }))
+      placeOptions: placeOptions.map((opt) => ({ option: opt.option, placeId: opt.placeId })),
+      sortedOptions: sortedPlaceOptions.map((opt) => ({
+        option: opt.option,
+        placeId: opt.placeId,
+      })),
     })
 
-    const suggestions: Array<{ id: string, name: string }> = []
+    const suggestions: Array<{ id: string; name: string }> = []
 
     for (const option of sortedPlaceOptions) {
       const place = await this.store.findPlaceById(option.placeId)
@@ -200,7 +204,7 @@ export class ChoosingPlace extends ResponseContract {
 
     console.log('🔍 Final suggestions array:', {
       suggestionsCount: suggestions.length,
-      suggestions: suggestions.map((s, index) => `${index + 1}. ${s.name}`)
+      suggestions: suggestions.map((s, index) => `${index + 1}. ${s.name}`),
     })
 
     const userSelection = this.parseUserSelectionFromOptions(
@@ -214,7 +218,7 @@ export class ChoosingPlace extends ResponseContract {
       interactiveReplyId,
       isFromButton,
       userSelection,
-      placeOptionsCount: sortedPlaceOptions.length
+      placeOptionsCount: sortedPlaceOptions.length,
     })
 
     if (userSelection.selectedPlaceId) {
@@ -237,7 +241,7 @@ export class ChoosingPlace extends ResponseContract {
       console.log('❌ Unrecognized selection, asking for clarification')
       console.log('Selection details:', {
         selectedPlaceId: userSelection.selectedPlaceId,
-        isNone: userSelection.isNone
+        isNone: userSelection.isNone,
       })
       await this.askForClarification()
     }
@@ -253,7 +257,7 @@ export class ChoosingPlace extends ResponseContract {
   ): { confirmationValue: boolean | null } {
     console.log('🔍 Parsing confirmation:', {
       userInput,
-      isFromButton
+      isFromButton,
     })
 
     if (isFromButton) {
@@ -291,11 +295,11 @@ export class ChoosingPlace extends ResponseContract {
     userInput: string,
     placeOptions: PlaceOption[],
     isFromButton: boolean
-  ): { selectedPlaceId: string | null, isNone: boolean } {
+  ): { selectedPlaceId: string | null; isNone: boolean } {
     console.log('🔍 Parsing selection from options:', {
       userInput,
       isFromButton,
-      optionsCount: placeOptions.length
+      optionsCount: placeOptions.length,
     })
 
     if (isFromButton) {
@@ -311,7 +315,7 @@ export class ChoosingPlace extends ResponseContract {
         console.log('✅ Button selection: PlaceOption', optionNumber)
 
         // Find PlaceOption with matching option number
-        const selectedOption = placeOptions.find(opt => opt.option === optionNumber)
+        const selectedOption = placeOptions.find((opt) => opt.option === optionNumber)
         if (selectedOption) {
           console.log('✅ Found PlaceOption:', selectedOption)
           return { selectedPlaceId: selectedOption.placeId, isNone: false }
@@ -328,7 +332,7 @@ export class ChoosingPlace extends ResponseContract {
         console.log('🔢 Text number detected:', number)
 
         // Find PlaceOption with matching option number
-        const selectedOption = placeOptions.find(opt => opt.option === number)
+        const selectedOption = placeOptions.find((opt) => opt.option === number)
         if (selectedOption) {
           if (selectedOption.placeId === 'none') {
             console.log('✅ Text selection: NONE')
@@ -340,7 +344,7 @@ export class ChoosingPlace extends ResponseContract {
         }
 
         // Check if it's the "none" option (last number)
-        const maxOption = Math.max(...placeOptions.map(opt => opt.option))
+        const maxOption = Math.max(...placeOptions.map((opt) => opt.option))
         if (number === maxOption + 1) {
           console.log('✅ Text selection: NONE (calculated)')
           return { selectedPlaceId: null, isNone: true }
@@ -373,7 +377,8 @@ export class ChoosingPlace extends ResponseContract {
     if (isApiOfficial) {
       clarificationText = 'Por favor selecciona una de las opciones usando los botones.'
     } else {
-      clarificationText = 'Por favor responde con el número de la opción que prefieres (ej: 1, 2, 3, etc.)'
+      clarificationText =
+        'Por favor responde con el número de la opción que prefieres (ej: 1, 2, 3, etc.)'
     }
 
     const clarificationMessage = {
@@ -382,7 +387,7 @@ export class ChoosingPlace extends ResponseContract {
       description: 'Ask for clarification about selection',
       message: clarificationText,
       enabled: true,
-      interactive: null
+      interactive: null,
     }
 
     await this.sendMessage(clarificationMessage)

@@ -37,7 +37,10 @@ class InboundMessageDedupCache {
         return { action: 'ignore', reason: 'duplicate_message' }
       }
     } catch (error: any) {
-      console.log('[InboundMessageDedupCache] L2 lookup failed, proceeding (fail-open)', error?.message)
+      console.log(
+        '[InboundMessageDedupCache] L2 lookup failed, proceeding (fail-open)',
+        error?.message
+      )
     }
 
     // New message — register in L1 (L2 registration is handled by the caller via recordProcessed)
