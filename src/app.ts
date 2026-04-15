@@ -52,6 +52,12 @@ Locale.getInstance()
 const app: Application = express()
 let wpServices: WhatsAppClientDictionary = {}
 const localOriginPattern = /^http?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
+const allowedOrigins = new Set(
+  String(config.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+)
 
 Sentry.init({
   dsn: config.SENTRY_DSN,
@@ -63,33 +69,36 @@ Sentry.init({
   tracesSampleRate: 0.8,
 })
 
-if (config.NODE_ENV !== 'production') {
-  const localCorsOptions: CorsOptions = {
-    origin: (origin, callback) => {
-      if (!origin) {
-        callback(null, true)
-        return
-      }
+const corsOptions: CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true)
+      return
+    }
 
-      callback(null, localOriginPattern.test(origin))
-    },
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Accept',
-      'Authorization',
-      'Content-Type',
-      'X-Client-Platform',
-      'X-Client-Version',
-      'baggage',
-      'sentry-trace',
-    ],
-    credentials: true,
-    optionsSuccessStatus: 204,
-  }
+    if (localOriginPattern.test(origin) || allowedOrigins.has(origin)) {
+      callback(null, true)
+      return
+    }
 
-  app.use(cors(localCorsOptions))
-  app.options('*', cors(localCorsOptions))
+    callback(new Error(`CORS origin denied: ${origin}`))
+  },
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Accept',
+    'Authorization',
+    'Content-Type',
+    'X-Client-Platform',
+    'X-Client-Version',
+    'baggage',
+    'sentry-trace',
+  ],
+  credentials: true,
+  optionsSuccessStatus: 204,
 }
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 app.use(Sentry.Handlers.requestHandler())
 app.use(Sentry.Handlers.tracingHandler())
 app.use(Sentry.Handlers.errorHandler())

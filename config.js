@@ -40,6 +40,7 @@ module.exports = {
   AI_SERVICE_API_KEY: process.env.AI_SERVICE_API_KEY || 'admin-token',
   DATABASE_URL: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/gorda',
   SERVER_API_KEY: process.env.SERVER_API_KEY,
+  CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS || '',
   ADMIN_MIN_VERSION: process.env.ADMIN_MIN_VERSION || '2.0.0',
   DRIVER_MIN_VERSION_CODE: Number.parseInt(process.env.DRIVER_MIN_VERSION_CODE || '72', 10) || 72
 }
