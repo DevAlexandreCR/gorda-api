@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# Release Notes for 2.0.x
+
+## [2.0.0(2026-04-14)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.0...1.6.2)
+
+### Added
+
+- Change firestore by SQL database
+
 # Release Notes for 1.6.x
 
 ## [1.6.2 (2025-11-29)](https://github.com/DevAlexandreCR/gorda-api/compare/v1.6.2...v1.6.1)
 
-### Chagend
+### Changed
 
 - change db clients to postgres [#112](https://github.com/DevAlexandreCR/gorda-api/pull/112)
 
