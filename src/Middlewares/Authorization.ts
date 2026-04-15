@@ -15,55 +15,96 @@ export interface DriverAuthenticatedRequest extends Request {
   driverUid?: string
 }
 
+function respondUnauthorized(res: Response, message: string) {
+  return res.status(401).json({
+    success: false,
+    message,
+    data: {},
+  })
+}
+
+function respondServerConfigurationError(res: Response) {
+  return res.status(500).json({
+    success: false,
+    message: 'Server configuration error',
+    data: {},
+  })
+}
+
+function respondVersionUnsupported(res: Response) {
+  return res.status(426).json({
+    success: false,
+    message: 'Client version is no longer supported',
+    data: {
+      code: VERSION_UNSUPPORTED_CODE,
+      admin: getAdminVersionPolicy(),
+    },
+  })
+}
+
+function validateServerApiKey(req: Request, res: Response): boolean {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    respondUnauthorized(res, 'Authorization header missing or invalid format')
+    return false
+  }
+
+  const token = authHeader.substring(7)
+  const validApiKey = config.SERVER_API_KEY
+
+  if (!validApiKey) {
+    console.error('SERVER_API_KEY environment variable not set')
+    respondServerConfigurationError(res)
+    return false
+  }
+
+  if (token !== validApiKey) {
+    respondUnauthorized(res, 'Invalid API key')
+    return false
+  }
+
+  return true
+}
+
 export const requireAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authorization header missing or invalid format',
-        data: {},
-      })
-    }
-
-    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-    const validApiKey = config.SERVER_API_KEY
-
-    if (!validApiKey) {
-      console.error('SERVER_API_KEY environment variable not set')
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error',
-        data: {},
-      })
-    }
-
-    if (token !== validApiKey) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid API key',
-        data: {},
-      })
+    if (!validateServerApiKey(req, res)) {
+      return
     }
 
     const clientPlatform = String(req.headers['x-client-platform'] ?? '').trim()
     const clientVersion = String(req.headers['x-client-version'] ?? '').trim()
     if (clientPlatform !== 'admin' || !isAdminVersionSupported(clientVersion)) {
-      return res.status(426).json({
-        success: false,
-        message: 'Client version is no longer supported',
-        data: {
-          code: VERSION_UNSUPPORTED_CODE,
-          admin: getAdminVersionPolicy(),
-        },
-      })
+      return respondVersionUnsupported(res)
     }
 
     req.isAuthenticated = true
     next()
   } catch (error) {
     console.error('Authorization error:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: {},
+    })
+  }
+}
+
+export const requireInternalAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!validateServerApiKey(req, res)) {
+      return
+    }
+
+    req.isAuthenticated = true
+    next()
+  } catch (error) {
+    console.error('Internal authorization error:', error)
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

@@ -1,11 +1,11 @@
 import { Request, Response, Router } from 'express'
 import ServiceHistoryMigrationService from '../../../Services/serviceHistory/ServiceHistoryMigrationService'
-import { requireAuth } from '../../../Middlewares/Authorization'
+import { requireInternalAuth } from '../../../Middlewares/Authorization'
 
 const controller = Router()
 const service = new ServiceHistoryMigrationService()
 
-controller.use(requireAuth)
+controller.use(requireInternalAuth)
 
 controller.post('/finalize', async (req: Request, res: Response) => {
   try {
