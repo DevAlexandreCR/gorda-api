@@ -1,5 +1,7 @@
 import { Request, Response, Router } from 'express'
 import Container from '../../../Container/Container'
+import config from '../../../../config'
+import { getAdminVersionPolicy } from '../../../Helpers/VersionPolicy'
 
 const controller = Router()
 
@@ -19,6 +21,20 @@ controller.get('/ride-fees/snapshot', async (_req: Request, res: Response) => {
       data: {},
     })
   }
+})
+
+controller.get('/version-policy', async (_req: Request, res: Response) => {
+  return res.status(200).json({
+    success: true,
+    data: {
+      versionPolicy: {
+        admin: getAdminVersionPolicy(),
+        driver: {
+          minVersionCode: config.DRIVER_MIN_VERSION_CODE,
+        },
+      },
+    },
+  })
 })
 
 controller.get('/wp-clients/:id', async (req: Request, res: Response) => {

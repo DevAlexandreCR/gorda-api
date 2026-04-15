@@ -47,6 +47,10 @@ class DatabaseService {
   public dbRideFees(): Reference {
     return this.db.ref('settings/ride_fees/')
   }
+
+  public dbVersionPolicy(): Reference {
+    return this.db.ref('settings/version_policy/')
+  }
 }
 
 export default new DatabaseService()

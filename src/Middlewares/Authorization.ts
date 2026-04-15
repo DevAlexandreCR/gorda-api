@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express'
 import config from '../../config'
 import Admin from '../Services/firebase/Admin'
+import {
+  getAdminVersionPolicy,
+  isAdminVersionSupported,
+  VERSION_UNSUPPORTED_CODE,
+} from '../Helpers/VersionPolicy'
 
 interface AuthenticatedRequest extends Request {
   isAuthenticated?: boolean
@@ -39,6 +44,19 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
         success: false,
         message: 'Invalid API key',
         data: {},
+      })
+    }
+
+    const clientPlatform = String(req.headers['x-client-platform'] ?? '').trim()
+    const clientVersion = String(req.headers['x-client-version'] ?? '').trim()
+    if (clientPlatform !== 'admin' || !isAdminVersionSupported(clientVersion)) {
+      return res.status(426).json({
+        success: false,
+        message: 'Client version is no longer supported',
+        data: {
+          code: VERSION_UNSUPPORTED_CODE,
+          admin: getAdminVersionPolicy(),
+        },
       })
     }
 

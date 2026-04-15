@@ -42,6 +42,7 @@ import MetricsController from './Api/Controllers/Metrics/MetricsController'
 import ServiceHistoryInternalController from './Api/Controllers/Internal/ServiceHistoryInternalController'
 import type { CorsOptions } from 'cors'
 import ChatRealtimeGateway from './Services/whatsapp/ChatRealtimeGateway'
+import DatabaseService from './Services/firebase/Database'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -73,7 +74,15 @@ if (config.NODE_ENV !== 'production') {
       callback(null, localOriginPattern.test(origin))
     },
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Accept', 'Authorization', 'Content-Type', 'baggage', 'sentry-trace'],
+    allowedHeaders: [
+      'Accept',
+      'Authorization',
+      'Content-Type',
+      'X-Client-Platform',
+      'X-Client-Version',
+      'baggage',
+      'sentry-trace',
+    ],
     credentials: true,
     optionsSuccessStatus: 204,
   }
@@ -126,6 +135,15 @@ server.listen(config.PORT, async () => {
     console.error('Failed to initialize container:', error)
     process.exit(1)
   })
+
+  await DatabaseService.dbVersionPolicy()
+    .update({
+      min_driver_version_code: config.DRIVER_MIN_VERSION_CODE,
+    })
+    .catch((error) => {
+      console.error('Failed to synchronize driver version policy:', error)
+      process.exit(1)
+    })
 
   await store.refreshDrivers()
   await store.refreshMessages()
