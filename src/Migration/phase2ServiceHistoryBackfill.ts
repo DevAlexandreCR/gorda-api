@@ -9,6 +9,15 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 
 type Phase2Dataset = 'service_history' | 'service_metrics' | 'all'
+type Phase2Cursor = {
+  createdAt: number
+  key: string
+}
+
+const SERVICE_HISTORY_BATCH_SIZE = Math.max(
+  Number.parseInt(process.env.PHASE2_SERVICE_HISTORY_BATCH_SIZE ?? '250', 10) || 250,
+  1
+)
 
 const DATASET = (process.argv[2] ?? 'all') as Phase2Dataset
 const service = new ServiceHistoryMigrationService()
@@ -17,22 +26,50 @@ async function backfillServiceHistory(): Promise<{
   scanned: number
   upserted: number
   skipped: number
+  batches: number
+  batchSize: number
 }> {
-  const snapshot = await Database.dbServices()
-    .orderByChild('created_at')
-    .startAt(service.getBoundaryUnix())
-    .once('value')
   let scanned = 0
   let upserted = 0
   let skipped = 0
+  let batches = 0
+  let cursor: Phase2Cursor | null = null
 
-  snapshot.forEach((child) => {
-    scanned++
-    return false
-  })
+  while (true) {
+    let query = Database.dbServices().orderByChild('created_at')
 
-  const tasks = snapshot.val()
-    ? Object.values(snapshot.val() as Record<string, ServiceInterface>).map(async (rawService) => {
+    if (cursor) {
+      query = query.startAt(cursor.createdAt, cursor.key).limitToFirst(SERVICE_HISTORY_BATCH_SIZE + 1)
+    } else {
+      query = query.startAt(service.getBoundaryUnix()).limitToFirst(SERVICE_HISTORY_BATCH_SIZE)
+    }
+
+    const snapshot = await query.once('value')
+    const batchRows: Array<{ key: string; service: ServiceInterface }> = []
+
+    snapshot.forEach((child) => {
+      if (!child.key) return false
+      if (cursor && child.key === cursor.key) return false
+
+      const value = child.val() ?? {}
+      batchRows.push({
+        key: child.key,
+        service: {
+          ...value,
+          id: value.id ?? child.key,
+        } as ServiceInterface,
+      })
+      return false
+    })
+
+    if (batchRows.length === 0) {
+      break
+    }
+
+    scanned += batchRows.length
+
+    await Promise.all(
+      batchRows.map(async ({ service: rawService }) => {
         if (!service.isEligibleFinalService(rawService)) {
           skipped++
           return
@@ -41,11 +78,31 @@ async function backfillServiceHistory(): Promise<{
         await service.upsertHistoryRecord(rawService)
         upserted++
       })
-    : []
+    )
 
-  await Promise.all(tasks)
+    batches += 1
 
-  return { scanned, upserted, skipped }
+    const lastService = batchRows[batchRows.length - 1]
+    cursor = {
+      createdAt: Number(lastService.service.created_at ?? 0),
+      key: lastService.key,
+    }
+
+    console.log('Phase 2 service history batch summary:', {
+      batch: batches,
+      batchSize: batchRows.length,
+      scanned,
+      upserted,
+      skipped,
+      cursor,
+    })
+
+    if (batchRows.length < SERVICE_HISTORY_BATCH_SIZE) {
+      break
+    }
+  }
+
+  return { scanned, upserted, skipped, batches, batchSize: SERVICE_HISTORY_BATCH_SIZE }
 }
 
 async function rebuildMetrics(): Promise<number> {
@@ -53,7 +110,13 @@ async function rebuildMetrics(): Promise<number> {
 }
 
 async function main(): Promise<void> {
-  let historySummary = { scanned: 0, upserted: 0, skipped: 0 }
+  let historySummary = {
+    scanned: 0,
+    upserted: 0,
+    skipped: 0,
+    batches: 0,
+    batchSize: SERVICE_HISTORY_BATCH_SIZE,
+  }
   let metricsRows = 0
 
   switch (DATASET) {
