@@ -5,6 +5,7 @@ import { setDynamicMultiplierFee } from './SetDynamicMultiplierFeeJob'
 import { cancelPendingServices } from './CancelPendingServicesJob'
 import { cleanIgnoredInboundAudit } from './CleanIgnoredInboundAuditJob'
 import { cleanProcessedInboundMessages } from './CleanProcessedInboundMessagesJob'
+import { runPhase5FirestoreDailyCleanup } from '../Migration/phase5FirebaseCleanup'
 
 class Schedule {
   execute(): void {
@@ -14,6 +15,7 @@ class Schedule {
     cron.schedule('*/5 * * * *', cancelPendingServices)
     cron.schedule('30 0 * * *', cleanIgnoredInboundAudit, { timezone: 'UTC' })
     cron.schedule('45 0 * * *', cleanProcessedInboundMessages, { timezone: 'UTC' })
+    cron.schedule('15 1 * * *', runPhase5FirestoreDailyCleanup, { timezone: 'UTC' })
   }
 }
 

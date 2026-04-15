@@ -23,6 +23,8 @@
     "backfill:phase2:service-metrics": "ts-node src/Migration/phase2ServiceHistoryBackfill.ts service_metrics",
     "backfill:phase2:all": "ts-node src/Migration/phase2ServiceHistoryBackfill.ts all",
     "backfill:phase3:driver-tokens": "ts-node src/Migration/phase3DriverTokensBackfill.ts",
+    "cleanup:firebase:rtdb": "ts-node src/Migration/phase5FirebaseCleanup.ts rtdb",
+    "cleanup:firebase:firestore:daily": "ts-node src/Migration/phase5FirebaseCleanup.ts firestore-daily",
     "release:sql:production": "NODE_ENV=production npm run migrate:sql:production && NODE_ENV=production npm run backfill:phase1:all && NODE_ENV=production npm run backfill:phase2:all && NODE_ENV=production npm run backfill:phase3:driver-tokens",
     "verify:release": "npm run build && npm run format:check"
   },
