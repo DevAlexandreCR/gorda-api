@@ -71,11 +71,26 @@ function logStructured(event: string, payload: Record<string, unknown>): void {
   )
 }
 
-function buildRtdbDeletePayload(): Record<string, null> {
-  return RTDB_PURGE_TARGETS.reduce<Record<string, null>>((accumulator, path) => {
-    accumulator[path] = null
-    return accumulator
-  }, {})
+async function purgeRtdbRoot(path: (typeof RTDB_PURGE_TARGETS)[number]): Promise<void> {
+  logStructured('phase5_rtdb_cleanup_root_started', {
+    path,
+    startedAt: new Date().toISOString(),
+  })
+
+  try {
+    await Database.db.ref(path).set(null)
+    logStructured('phase5_rtdb_cleanup_root_completed', {
+      path,
+      endedAt: new Date().toISOString(),
+    })
+  } catch (error) {
+    logStructured('phase5_rtdb_cleanup_root_failed', {
+      path,
+      endedAt: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+    })
+    throw error
+  }
 }
 
 function logDatasetPass(
@@ -362,14 +377,14 @@ async function cleanupWpClients(
 }
 
 export async function purgeLegacyRtdbRootData(): Promise<void> {
-  const payload = buildRtdbDeletePayload()
-
   logStructured('phase5_rtdb_cleanup_started', {
     startedAt: new Date().toISOString(),
     targets: RTDB_PURGE_TARGETS,
   })
 
-  await Database.db.ref().update(payload)
+  for (const path of RTDB_PURGE_TARGETS) {
+    await purgeRtdbRoot(path)
+  }
 
   logStructured('phase5_rtdb_cleanup_completed', {
     endedAt: new Date().toISOString(),
@@ -451,6 +466,7 @@ function printPreview(mode: CleanupMode): void {
           execute: false,
           mode,
           targets: RTDB_PURGE_TARGETS,
+          strategy: 'sequential_top_level_set_null',
         },
         null,
         2
