@@ -27,21 +27,25 @@ type FirestoreCleanupCursor = firestore.QueryDocumentSnapshot | null
 const RTDB_PURGE_TARGETS = [
   'users',
   'drivers',
-  'services',
+  'chats',
+  'tokens',
+  'places',
+  'clients',
   'drivers_assigned',
   'online_drivers',
   'service_connections',
+  'services',
 ] as const
 
 const ROOT_FIRESTORE_COLLECTIONS: Array<{
   collection: 'messages' | 'metrics' | 'services' | 'sessions'
   dataset: Extract<FirestoreCleanupDataset, 'messages' | 'metrics' | 'services' | 'sessions'>
 }> = [
-  { collection: 'messages', dataset: 'messages' },
-  { collection: 'metrics', dataset: 'metrics' },
-  { collection: 'services', dataset: 'services' },
-  { collection: 'sessions', dataset: 'sessions' },
-]
+    { collection: 'messages', dataset: 'messages' },
+    { collection: 'metrics', dataset: 'metrics' },
+    { collection: 'services', dataset: 'services' },
+    { collection: 'sessions', dataset: 'sessions' },
+  ]
 
 const FIRESTORE_DAILY_DELETE_CAP = 15000
 const ROOT_COLLECTION_BATCH_SIZE = 500
