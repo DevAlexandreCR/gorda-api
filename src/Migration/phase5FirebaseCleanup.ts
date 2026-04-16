@@ -22,6 +22,8 @@ type FirestoreCleanupSummary = {
   stopReason: FirestoreCleanupStopReason
 }
 
+type FirestoreCleanupCursor = firestore.QueryDocumentSnapshot | null
+
 const RTDB_PURGE_TARGETS = [
   'users',
   'drivers',
@@ -76,6 +78,29 @@ function buildRtdbDeletePayload(): Record<string, null> {
   }, {})
 }
 
+function logDatasetPass(
+  dataset: FirestoreCleanupDataset,
+  queriedCount: number,
+  candidateDeleteCount: number,
+  remainingBudget: number
+): void {
+  logStructured('phase5_firestore_cleanup_dataset_pass', {
+    dataset,
+    queriedCount,
+    candidateDeleteCount,
+    remainingBudget,
+  })
+}
+
+function logDatasetEmpty(dataset: FirestoreCleanupDataset, remainingBudget: number): void {
+  logStructured('phase5_firestore_cleanup_dataset_empty', {
+    dataset,
+    queriedCount: 0,
+    candidateDeleteCount: 0,
+    remainingBudget,
+  })
+}
+
 function isWpClientMessageDocument(document: firestore.QueryDocumentSnapshot): boolean {
   const pathSegments = document.ref.path.split('/')
   return (
@@ -111,9 +136,9 @@ async function deleteDocuments(
   }
 
   const documentsToDelete = documents.slice(0, summary.remainingBudget)
-  const results = await Promise.allSettled(
-    documentsToDelete.map((document) => writer.delete(document.ref))
-  )
+  const deleteOperations = documentsToDelete.map((document) => writer.delete(document.ref))
+  await writer.flush()
+  const results = await Promise.allSettled(deleteOperations)
   let successfulDeletes = 0
 
   results.forEach((result, index) => {
@@ -131,8 +156,6 @@ async function deleteDocuments(
       error: result.reason instanceof Error ? result.reason.message : String(result.reason),
     })
   })
-
-  await writer.flush()
 
   return successfulDeletes
 }
@@ -152,9 +175,11 @@ async function cleanupRootCollection(
       .get()
 
     if (snapshot.empty) {
+      logDatasetEmpty(dataset, summary.remainingBudget)
       return
     }
 
+    logDatasetPass(dataset, snapshot.size, snapshot.size, summary.remainingBudget)
     const successfulDeletes = await deleteDocuments(writer, snapshot.docs, dataset, summary)
 
     logStructured('phase5_firestore_cleanup_progress', {
@@ -174,7 +199,7 @@ async function cleanupWpClientMessages(
   writer: firestore.BulkWriter,
   summary: FirestoreCleanupSummary
 ): Promise<void> {
-  let cursor: string | null = null
+  let cursor: FirestoreCleanupCursor = null
 
   while (summary.remainingBudget > 0) {
     let query = Firestore.fs
@@ -189,13 +214,21 @@ async function cleanupWpClientMessages(
     const snapshot = await query.get()
 
     if (snapshot.empty) {
+      logDatasetEmpty('wpClientsMessages', summary.remainingBudget)
       return
     }
 
-    cursor = snapshot.docs[snapshot.docs.length - 1].ref.path
+    cursor = snapshot.docs[snapshot.docs.length - 1]
     const candidateDocuments = snapshot.docs
       .filter((document) => isWpClientMessageDocument(document))
       .slice(0, summary.remainingBudget)
+
+    logDatasetPass(
+      'wpClientsMessages',
+      snapshot.size,
+      candidateDocuments.length,
+      summary.remainingBudget
+    )
 
     if (candidateDocuments.length > 0) {
       await deleteDocuments(writer, candidateDocuments, 'wpClientsMessages', summary)
@@ -217,7 +250,7 @@ async function cleanupWpClientChats(
   writer: firestore.BulkWriter,
   summary: FirestoreCleanupSummary
 ): Promise<void> {
-  let cursor: string | null = null
+  let cursor: FirestoreCleanupCursor = null
 
   while (summary.remainingBudget > 0) {
     let query = Firestore.fs
@@ -232,10 +265,11 @@ async function cleanupWpClientChats(
     const snapshot = await query.get()
 
     if (snapshot.empty) {
+      logDatasetEmpty('wpClientsChats', summary.remainingBudget)
       return
     }
 
-    cursor = snapshot.docs[snapshot.docs.length - 1].ref.path
+    cursor = snapshot.docs[snapshot.docs.length - 1]
     const candidateDocuments = (
       await Promise.all(
         snapshot.docs
@@ -248,6 +282,13 @@ async function cleanupWpClientChats(
     )
       .filter((document): document is firestore.QueryDocumentSnapshot => document !== null)
       .slice(0, summary.remainingBudget)
+
+    logDatasetPass(
+      'wpClientsChats',
+      snapshot.size,
+      candidateDocuments.length,
+      summary.remainingBudget
+    )
 
     if (candidateDocuments.length > 0) {
       await deleteDocuments(writer, candidateDocuments, 'wpClientsChats', summary)
@@ -269,7 +310,7 @@ async function cleanupWpClients(
   writer: firestore.BulkWriter,
   summary: FirestoreCleanupSummary
 ): Promise<void> {
-  let cursor: string | null = null
+  let cursor: FirestoreCleanupCursor = null
 
   while (summary.remainingBudget > 0) {
     let query = Firestore.fs
@@ -284,10 +325,11 @@ async function cleanupWpClients(
     const snapshot = await query.get()
 
     if (snapshot.empty) {
+      logDatasetEmpty('wpClients', summary.remainingBudget)
       return
     }
 
-    cursor = snapshot.docs[snapshot.docs.length - 1].ref.path
+    cursor = snapshot.docs[snapshot.docs.length - 1]
     const candidateDocuments = (
       await Promise.all(
         snapshot.docs
@@ -300,6 +342,8 @@ async function cleanupWpClients(
     )
       .filter((document): document is firestore.QueryDocumentSnapshot => document !== null)
       .slice(0, summary.remainingBudget)
+
+    logDatasetPass('wpClients', snapshot.size, candidateDocuments.length, summary.remainingBudget)
 
     if (candidateDocuments.length > 0) {
       await deleteDocuments(writer, candidateDocuments, 'wpClients', summary)
