@@ -13,9 +13,9 @@ class Schedule {
     cron.schedule('0 * * * *', setDynamicMinFee)
     cron.schedule('*/5 * * * *', setDynamicMultiplierFee)
     cron.schedule('*/5 * * * *', cancelPendingServices)
-    cron.schedule('30 0 * * *', cleanIgnoredInboundAudit, { timezone: 'UTC' })
-    cron.schedule('45 0 * * *', cleanProcessedInboundMessages, { timezone: 'UTC' })
-    cron.schedule('15 1 * * *', runPhase5FirestoreDailyCleanup, { timezone: 'UTC' })
+    cron.schedule('30 6 * * *', cleanIgnoredInboundAudit, { timezone: 'UTC' })
+    cron.schedule('45 6 * * *', cleanProcessedInboundMessages, { timezone: 'UTC' })
+    cron.schedule('15 7 * * *', runPhase5FirestoreDailyCleanup, { timezone: 'UTC' })
   }
 }
 
