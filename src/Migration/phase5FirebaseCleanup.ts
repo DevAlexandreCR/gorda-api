@@ -27,13 +27,13 @@ type FirestoreCleanupCursor = firestore.QueryDocumentSnapshot | null
 const RTDB_PURGE_TARGETS = [
   'users',
   'drivers',
-  'chats',
   'tokens',
   'places',
   'clients',
   'drivers_assigned',
   'online_drivers',
   'service_connections',
+  'chats',
   'services',
 ] as const
 
