@@ -122,6 +122,9 @@ export const requireDriverAuth = async (
     const authHeader = req.headers.authorization
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn(
+        `Driver authorization rejected path=${req.method} ${req.originalUrl} reason=missing_or_invalid_authorization_header`
+      )
       return res.status(401).json({
         success: false,
         message: 'Authorization header missing or invalid format',
@@ -134,7 +137,12 @@ export const requireDriverAuth = async (
     req.driverUid = decodedToken.uid
     next()
   } catch (error) {
-    console.error('Driver authorization error:', error)
+    const failureReason =
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    console.error(
+      `Driver authorization error path=${req.method} ${req.originalUrl} reason=${failureReason}`,
+      error
+    )
     return res.status(401).json({
       success: false,
       message: 'Invalid driver token',
