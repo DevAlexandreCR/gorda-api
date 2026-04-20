@@ -29,13 +29,13 @@ class MessageRepository {
         chatId: normalizedChatId,
       },
       order: [
-        ['created_at', 'ASC'],
-        ['id', 'ASC'],
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
       ],
       limit,
     })
 
-    return messageRecords.map((record) => this.mapMessage(record))
+    return messageRecords.reverse().map((record) => this.mapMessage(record))
   }
 
   public async addMessage(
