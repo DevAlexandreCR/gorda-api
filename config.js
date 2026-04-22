@@ -1,5 +1,5 @@
 const path = require("path")
-require('dotenv').config({ path: path.join(__dirname, '.env') })
+require('dotenv').config({ path: path.join(__dirname, '.env'), override: true })
 
 module.exports = {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -33,7 +33,7 @@ module.exports = {
   WWEB_VERSION: process.env.WWEB_VERSION || '2.2412.54',
   WAPI_TOKEN: process.env.WAPI_TOKEN || '',
   WAPI_URL: process.env.WAPI_URL || 'https://graph.facebook.com/v20.0/',
-  GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '/root/wp-api/firebaseAccount.json',
+  GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '/tmp/firebaseAccount.json',
   REDIS_HOST: process.env.REDIS_HOST || 'localhost',
   REDIS_PORT: process.env.REDIS_PORT || 6379,
   AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
