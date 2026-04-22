@@ -1,6 +1,7 @@
 import DriverRecord from '../Models/DriverRecord'
 import { DriverInterface } from '../Interfaces/DriverInterface'
 import Driver from '../Models/Driver'
+import { buildDriverAvailability } from '../Services/drivers/DriverAvailability'
 
 class DriverRecordRepository {
   async index(): Promise<DriverInterface[]> {
@@ -17,16 +18,17 @@ class DriverRecordRepository {
   }
 
   async store(payload: DriverInterface): Promise<DriverInterface> {
+    const { availability: _availability, ...driverPayload } = payload
     const [driver] = await DriverRecord.upsert(
       {
-        ...payload,
-        password: payload.password ?? null,
-        phone2: payload.phone2 ?? null,
-        paymentMode: payload.paymentMode ?? 'monthly',
-        photoUrl: payload.photoUrl ?? null,
-        device: payload.device ?? null,
-        balance: payload.balance ?? 0,
-        last_connection: payload.last_connection ?? 0,
+        ...driverPayload,
+        password: driverPayload.password ?? null,
+        phone2: driverPayload.phone2 ?? null,
+        paymentMode: driverPayload.paymentMode ?? 'monthly',
+        photoUrl: driverPayload.photoUrl ?? null,
+        device: driverPayload.device ?? null,
+        balance: driverPayload.balance ?? 0,
+        last_connection: driverPayload.last_connection ?? 0,
       },
       { returning: true }
     )
@@ -66,7 +68,7 @@ class DriverRecordRepository {
     if (!driver) return null
 
     driver.balance = balance
-    if (balance <= 0) {
+    if (driver.paymentMode === 'percentage' && balance <= 0) {
       driver.enabled_at = 0
     }
     await driver.save()
@@ -119,6 +121,11 @@ class DriverRecordRepository {
       enabled_at: Number(plain.enabled_at ?? 0),
       created_at: Number(plain.created_at ?? 0),
       last_connection: Number(plain.last_connection ?? 0),
+      availability: buildDriverAvailability({
+        paymentMode: plain.paymentMode ?? 'monthly',
+        balance: Number(plain.balance ?? 0),
+        enabled_at: Number(plain.enabled_at ?? 0),
+      }),
     }
   }
 }

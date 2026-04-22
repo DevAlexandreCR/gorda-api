@@ -1,4 +1,5 @@
 import { VehicleInterface } from './VehicleInterface'
+import { DriverAvailabilityInterface } from './DriverAvailabilityInterface'
 
 export interface DriverInterface {
   id: string | null
@@ -17,4 +18,5 @@ export interface DriverInterface {
   enabled_at: number
   created_at: number
   last_connection?: number
+  availability?: DriverAvailabilityInterface
 }

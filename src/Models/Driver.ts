@@ -2,6 +2,7 @@ import { DriverInterface } from '../Interfaces/DriverInterface'
 import Vehicle from './Vehicle'
 import { VehicleInterface } from '../Interfaces/VehicleInterface'
 import dayjs from 'dayjs'
+import { DriverAvailabilityInterface } from '../Interfaces/DriverAvailabilityInterface'
 
 export default class Driver implements DriverInterface {
   id: string | null
@@ -20,6 +21,7 @@ export default class Driver implements DriverInterface {
   vehicle: VehicleInterface
   device: Record<string, any> | null
   balance = 0
+  availability?: DriverAvailabilityInterface
 
   constructor() {
     this.id = null
