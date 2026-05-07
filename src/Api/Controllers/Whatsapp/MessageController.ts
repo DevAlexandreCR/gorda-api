@@ -255,8 +255,9 @@ async function processOfficialMessage(
     type === MessageTypes.TEXT ||
     type === MessageTypes.LOCATION ||
     type === MessageTypes.INTERACTIVE
+  const isChatBotEnabled = store.wpClients[wpClientId]?.chatBot === true
 
-  if (!hasTextContent && !isProcessableType) {
+  if (!hasTextContent && !isProcessableType && isChatBotEnabled) {
     const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
     wpClientService.sendMessage(wpMessage.from, msg)
   }
