@@ -60,6 +60,7 @@
     "socket.io": "^4.4.1",
     "whatsapp-web.js": "^v1.25.0",
     "xml2js": "^0.6.2",
+    "nodemailer": "^6.9.16",
     "zod": "^4.1.9"
   },
   "devDependencies": {
@@ -72,6 +73,7 @@
     "@types/sequelize": "^4.28.16",
     "@types/socket.io": "^3.0.2",
     "@types/uuid": "^10.0.0",
+    "@types/nodemailer": "^6.4.17",
     "@types/xml2js": "^0.4.14",
     "nodemon": "^2.0.15",
     "prettier": "^3.6.2",

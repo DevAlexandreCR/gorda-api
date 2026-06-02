@@ -1,6 +1,7 @@
 export interface UserRoles {
   operator: boolean
   admin: boolean
+  superadmin?: boolean
 }
 
 export interface UserInterface {
