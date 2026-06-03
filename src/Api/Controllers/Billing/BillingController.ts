@@ -2,7 +2,11 @@ import { Request, Response, Router } from 'express'
 import { requireAuth } from '../../../Middlewares/Authorization'
 import Container from '../../../Container/Container'
 import EmailService from '../../../Services/email/EmailService'
-import { BillingExtra } from '../../../Interfaces/BillingInterface'
+import {
+  BillingExtra,
+  BillingLineCharge,
+  BillingPreviewPayload,
+} from '../../../Interfaces/BillingInterface'
 import { buildBillingEmailHtml } from './BillingEmailTemplate'
 
 const controller = Router()
@@ -50,6 +54,42 @@ controller.get('/summary', async (req: Request, res: Response) => {
     return res.status(200).json({ success: true, data: summary })
   } catch (error) {
     console.error('Error fetching billing summary:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error' })
+  }
+})
+
+controller.post('/preview', async (req: Request, res: Response) => {
+  try {
+    const { month, lineCharges, softwareRental, extras } =
+      req.body as Partial<BillingPreviewPayload>
+
+    if (!month || !isValidMonth(month)) {
+      return res.status(400).json({ success: false, message: 'month must use YYYY-MM format' })
+    }
+
+    if (!Array.isArray(lineCharges) || typeof softwareRental !== 'number') {
+      return res.status(400).json({ success: false, message: 'Invalid preview payload' })
+    }
+
+    const summary = await Container.getBillingRepository().getSummary(month)
+    const normalizedLineCharges = normalizeLineCharges(lineCharges)
+    const normalizedExtras = normalizeExtras(extras)
+    const totalCop =
+      normalizedLineCharges.reduce((sum, charge) => sum + charge.amountCop, 0) +
+      softwareRental +
+      normalizedExtras.reduce((sum, extra) => sum + extra.amountCop, 0)
+
+    const html = buildBillingEmailHtml({
+      summary,
+      lineCharges: normalizedLineCharges,
+      softwareRental,
+      extras: normalizedExtras,
+      totalCop,
+    })
+
+    return res.status(200).json({ success: true, data: { html } })
+  } catch (error) {
+    console.error('Error building billing preview:', error)
     return res.status(500).json({ success: false, message: 'Internal server error' })
   }
 })
@@ -121,6 +161,14 @@ function normalizeExtras(extras: BillingExtra[] | undefined): BillingExtra[] {
   return extras.map((extra) => ({
     description: String(extra?.description ?? ''),
     amountCop: Number(extra?.amountCop ?? 0),
+  }))
+}
+
+function normalizeLineCharges(lineCharges: BillingLineCharge[]): BillingLineCharge[] {
+  return lineCharges.map((charge) => ({
+    wpClientId: String(charge?.wpClientId ?? ''),
+    alias: String(charge?.alias ?? ''),
+    amountCop: Number(charge?.amountCop ?? 0),
   }))
 }
 

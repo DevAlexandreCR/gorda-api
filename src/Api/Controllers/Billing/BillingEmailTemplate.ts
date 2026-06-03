@@ -32,15 +32,15 @@ export function buildBillingEmailHtml({
   const activityRows =
     summary.whatsappLines.length > 0
       ? summary.whatsappLines
-        .map(
-          (line) => `<tr>
+          .map(
+            (line) => `<tr>
         <td style="${CELL_LABEL_STYLE}">${escapeHtml(line.alias)}</td>
         <td style="${CELL_VALUE_STYLE}">${line.sessions}</td>
         <td style="${CELL_VALUE_STYLE}">${line.inboundMessages}</td>
         <td style="${CELL_VALUE_STYLE}">${line.outboundMessages}</td>
       </tr>`
-        )
-        .join('')
+          )
+          .join('')
       : `<tr><td colspan="4" style="${EMPTY_ROW_STYLE}">Sin actividad registrada en el periodo.</td></tr>`
 
   const sourceRows: Array<[string, string]> = summary.serviceSources.map((source) => [
@@ -73,10 +73,10 @@ export function buildBillingEmailHtml({
       <p style="margin:0;font-size:14px;line-height:1.75;color:#344767;">
         Cordial saludo,<br><br>
         De acuerdo con nuestro acuerdo comercial, relaciono el cierre correspondiente a ${escapeHtml(
-    summary.monthText
-  )}, con el resumen de actividad y los valores a facturar durante el periodo comprendido entre ${escapeHtml(
-    summary.startDateLabel
-  )} y ${escapeHtml(summary.endDateLabel)}.
+          summary.monthText
+        )}, con el resumen de actividad y los valores a facturar durante el periodo comprendido entre ${escapeHtml(
+          summary.startDateLabel
+        )} y ${escapeHtml(summary.endDateLabel)}.
       </p>
     </div>
 
@@ -97,15 +97,15 @@ export function buildBillingEmailHtml({
         <tr style="background:#1f2937;">
           <td style="padding:14px 18px;font-size:13px;font-weight:700;color:#ffffff;text-transform:uppercase;letter-spacing:0.04em;">Total</td>
           <td style="padding:14px 18px;font-size:16px;font-weight:700;color:#ffffff;text-align:right;">${formatCop(
-    totalCop
-  )}</td>
+            totalCop
+          )}</td>
         </tr>
       </table>
 
       <p style="margin:28px 0 0;font-size:14px;line-height:1.7;color:#344767;">
         Cordialmente,<br>
         Alexander Camilo R<br>
-        Software Developer SR<br>
+        Software Developer SSR<br>
         Cel: 3103794656
       </p>
 
@@ -143,7 +143,8 @@ function buildMatrixTable(headers: string[], rowsHtml: string): string {
   const headerHtml = headers
     .map(
       (header, index) =>
-        `<th style="padding:12px 16px;background:#f8fafc;color:#7b809a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;text-align:${index === 0 ? 'left' : 'right'
+        `<th style="padding:12px 16px;background:#f8fafc;color:#7b809a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;text-align:${
+          index === 0 ? 'left' : 'right'
         };border-bottom:1px solid #e9edf5;">${escapeHtml(header)}</th>`
     )
     .join('')

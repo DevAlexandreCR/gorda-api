@@ -25,6 +25,13 @@ export interface BillingSendPayload {
   extras: BillingExtra[]
 }
 
+export interface BillingPreviewPayload {
+  month: string
+  lineCharges: BillingLineCharge[]
+  softwareRental: number
+  extras: BillingExtra[]
+}
+
 export interface BillingSummarySource {
   key: 'admin' | 'bot' | 'unidentified'
   label: string
