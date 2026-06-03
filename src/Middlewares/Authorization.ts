@@ -137,8 +137,7 @@ export const requireDriverAuth = async (
     req.driverUid = decodedToken.uid
     next()
   } catch (error) {
-    const failureReason =
-      error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    const failureReason = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
     console.error(
       `Driver authorization error path=${req.method} ${req.originalUrl} reason=${failureReason}`,
       error

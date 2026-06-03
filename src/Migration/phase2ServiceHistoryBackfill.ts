@@ -39,7 +39,9 @@ async function backfillServiceHistory(): Promise<{
     let query = Database.dbServices().orderByChild('created_at')
 
     if (cursor) {
-      query = query.startAt(cursor.createdAt, cursor.key).limitToFirst(SERVICE_HISTORY_BATCH_SIZE + 1)
+      query = query
+        .startAt(cursor.createdAt, cursor.key)
+        .limitToFirst(SERVICE_HISTORY_BATCH_SIZE + 1)
     } else {
       query = query.startAt(service.getBoundaryUnix()).limitToFirst(SERVICE_HISTORY_BATCH_SIZE)
     }
