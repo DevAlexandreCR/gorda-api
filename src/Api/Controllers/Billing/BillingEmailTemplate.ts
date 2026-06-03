@@ -70,7 +70,7 @@ export function buildBillingEmailHtml({
 <body style="margin:0;padding:24px;background:#f4f6fb;font-family:Arial,sans-serif;color:#344767 !important;">
   <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e6eaf2;border-radius:18px;overflow:hidden;box-shadow:0 16px 36px rgba(15,23,42,0.08);color:#344767 !important;">
     <div style="padding:28px 30px 10px;">
-      <p style="margin:0;font-size:14px;line-height:1.75;color:#344767 !important;">
+      <p style="margin:0;font-size:14px;line-height:1.75;color:#344767 !important;opacity:1 !important;">
         Cordial saludo,<br><br>
         De acuerdo con nuestro acuerdo comercial, relaciono el cierre correspondiente a ${escapeHtml(
     summary.monthText
@@ -102,14 +102,14 @@ export function buildBillingEmailHtml({
         </tr>
       </table>
 
-      <p style="margin:28px 0 0;font-size:14px;line-height:1.7;color:#344767 !important;">
+      <p style="margin:28px 0 0;font-size:14px;line-height:1.7;color:#344767 !important;opacity:1 !important;">
         Cordialmente,<br>
         Alexander Camilo R<br>
-        Software Developer SSR<br>
+        Software Developer SR<br>
         Cel: 3103794656
       </p>
 
-      <p style="margin:24px 0 0;font-size:12px;line-height:1.6;color:#8392ab !important;">
+      <p style="margin:24px 0 0;font-size:12px;line-height:1.6;color:#8392ab !important;opacity:1 !important;">
         Este correo fue generado automáticamente desde Gorda Driver.
       </p>
     </div>
@@ -119,7 +119,7 @@ export function buildBillingEmailHtml({
 }
 
 function buildSectionTitle(title: string): string {
-  return `<p style="margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7b809a !important;">${escapeHtml(
+  return `<p style="margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7b809a !important;opacity:1 !important;">${escapeHtml(
     title
   )}</p>`
 }
