@@ -89,10 +89,12 @@ class BillingRepository {
     const monthEnd = monthStart.endOf('month')
     const startUnix = monthStart.unix()
     const endUnix = monthEnd.unix()
+    const startMs = monthStart.valueOf()
+    const endMs = monthEnd.valueOf()
 
     const [sourceRow, whatsappLines] = await Promise.all([
       this.getServiceSourceSummary(startUnix, endUnix),
-      this.getWhatsappLineSummary(startUnix, endUnix),
+      this.getWhatsappLineSummary(startUnix, endUnix, startMs, endMs),
     ])
 
     const totalServices = toNumber(sourceRow?.total_services)
@@ -167,7 +169,9 @@ class BillingRepository {
 
   private async getWhatsappLineSummary(
     startUnix: number,
-    endUnix: number
+    endUnix: number,
+    startMs: number,
+    endMs: number
   ): Promise<BillingWhatsappLineSummary[]> {
     const rows = await sequelize.query<WhatsappLineRow>(
       `WITH session_counts AS (
@@ -175,7 +179,7 @@ class BillingRepository {
           wp_client_id,
           COUNT(*) AS sessions
         FROM chat_sessions
-        WHERE created_at BETWEEN :startUnix AND :endUnix
+        WHERE created_at BETWEEN :startMs AND :endMs
           AND NULLIF(BTRIM(wp_client_id), '') IS NOT NULL
         GROUP BY wp_client_id
       ),
@@ -206,7 +210,7 @@ class BillingRepository {
       LEFT JOIN wp_clients w ON w.id = active_lines.wp_client_id
       ORDER BY COALESCE(NULLIF(BTRIM(w.alias), ''), active_lines.wp_client_id) ASC`,
       {
-        replacements: { startUnix, endUnix },
+        replacements: { startUnix, endUnix, startMs, endMs },
         type: QueryTypes.SELECT,
       }
     )
