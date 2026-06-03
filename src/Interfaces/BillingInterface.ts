@@ -24,3 +24,35 @@ export interface BillingSendPayload {
   recipientEmail: string
   extras: BillingExtra[]
 }
+
+export interface BillingSummarySource {
+  key: 'admin' | 'bot' | 'unidentified'
+  label: string
+  count: number
+}
+
+export interface BillingWhatsappLineSummary {
+  wpClientId: string
+  alias: string
+  sessions: number
+  inboundMessages: number
+  outboundMessages: number
+  totalMessages: number
+}
+
+export interface BillingSummaryResponse {
+  month: string
+  monthLabel: string
+  monthText: string
+  startDate: string
+  endDate: string
+  startDateLabel: string
+  endDateLabel: string
+  totalServices: number
+  totalSessions: number
+  totalInboundMessages: number
+  totalOutboundMessages: number
+  totalMessages: number
+  serviceSources: BillingSummarySource[]
+  whatsappLines: BillingWhatsappLineSummary[]
+}
