@@ -16,6 +16,7 @@ import { LatLng } from '../../../Interfaces/LatLng'
 import { PlaceInterface } from '../../../Interfaces/PlaceInterface'
 import { ClientInterface } from '../../../Interfaces/ClientInterface'
 import Container from '../../../Container/Container'
+import ChatIdHelper from '../../../Helpers/ChatIdHelper'
 
 export abstract class ResponseContract {
   protected currentClient: ClientInterface
@@ -67,7 +68,7 @@ export abstract class ResponseContract {
   async createService(place: PlaceInterface, comment: string | null = null): Promise<string> {
     const service = new Service()
     service.wp_client_id = this.getWpClientId()
-    service.client_id = this.session.chat_id
+    service.client_id = ChatIdHelper.toCanonicalClientId(this.session.chat_id)
     service.start_loc = place
     service.phone = this.currentClient.phone
     service.name = this.currentClient.name

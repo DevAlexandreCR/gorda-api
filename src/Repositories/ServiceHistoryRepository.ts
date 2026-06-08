@@ -1,6 +1,7 @@
 import { Op, WhereOptions, fn, col, literal } from 'sequelize'
 import ServiceHistoryRecord from '../Models/ServiceHistoryRecord'
 import { ServiceInterface } from '../Interfaces/ServiceInterface'
+import ChatIdHelper from '../Helpers/ChatIdHelper'
 
 type HistoryFilters = {
   from?: number
@@ -109,7 +110,7 @@ class ServiceHistoryRepository {
     }
 
     if (filters.clientId) {
-      andWhere.push({ client_id: filters.clientId })
+      andWhere.push({ client_id: ChatIdHelper.toCanonicalClientId(filters.clientId) })
     }
 
     if (filters.driverId) {

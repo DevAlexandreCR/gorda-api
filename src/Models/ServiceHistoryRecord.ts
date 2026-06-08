@@ -89,7 +89,7 @@ ServiceHistoryRecord.init(
       defaultValue: null,
     },
     client_id: {
-      type: DataTypes.STRING(128),
+      type: DataTypes.STRING(50),
       allowNull: false,
     },
     wp_client_id: {

@@ -13,7 +13,8 @@
     "migrate:sql:development": "NODE_ENV=development sequelize-cli db:migrate --env development",
     "migrate:sql:production": "NODE_ENV=production sequelize-cli db:migrate --env production",
     "cleanup:firebase:rtdb": "ts-node src/Migration/phase5FirebaseCleanup.ts rtdb",
-    "cleanup:firebase:firestore:daily": "ts-node src/Migration/phase5FirebaseCleanup.ts firestore-daily"
+    "cleanup:firebase:firestore:daily": "ts-node src/Migration/phase5FirebaseCleanup.ts firestore-daily",
+    "test": "jest --no-coverage"
   },
   "keywords": [
     "chat",
@@ -40,6 +41,7 @@
     "i18n": "^0.15.0",
     "node-cache": "^5.1.2",
     "node-cron": "^3.0.2",
+    "nodemailer": "^6.9.16",
     "pg": "^8.11.3",
     "pg-hstore": "^2.3.4",
     "pino": "^9.1.0",
@@ -47,24 +49,26 @@
     "socket.io": "^4.4.1",
     "whatsapp-web.js": "^v1.25.0",
     "xml2js": "^0.6.2",
-    "nodemailer": "^6.9.16",
     "zod": "^4.1.9"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
     "@types/i18n": "^0.13.4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^17.0.22",
     "@types/node-cron": "^3.0.4",
+    "@types/nodemailer": "^6.4.17",
     "@types/pg": "^8.10.7",
     "@types/qrcode-terminal": "^0.12.0",
     "@types/sequelize": "^4.28.16",
     "@types/socket.io": "^3.0.2",
     "@types/uuid": "^10.0.0",
-    "@types/nodemailer": "^6.4.17",
     "@types/xml2js": "^0.4.14",
+    "jest": "^30.4.2",
     "nodemon": "^2.0.15",
     "prettier": "^3.6.2",
     "sequelize-cli": "^6.6.1",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.7.0",
     "typescript": "^5.1.6"
   }

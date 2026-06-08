@@ -7,6 +7,7 @@ import { ServiceInterface } from '../../Interfaces/ServiceInterface'
 import ServiceHistoryRecord from '../../Models/ServiceHistoryRecord'
 import ServiceMetricsDailyRepository from '../../Repositories/ServiceMetricsDailyRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
+import ChatIdHelper from '../../Helpers/ChatIdHelper'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -166,7 +167,7 @@ class ServiceHistoryMigrationService {
       amount: service.amount ?? null,
       metadata: service.metadata ?? {},
       driver_id: service.driver_id ?? null,
-      client_id: service.client_id,
+      client_id: ChatIdHelper.toCanonicalClientId(service.client_id),
       wp_client_id: service.wp_client_id ?? null,
       created_at: Number(service.created_at),
       created_by: service.created_by ?? null,
