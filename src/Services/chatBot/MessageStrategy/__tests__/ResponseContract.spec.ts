@@ -42,7 +42,11 @@ jest.mock('@sentry/node', () => ({
 }))
 
 jest.mock('../../../../Container/Container', () => ({
-  default: { getPlaceRepository: jest.fn() },
+  __esModule: true,
+  default: {
+    getPlaceRepository: jest.fn(),
+    getServiceHistoryRepository: jest.fn(),
+  },
 }))
 
 import { ResponseContract } from '../ResponseContract'
@@ -50,6 +54,11 @@ import ServiceRepository from '../../../../Repositories/ServiceRepository'
 import { PlaceInterface } from '../../../../Interfaces/PlaceInterface'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { ClientInterface } from '../../../../Interfaces/ClientInterface'
+import * as Sentry from '@sentry/node'
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const MockedContainer = require('../../../../Container/Container').default
+const mockCountFn = jest.fn()
 
 const mockPlace: PlaceInterface = {
   id: 'place-1',
@@ -86,6 +95,7 @@ class ConcreteResponseContract extends ResponseContract {
 describe('ResponseContract.createService', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockCountFn.mockReset()
   })
 
   it('passes client_id as canonical digits-only string to ServiceRepository.create', async () => {
@@ -112,5 +122,66 @@ describe('ResponseContract.createService', () => {
 
     const capturedService = (ServiceRepository.create as jest.Mock).mock.calls[0][0]
     expect(capturedService.client_id).toBe('573001234567')
+  })
+
+  it('persists client_completed_services_count with the value returned by the repo (happy path)', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const completedCount = 7
+
+    mockCountFn.mockResolvedValue(completedCount)
+    MockedContainer.getServiceHistoryRepository.mockReturnValue({ count: mockCountFn })
+
+    const createdService = {
+      id: 'svc-2',
+      client_id: '573001234567',
+      wp_client_id: 'wp-client-1',
+      phone: '+573001234567',
+      name: 'Test User',
+      start_loc: mockPlace,
+      status: 'pending',
+    }
+    ;(ServiceRepository.create as jest.Mock).mockResolvedValue(createdService)
+
+    const contract = new ConcreteResponseContract(mockSession as any)
+    contract['currentClient'] = mockClient
+
+    await contract.createService(mockPlace)
+
+    expect(ServiceRepository.create).toHaveBeenCalledTimes(1)
+    const capturedService = (ServiceRepository.create as jest.Mock).mock.calls[0][0]
+    expect(capturedService.client_completed_services_count).toBe(completedCount)
+  })
+
+  it('persists client_completed_services_count = 0, still creates service, and calls Sentry.captureException when repo throws', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const repoError = new Error('DB failure')
+
+    mockCountFn.mockRejectedValue(repoError)
+    MockedContainer.getServiceHistoryRepository.mockReturnValue({ count: mockCountFn })
+
+    const createdService = {
+      id: 'svc-3',
+      client_id: '573001234567',
+      wp_client_id: 'wp-client-1',
+      phone: '+573001234567',
+      name: 'Test User',
+      start_loc: mockPlace,
+      status: 'pending',
+    }
+    ;(ServiceRepository.create as jest.Mock).mockResolvedValue(createdService)
+
+    const sentrySpy = jest.spyOn(Sentry, 'captureException')
+
+    const contract = new ConcreteResponseContract(mockSession as any)
+    contract['currentClient'] = mockClient
+
+    await contract.createService(mockPlace)
+
+    expect(ServiceRepository.create).toHaveBeenCalledTimes(1)
+    const capturedService = (ServiceRepository.create as jest.Mock).mock.calls[0][0]
+    expect(capturedService.client_completed_services_count).toBe(0)
+
+    expect(sentrySpy).toHaveBeenCalledTimes(1)
+    expect(sentrySpy).toHaveBeenCalledWith(repoError)
   })
 })

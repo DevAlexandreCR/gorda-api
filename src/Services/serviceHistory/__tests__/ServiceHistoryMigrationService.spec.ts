@@ -81,4 +81,19 @@ describe('ServiceHistoryMigrationService.upsertHistoryRecord', () => {
       expect(ServiceHistoryRecord.upsert).not.toHaveBeenCalled()
     })
   })
+
+  describe('Case D: strips RTDB-only field client_completed_services_count', () => {
+    it('does NOT include client_completed_services_count in the SQL insert payload', async () => {
+      ;(ServiceHistoryRecord.upsert as jest.Mock).mockResolvedValue([{}, true])
+
+      const input = buildMinimalService({ client_completed_services_count: 12 })
+
+      await service.upsertHistoryRecord(input)
+
+      expect(ServiceHistoryRecord.upsert).toHaveBeenCalledTimes(1)
+
+      const capturedArg = (ServiceHistoryRecord.upsert as jest.Mock).mock.calls[0][0]
+      expect(capturedArg).not.toHaveProperty('client_completed_services_count')
+    })
+  })
 })

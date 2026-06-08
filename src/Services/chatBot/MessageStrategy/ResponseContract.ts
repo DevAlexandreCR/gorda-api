@@ -73,6 +73,18 @@ export abstract class ResponseContract {
     service.phone = this.currentClient.phone
     service.name = this.currentClient.name
     if (comment) service.comment = comment
+    const canonicalClientId = service.client_id
+    try {
+      service.client_completed_services_count = await Container.getServiceHistoryRepository().count(
+        {
+          clientId: canonicalClientId,
+          status: 'terminated',
+        }
+      )
+    } catch (error) {
+      service.client_completed_services_count = 0
+      Sentry.captureException(error)
+    }
     const dbService = await ServiceRepository.create(service)
     this.session.service_id = dbService.id
     if (this.session.service_id)

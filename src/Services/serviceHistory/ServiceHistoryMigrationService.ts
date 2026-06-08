@@ -155,25 +155,29 @@ class ServiceHistoryMigrationService {
     await ServiceHistoryRecord.upsert(this.buildHistoryPayload(service))
   }
 
-  private buildHistoryPayload(service: ServiceInterface): ServiceInterface {
+  private buildHistoryPayload(
+    service: ServiceInterface
+  ): Omit<ServiceInterface, 'client_completed_services_count'> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { client_completed_services_count, ...persist } = service
     return {
-      id: service.id,
-      status: service.status,
-      start_loc: service.start_loc,
-      end_loc: service.end_loc ?? null,
-      phone: service.phone,
-      name: service.name,
-      comment: service.comment ?? null,
-      amount: service.amount ?? null,
-      metadata: service.metadata ?? {},
-      driver_id: service.driver_id ?? null,
-      client_id: ChatIdHelper.toCanonicalClientId(service.client_id),
-      wp_client_id: service.wp_client_id ?? null,
-      created_at: Number(service.created_at),
-      created_by: service.created_by ?? null,
-      assigned_by: service.assigned_by ?? null,
-      canceled_by: service.canceled_by ?? null,
-      terminated_by: service.terminated_by ?? null,
+      id: persist.id,
+      status: persist.status,
+      start_loc: persist.start_loc,
+      end_loc: persist.end_loc ?? null,
+      phone: persist.phone,
+      name: persist.name,
+      comment: persist.comment ?? null,
+      amount: persist.amount ?? null,
+      metadata: persist.metadata ?? {},
+      driver_id: persist.driver_id ?? null,
+      client_id: ChatIdHelper.toCanonicalClientId(persist.client_id),
+      wp_client_id: persist.wp_client_id ?? null,
+      created_at: Number(persist.created_at),
+      created_by: persist.created_by ?? null,
+      assigned_by: persist.assigned_by ?? null,
+      canceled_by: persist.canceled_by ?? null,
+      terminated_by: persist.terminated_by ?? null,
     }
   }
 }

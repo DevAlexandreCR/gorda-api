@@ -1,6 +1,8 @@
 import { Request, Response, Router } from 'express'
+import * as Sentry from '@sentry/node'
 import Container from '../../../Container/Container'
 import { requireAuth } from '../../../Middlewares/Authorization'
+import ChatIdHelper from '../../../Helpers/ChatIdHelper'
 
 const controller = Router()
 
@@ -64,6 +66,42 @@ controller.get('/history', async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('Error fetching service history:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: {},
+    })
+  }
+})
+
+controller.get('/clients/:clientId/completed-count', async (req: Request, res: Response) => {
+  try {
+    ChatIdHelper.toCanonicalClientId(req.params.clientId)
+    let completedServicesCount = await Container.getServiceHistoryRepository().count({
+      clientId: req.params.clientId,
+      status: 'terminated',
+    })
+    if (completedServicesCount < 0) {
+      Sentry.captureException(
+        new Error(
+          `Unexpected negative count for clientId=${req.params.clientId}: ${completedServicesCount}`
+        )
+      )
+      completedServicesCount = 0
+    }
+    return res.status(200).json({
+      success: true,
+      data: { completedServicesCount },
+    })
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('toCanonicalClientId:')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        data: {},
+      })
+    }
+    Sentry.captureException(error)
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Expose client completed services count through the services API and service creation flow.
+
+### Changed
+
+- Document Docker Compose local environment values in .env.example.
+
 # Release Notes for 2.0.x
 
 ## [2.0.3(2026-04-14)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.3...2.0.2)

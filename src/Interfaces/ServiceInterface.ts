@@ -20,4 +20,6 @@ export interface ServiceInterface {
   assigned_by?: string | null
   canceled_by?: string | null
   terminated_by?: string | null
+  // RTDB-only snapshot; not persisted to service_history
+  client_completed_services_count?: number | null
 }
