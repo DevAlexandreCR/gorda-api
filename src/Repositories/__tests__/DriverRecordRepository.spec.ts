@@ -1,0 +1,361 @@
+import DriverRecordRepository from '../DriverRecordRepository'
+import DriverRecord from '../../Models/DriverRecord'
+
+jest.mock('../../Models/DriverRecord', () => ({
+  findAndCountAll: jest.fn(),
+}))
+
+// buildDriverAvailability is called inside mapDriver — provide a lightweight stub
+jest.mock('../../Services/drivers/DriverAvailability', () => ({
+  buildDriverAvailability: jest.fn(() => 'available'),
+}))
+
+// sequelize is imported transitively through DriverRecord's model init; mock it
+// so the test process does not attempt a real DB connection.
+jest.mock('../../Database/sequelize', () => ({
+  define: jest.fn(),
+}))
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Build a minimal DriverRecord-like plain object that mapDriver can handle. */
+function makeDriverPlain(overrides: Record<string, any> = {}): Record<string, any> {
+  return {
+    id: 'drv-1',
+    name: 'John Driver',
+    email: 'john@example.com',
+    password: null,
+    phone: '3001234567',
+    phone2: null,
+    docType: 'CC',
+    paymentMode: 'monthly',
+    document: '123456789',
+    photoUrl: null,
+    vehicle: { plate: 'ABC123' },
+    device: null,
+    balance: 0,
+    enabled_at: 1_000_000,
+    created_at: 900_000,
+    last_connection: 800_000,
+    ...overrides,
+  }
+}
+
+/** Return a Sequelize-model stub that exposes get({ plain: true }). */
+function makeDriverModel(plain: Record<string, any>) {
+  return { get: ({ plain: _p }: any) => plain }
+}
+
+/** Extract the Op.and array (or wrap single where in array) for assertion. */
+function extractConditions(where: Record<symbol | string, any>): object[] {
+  const { Op } = require('sequelize')
+  return where[Op.and] ?? [where]
+}
+
+/** Serialize an object to JSON, converting Symbol keys to their string representation. */
+function serializeWhere(obj: object): string {
+  return JSON.stringify(obj, (_key, value) => {
+    if (typeof value === 'symbol') return value.toString()
+    return value
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('DriverRecordRepository.list()', () => {
+  let repository: DriverRecordRepository
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    repository = new DriverRecordRepository()
+  })
+
+  // --- Default behaviour ---
+
+  describe('defaults: no query params', () => {
+    it('uses name ASC sort and perPage 30 when no params are supplied', async () => {
+      const plain = makeDriverPlain()
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({
+        count: 1,
+        rows: [makeDriverModel(plain)],
+      })
+
+      const result = await repository.list({})
+
+      expect(result.total).toBe(1)
+      expect(result.rows).toHaveLength(1)
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.limit).toBe(30)
+      expect(callArg.order).toEqual([['name', 'ASC']])
+    })
+  })
+
+  // --- filter by status ---
+
+  describe('filter by status', () => {
+    it('status="enabled" adds enabled_at > 0 condition', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ status: 'enabled' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      expect(str).toContain('"enabled_at"')
+    })
+
+    it('status="disabled" adds enabled_at = 0 condition', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ status: 'disabled' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      expect(str).toContain('"enabled_at":0')
+    })
+  })
+
+  // --- filter by paymentMode ---
+
+  describe('filter by paymentMode', () => {
+    it('paymentMode="percentage" adds paymentMode condition', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ paymentMode: 'percentage' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      expect(str).toContain('"paymentMode":"percentage"')
+    })
+
+    it('paymentMode="monthly" adds paymentMode condition', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ paymentMode: 'monthly' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      expect(str).toContain('"paymentMode":"monthly"')
+    })
+  })
+
+  // --- filter by inactiveDays (excluding last_connection = 0) ---
+
+  describe('filter by inactiveDays', () => {
+    it('inactiveDays=7 adds last_connection > 0 AND last_connection < cutoff', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      const before = Math.floor(Date.now() / 1000)
+      await repository.list({ inactiveDays: 7 })
+      const after = Math.floor(Date.now() / 1000)
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+
+      // Find the last_connection condition among the Op.and array
+      const { Op } = require('sequelize')
+      const lcCondition = conditions.find((c: any) => c.last_connection !== undefined) as any
+
+      expect(lcCondition).toBeDefined()
+      expect(lcCondition.last_connection[Op.gt]).toBe(0)
+
+      const cutoff = lcCondition.last_connection[Op.lt]
+      const expectedMin = before - 7 * 86400
+      const expectedMax = after - 7 * 86400
+      expect(cutoff).toBeGreaterThanOrEqual(expectedMin)
+      expect(cutoff).toBeLessThanOrEqual(expectedMax)
+    })
+
+    it('inactiveDays filter does NOT match last_connection = 0 (never-connected drivers excluded)', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ inactiveDays: 7 })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const { Op } = require('sequelize')
+      const lcCondition = conditions.find((c: any) => c.last_connection !== undefined) as any
+
+      // Op.gt: 0 means last_connection must be > 0, so drivers with last_connection = 0 are excluded
+      expect(lcCondition.last_connection[Op.gt]).toBe(0)
+    })
+
+    it('inactiveDays=0 is ignored (no last_connection filter added)', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ inactiveDays: 0 })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      // No filters → where is an empty object
+      expect(Object.keys(callArg.where)).toHaveLength(0)
+    })
+  })
+
+  // --- search: vehicle.plate via JSON extraction ---
+
+  describe('search on vehicle plate (JSON extraction)', () => {
+    it('search query includes a literal SQL fragment for vehicle plate', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ search: 'XYZ' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      // The literal for vehicle plate must appear in the search clause
+      expect(str).toContain("vehicle->>'plate'")
+    })
+
+    it('search query does NOT match arbitrary JSON keys (only plate value)', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ search: 'XYZ' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      // The clause must reference only "plate" key, not "vehicle" as a whole-column ilike
+      expect(str).not.toMatch(/"vehicle"\s*:\s*\{.*iLike/i)
+    })
+  })
+
+  // --- search: direct fields ---
+
+  describe('search across direct fields (name, email, phone, document)', () => {
+    it('search adds iLike conditions for name, email, phone, and document', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ search: 'test' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      expect(str).toContain('"name"')
+      expect(str).toContain('"email"')
+      expect(str).toContain('"phone"')
+      expect(str).toContain('"document"')
+    })
+
+    it('search wraps the term with % for ILIKE pattern', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ search: 'driver42' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      // The replacement passed to Sequelize must be the %-wrapped pattern
+      expect(callArg.replacements.search).toBe('%driver42%')
+    })
+  })
+
+  // --- sort whitelist rejection ---
+
+  describe('sort whitelist rejection', () => {
+    it('throws when sort field is not in the whitelist', async () => {
+      await expect(repository.list({ sort: 'some_invalid_field' })).rejects.toThrow(
+        /Invalid sort field/
+      )
+    })
+
+    it('throws for descending sort on an invalid field (e.g. "-password")', async () => {
+      await expect(repository.list({ sort: '-password' })).rejects.toThrow(/Invalid sort field/)
+    })
+
+    it('does NOT throw for valid sort fields', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      for (const field of ['name', 'created_at', 'last_connection', 'balance']) {
+        await expect(repository.list({ sort: field })).resolves.not.toThrow()
+        await expect(repository.list({ sort: `-${field}` })).resolves.not.toThrow()
+      }
+    })
+
+    it('does NOT call findAndCountAll when sort is invalid', async () => {
+      await expect(repository.list({ sort: 'malicious; DROP TABLE drivers;' })).rejects.toThrow()
+      expect(DriverRecord.findAndCountAll).not.toHaveBeenCalled()
+    })
+  })
+
+  // --- default sort ---
+
+  describe('default sort', () => {
+    it('sorts by name ASC when sort is omitted', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({})
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.order).toEqual([['name', 'ASC']])
+    })
+
+    it('sorts DESC when sort field is prefixed with "-"', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ sort: '-balance' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.order).toEqual([['balance', 'DESC']])
+    })
+  })
+
+  // --- default perPage ---
+
+  describe('default perPage', () => {
+    it('uses limit 30 when perPage is omitted', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({})
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.limit).toBe(30)
+    })
+
+    it('uses the provided perPage when explicitly set', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ perPage: 50 })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.limit).toBe(50)
+    })
+  })
+
+  // --- overshoot page returns [] with correct total ---
+
+  describe('overshoot page returns [] with correct total', () => {
+    it('returns empty rows but preserves total when page offset exceeds the dataset', async () => {
+      // Simulate Sequelize returning 0 rows for a page beyond the last one
+      // (e.g. page 100, perPage 30, but only 5 records exist)
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 5, rows: [] })
+
+      const result = await repository.list({ page: 100, perPage: 30 })
+
+      expect(result.rows).toEqual([])
+      expect(result.total).toBe(5)
+    })
+
+    it('computes the correct offset for a non-first page', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ page: 3, perPage: 20 })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.offset).toBe(40) // (3 - 1) * 20
+      expect(callArg.limit).toBe(20)
+    })
+  })
+})
