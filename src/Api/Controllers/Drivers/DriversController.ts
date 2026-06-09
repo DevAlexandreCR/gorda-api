@@ -24,7 +24,10 @@ controller.get('/', async (req: Request, res: Response) => {
   if (!hasListedParams) {
     try {
       const drivers = await Container.getDriverRecordRepository().index()
-      return res.status(200).json({ drivers, total: drivers.length })
+      return res.status(200).json({
+        success: true,
+        data: { drivers, total: drivers.length },
+      })
     } catch (error) {
       console.error('Error fetching drivers:', error)
       return res.status(500).json({

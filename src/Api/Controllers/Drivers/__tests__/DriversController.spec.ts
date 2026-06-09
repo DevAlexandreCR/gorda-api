@@ -291,14 +291,15 @@ describe('GET /drivers (DriversController)', () => {
   // --- fallback to index() when no listed params ---
 
   describe('200: no listed params falls back to index()', () => {
-    it('calls index() and returns { drivers, total } when no filter/sort/page params are present', async () => {
+    it('calls index() and returns { success, data: { drivers, total } } when no filter/sort/page params are present', async () => {
       mockIndex.mockResolvedValue([{ id: 'drv-1' }])
 
       const { status, body } = await get(server, '/drivers', VALID_AUTH_HEADERS)
 
       expect(status).toBe(200)
-      expect(body.drivers).toHaveLength(1)
-      expect(body.total).toBe(1)
+      expect(body.success).toBe(true)
+      expect(body.data.drivers).toHaveLength(1)
+      expect(body.data.total).toBe(1)
       expect(mockList).not.toHaveBeenCalled()
     })
   })
