@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4(2026-06-08)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.4...2.0.3)
+
 ### Added
 
 - Expose client completed services count through the services API and service creation flow.
+- Add driver list filtering, sorting, pagination, and bulk enable/disable plus push notification endpoints.
 
 ### Changed
 
