@@ -1,6 +1,9 @@
 import { Request, Response, Router } from 'express'
 import { requireAuth } from '../../../Middlewares/Authorization'
-import VehicleRepository, { VehicleSearchQuery } from '../../../Repositories/VehicleRepository'
+import VehicleRepository, {
+  VehicleSearchQuery,
+  getMissingVehicleFields,
+} from '../../../Repositories/VehicleRepository'
 import ActiveVehicleAssignmentRepository from '../../../Repositories/ActiveVehicleAssignmentRepository'
 import { normalizePlate } from '../../../Helpers/PlateHelper'
 import sequelize from '../../../Database/sequelize'
@@ -144,7 +147,7 @@ controller.get('/:id', async (req: Request, res: Response) => {
 // POST /vehicles
 controller.post('/', async (req: Request, res: Response) => {
   try {
-    const { plate, brand, model, color, photo_url, soat_exp, tec_exp } = req.body
+    const { plate, brand, model, color, photoUrl, soat_exp, tec_exp } = req.body
 
     if (!plate || typeof plate !== 'string') {
       return res.status(400).json({
@@ -162,7 +165,13 @@ controller.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'model is required', data: {} })
     }
 
-    if (!color || typeof color !== 'object' || Array.isArray(color) || typeof color.name !== 'string' || color.name.trim() === '') {
+    if (
+      !color ||
+      typeof color !== 'object' ||
+      Array.isArray(color) ||
+      typeof color.name !== 'string' ||
+      color.name.trim() === ''
+    ) {
       return res.status(400).json({ error: 'color_invalid' })
     }
 
@@ -181,7 +190,7 @@ controller.post('/', async (req: Request, res: Response) => {
       brand: brand ?? null,
       model: model ?? null,
       color: color ?? null,
-      photo_url: photo_url ?? null,
+      photoUrl: photoUrl ?? null,
       soat_exp: soat_exp ?? null,
       tec_exp: tec_exp ?? null,
     })
@@ -216,14 +225,22 @@ controller.patch('/:id', async (req: Request, res: Response) => {
       })
     }
 
-    const { color } = req.body
+    const { brand, model, color, soat_exp, tec_exp, photoUrl } = req.body
     if (color !== undefined && color !== null) {
       if (typeof color !== 'object' || Array.isArray(color) || typeof color.name !== 'string') {
         return res.status(400).json({ error: 'color_invalid' })
       }
     }
 
-    await vehicleRepo.update(req.params.id, req.body)
+    const updatePayload: Record<string, unknown> = {}
+    if (brand !== undefined) updatePayload.brand = brand
+    if (model !== undefined) updatePayload.model = model
+    if (color !== undefined) updatePayload.color = color
+    if (soat_exp !== undefined) updatePayload.soat_exp = soat_exp
+    if (tec_exp !== undefined) updatePayload.tec_exp = tec_exp
+    if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl
+
+    await vehicleRepo.update(req.params.id, updatePayload as any)
 
     const updated = await vehicleRepo.findById(req.params.id)
     return res.status(200).json({
@@ -259,6 +276,13 @@ controller.patch('/:id/enabled', async (req: Request, res: Response) => {
         message: 'Vehicle not found',
         data: {},
       })
+    }
+
+    if (enabled) {
+      const missingFields = getMissingVehicleFields(vehicle)
+      if (missingFields.length > 0) {
+        return res.status(422).json({ error: 'vehicle_incomplete', missing_fields: missingFields })
+      }
     }
 
     if (!enabled) {

@@ -7,7 +7,7 @@ type VehicleCreationAttributes = Optional<
   | 'brand'
   | 'model'
   | 'color'
-  | 'photo_url'
+  | 'photoUrl'
   | 'soat_exp'
   | 'tec_exp'
   | 'enabled'
@@ -24,7 +24,7 @@ class VehicleRecord
   public brand!: string | null
   public model!: string | null
   public color!: { name: string; hex?: string } | null
-  public photo_url!: string | null
+  public photoUrl!: string | null
   public soat_exp!: Date | null
   public tec_exp!: Date | null
   public enabled!: boolean
@@ -60,7 +60,7 @@ VehicleRecord.init(
       allowNull: true,
       defaultValue: null,
     },
-    photo_url: {
+    photoUrl: {
       type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,

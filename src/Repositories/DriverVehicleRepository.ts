@@ -178,7 +178,7 @@ class DriverVehicleRepository {
         brand: row.brand ?? null,
         model: row.model ?? null,
         color: row.color ?? null,
-        photo_url: row.photo_url ?? null,
+        photoUrl: row.photo_url ?? null,
         soat_exp: row.soat_exp ?? null,
         tec_exp: row.tec_exp ?? null,
         enabled: Boolean(row.enabled),

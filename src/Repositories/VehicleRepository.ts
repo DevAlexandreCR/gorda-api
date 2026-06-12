@@ -1,8 +1,23 @@
-import { Op, QueryTypes, Transaction, WhereOptions } from 'sequelize'
+import { Op, QueryTypes, Transaction, WhereOptions, literal } from 'sequelize'
 import sequelize from '../Database/sequelize'
 import VehicleRecord from '../Models/VehicleRecord'
 import { VehicleRecordInterface } from '../Interfaces/VehicleRecordInterface'
 import { normalizePlate } from '../Helpers/PlateHelper'
+
+export function getMissingVehicleFields(v: Partial<VehicleRecordInterface>): string[] {
+  const missing: string[] = []
+  if (!v.brand || typeof v.brand !== 'string' || v.brand.trim() === '') missing.push('brand')
+  if (!v.model || typeof v.model !== 'string' || v.model.trim() === '') missing.push('model')
+  if (!v.color || typeof v.color.name !== 'string' || v.color.name.trim() === '')
+    missing.push('color')
+  if (v.soat_exp == null) missing.push('soat_exp')
+  if (v.tec_exp == null) missing.push('tec_exp')
+  return missing
+}
+
+export function isVehicleComplete(v: Partial<VehicleRecordInterface>): boolean {
+  return getMissingVehicleFields(v).length === 0
+}
 
 export interface VehicleSearchQuery {
   search?: string
@@ -45,7 +60,7 @@ class VehicleRepository {
     if (rows) {
       return rows as VehicleRecordInterface
     }
-    const isComplete = !!(fullPayload.brand?.trim() && fullPayload.model?.trim())
+    const isComplete = isVehicleComplete(fullPayload)
     const created = await VehicleRecord.create(
       { ...fullPayload, plate: normalizedPlate, enabled: isComplete } as any,
       { transaction: txn }
@@ -122,7 +137,7 @@ class VehicleRepository {
       brand: first.brand,
       model: first.model,
       color: first.color,
-      photo_url: first.photo_url,
+      photoUrl: first.photo_url,
       soat_exp: first.soat_exp,
       tec_exp: first.tec_exp,
       enabled: first.enabled,
@@ -174,11 +189,18 @@ class VehicleRepository {
 
     const where: WhereOptions<any> = andWhere.length > 0 ? { [Op.and]: andWhere } : {}
 
+    const linkedDriversCountSubquery = literal(
+      `(SELECT COUNT(dv.id) FROM driver_vehicles dv WHERE dv.vehicle_id = "VehicleRecord"."id")`
+    )
+
     const { count, rows } = await VehicleRecord.findAndCountAll({
       where,
       order,
       limit: perPage,
       offset: (page - 1) * perPage,
+      attributes: {
+        include: [[linkedDriversCountSubquery, 'linked_drivers_count']],
+      },
     })
 
     return {
@@ -189,19 +211,23 @@ class VehicleRepository {
 
   private mapVehicle(record: VehicleRecord): VehicleRecordInterface {
     const plain = record.get({ plain: true }) as any
-    return {
+    const mapped: VehicleRecordInterface = {
       id: plain.id,
       plate: plain.plate,
       brand: plain.brand ?? null,
       model: plain.model ?? null,
       color: plain.color ?? null,
-      photo_url: plain.photo_url ?? null,
+      photoUrl: plain.photoUrl ?? null,
       soat_exp: plain.soat_exp ?? null,
       tec_exp: plain.tec_exp ?? null,
       enabled: Boolean(plain.enabled),
       created_at: plain.created_at,
       updated_at: plain.updated_at,
     }
+    if (plain.linked_drivers_count !== undefined) {
+      mapped.linked_drivers_count = Number(plain.linked_drivers_count)
+    }
+    return mapped
   }
 }
 

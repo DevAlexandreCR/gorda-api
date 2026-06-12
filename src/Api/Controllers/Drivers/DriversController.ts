@@ -255,17 +255,33 @@ controller.post('/:id/vehicles', async (req: Request, res: Response) => {
       }
       if (!brand || typeof brand !== 'string' || String(brand).trim() === '') {
         await txn.rollback()
-        return res.status(400).json({ success: false, message: 'vehicle.brand is required', data: {} })
+        return res
+          .status(400)
+          .json({ success: false, message: 'vehicle.brand is required', data: {} })
       }
       if (!model || typeof model !== 'string' || String(model).trim() === '') {
         await txn.rollback()
-        return res.status(400).json({ success: false, message: 'vehicle.model is required', data: {} })
+        return res
+          .status(400)
+          .json({ success: false, message: 'vehicle.model is required', data: {} })
       }
-      if (!color || typeof color !== 'object' || Array.isArray(color) || typeof color.name !== 'string' || String(color.name).trim() === '') {
+      if (
+        !color ||
+        typeof color !== 'object' ||
+        Array.isArray(color) ||
+        typeof color.name !== 'string' ||
+        String(color.name).trim() === ''
+      ) {
         await txn.rollback()
-        return res.status(400).json({ success: false, message: 'vehicle.color is required', data: {} })
+        return res
+          .status(400)
+          .json({ success: false, message: 'vehicle.color is required', data: {} })
       }
-      const created = await vehicleRepo.findOrCreateByPlate(plate, { plate, brand, model, color, ...rest }, txn)
+      const created = await vehicleRepo.findOrCreateByPlate(
+        plate,
+        { plate, brand, model, color, ...rest },
+        txn
+      )
       resolvedVehicleId = created.id as string
     }
 

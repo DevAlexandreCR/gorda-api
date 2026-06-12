@@ -34,11 +34,17 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
         vehicle->>'photo_url',
         NULL,
         NULL,
-        -- enabled=false if plate/brand/model missing
+        -- enabled=false if plate/brand/model missing, or soat_exp/tec_exp absent.
+        -- Rule tightened retroactively: soat_exp and tec_exp are always NULL at
+        -- migration time (drivers provided them separately), so all freshly-migrated
+        -- vehicles start disabled. Data fix for already-migrated DBs is handled by
+        -- 20260610000012-disable-incomplete-vehicles.ts.
         CASE WHEN
           (vehicle->>'plate' IS NULL OR vehicle->>'plate' = '') OR
           (vehicle->>'brand' IS NULL OR vehicle->>'brand' = '') OR
-          (vehicle->>'model' IS NULL OR vehicle->>'model' = '')
+          (vehicle->>'model' IS NULL OR vehicle->>'model' = '') OR
+          vehicle->>'soat_exp' IS NULL OR
+          vehicle->>'tec_exp' IS NULL
         THEN false ELSE true END,
         NOW(), NOW()
       FROM drivers
@@ -108,10 +114,9 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
     )
 
     // Step 6: drop the legacy JSONB column now that all data is migrated
-    await queryInterface.sequelize.query(
-      `ALTER TABLE drivers DROP COLUMN IF EXISTS vehicle`,
-      { transaction: t }
-    )
+    await queryInterface.sequelize.query(`ALTER TABLE drivers DROP COLUMN IF EXISTS vehicle`, {
+      transaction: t,
+    })
   })
 }
 

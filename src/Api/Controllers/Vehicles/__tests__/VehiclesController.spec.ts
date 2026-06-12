@@ -25,6 +25,26 @@ const mockSetEnabled = jest.fn()
 
 jest.mock('../../../../Repositories/VehicleRepository', () => ({
   __esModule: true,
+  getMissingVehicleFields: (v: any): string[] => {
+    const missing: string[] = []
+    if (!v.brand || typeof v.brand !== 'string' || v.brand.trim() === '') missing.push('brand')
+    if (!v.model || typeof v.model !== 'string' || v.model.trim() === '') missing.push('model')
+    if (!v.color || typeof v.color.name !== 'string' || v.color.name.trim() === '')
+      missing.push('color')
+    if (v.soat_exp == null) missing.push('soat_exp')
+    if (v.tec_exp == null) missing.push('tec_exp')
+    return missing
+  },
+  isVehicleComplete: (v: any): boolean => {
+    const missing: string[] = []
+    if (!v.brand || typeof v.brand !== 'string' || v.brand.trim() === '') missing.push('brand')
+    if (!v.model || typeof v.model !== 'string' || v.model.trim() === '') missing.push('model')
+    if (!v.color || typeof v.color.name !== 'string' || v.color.name.trim() === '')
+      missing.push('color')
+    if (v.soat_exp == null) missing.push('soat_exp')
+    if (v.tec_exp == null) missing.push('tec_exp')
+    return missing.length === 0
+  },
   default: jest.fn().mockImplementation(() => ({
     search: mockSearch,
     findByNormalizedPlate: mockFindByNormalizedPlate,
@@ -185,7 +205,7 @@ describe('GET /vehicles (search)', () => {
       brand: 'Toyota',
       model: 'Corolla',
       color: null,
-      photo_url: null,
+      photoUrl: null,
       soat_exp: null,
       tec_exp: null,
       enabled: true,
@@ -249,7 +269,7 @@ describe('GET /vehicles/lookup (dedupe lookup)', () => {
       brand: null,
       model: null,
       color: null,
-      photo_url: null,
+      photoUrl: null,
       soat_exp: null,
       tec_exp: null,
       enabled: true,
@@ -284,7 +304,7 @@ describe('GET /vehicles/lookup (dedupe lookup)', () => {
       brand: null,
       model: null,
       color: null,
-      photo_url: null,
+      photoUrl: null,
       soat_exp: null,
       tec_exp: null,
       enabled: true,
@@ -361,7 +381,7 @@ describe('PATCH /vehicles/:id (update)', () => {
       brand: null,
       model: null,
       color: null,
-      photo_url: null,
+      photoUrl: null,
       soat_exp: null,
       tec_exp: null,
       enabled: true,
@@ -395,6 +415,20 @@ describe('PATCH /vehicles/:id/enabled (toggle enabled)', () => {
     updated_at: new Date(),
   }
 
+  const completeVehicle = {
+    id: 'veh-1',
+    plate: 'ABC123',
+    brand: 'Toyota',
+    model: 'Corolla',
+    color: { name: 'White', hex: '#FFFFFF' },
+    photoUrl: null,
+    soat_exp: new Date('2026-01-01'),
+    tec_exp: new Date('2026-01-01'),
+    enabled: false,
+    created_at: new Date(),
+    updated_at: new Date(),
+  }
+
   it('returns 200 when enabled=false is sent and vehicle exists with no active assignment', async () => {
     mockFindById.mockResolvedValue(fakeVehicle)
     mockSetEnabled.mockResolvedValue(undefined)
@@ -408,8 +442,24 @@ describe('PATCH /vehicles/:id/enabled (toggle enabled)', () => {
     expect(mockSetEnabled).toHaveBeenCalledWith('veh-1', false)
   })
 
-  it('returns 200 when enabled=true is sent and vehicle exists', async () => {
-    mockFindById.mockResolvedValue({ ...fakeVehicle, enabled: true })
+  it('returns 422 with vehicle_incomplete and missing_fields when enabling an incomplete vehicle', async () => {
+    mockFindById.mockResolvedValue(fakeVehicle)
+
+    const { status, body } = await patch(server, '/vehicles/veh-1/enabled', { enabled: true })
+
+    expect(status).toBe(422)
+    expect(body.error).toBe('vehicle_incomplete')
+    expect(Array.isArray(body.missing_fields)).toBe(true)
+    expect(body.missing_fields).toContain('brand')
+    expect(body.missing_fields).toContain('model')
+    expect(body.missing_fields).toContain('color')
+    expect(body.missing_fields).toContain('soat_exp')
+    expect(body.missing_fields).toContain('tec_exp')
+    expect(mockSetEnabled).not.toHaveBeenCalled()
+  })
+
+  it('returns 200 when enabled=true is sent and vehicle is complete', async () => {
+    mockFindById.mockResolvedValue(completeVehicle)
     mockSetEnabled.mockResolvedValue(undefined)
 
     const { status, body } = await patch(server, '/vehicles/veh-1/enabled', { enabled: true })
