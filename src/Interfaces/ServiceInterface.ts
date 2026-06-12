@@ -20,6 +20,9 @@ export interface ServiceInterface {
   assigned_by?: string | null
   canceled_by?: string | null
   terminated_by?: string | null
-  // RTDB-only snapshot; not persisted to service_history
+  // RTDB-only snapshot fields (not persisted directly to service_history columns)
   client_completed_services_count?: number | null
+  vehicle?: { plate: string; brand?: string | null; model?: string | null; color?: any } | null
+  // Persisted FK — set from vehicle snapshot on finalize
+  vehicle_id?: string | null
 }

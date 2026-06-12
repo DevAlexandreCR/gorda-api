@@ -34,6 +34,8 @@ import InboundMessageDedupCache from './policies/InboundMessageDedupCache'
 import IgnoredInboundMessageAuditRepository from '../../Repositories/IgnoredInboundMessageAuditRepository'
 import ChatIdHelper from '../../Helpers/ChatIdHelper'
 import MessageRepository from '../../Repositories/MessageRepository'
+import DatabaseService from '../firebase/Database'
+import { VehicleSnapshot } from '../chatBot/Messages'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -372,18 +374,46 @@ export class WhatsAppClient {
   serviceAssigned = async (snapshot: DataSnapshot): Promise<void> => {
     const notification: WpNotificationType = snapshot.val()
     if (notification.driver_id != null && notification.wp_client_id == this.wpClient.id) {
-      const driver = this.store.findDriverById(notification.driver_id)
-      const msg = Messages.serviceAssigned(driver.vehicle)
+      const serviceId = snapshot.key ?? ''
+      const vehicle = await this.readServiceVehicleSnapshot(serviceId)
+      const msg = Messages.serviceAssigned(vehicle)
       if (msg.enabled) {
         await this.sendMessage(notification.client_id, msg).then(() => {
-          WpNotificationRepository.deleteNotification('assigned', snapshot.key ?? '')
+          WpNotificationRepository.deleteNotification('assigned', serviceId)
         })
       } else {
-        await WpNotificationRepository.deleteNotification('assigned', snapshot.key ?? '')
+        await WpNotificationRepository.deleteNotification('assigned', serviceId)
       }
     } else {
       console.error('can not send message cause driver id is not set', notification, this.wpClient)
     }
+  }
+
+  private readServiceVehicleSnapshot = async (serviceId: string): Promise<VehicleSnapshot> => {
+    try {
+      const vehicleSnap = await DatabaseService.dbServices().child(serviceId).child('vehicle').get()
+      if (vehicleSnap.exists()) {
+        const v = vehicleSnap.val() as {
+          plate?: string
+          color?: { name: string; hex?: string } | null
+        }
+        if (v?.plate) {
+          return { plate: v.plate, color: v.color ?? null }
+        }
+      }
+    } catch (e) {
+      console.error('readServiceVehicleSnapshot error', serviceId, e)
+    }
+    // fallback: read from driver in store (pre-snapshot-era services or missing snapshot)
+    const serviceSnap = await DatabaseService.dbServices().child(serviceId).get()
+    const driverId: string | null = serviceSnap.exists()
+      ? (serviceSnap.val()?.driver_id ?? null)
+      : null
+    if (driverId) {
+      const driver = this.store.findDriverById(driverId)
+      return { plate: driver.vehicle?.plate ?? '', color: driver.vehicle?.color ?? null }
+    }
+    return { plate: '', color: null }
   }
 
   driverArrived = async (snapshot: DataSnapshot): Promise<void> => {
@@ -496,12 +526,21 @@ export class WhatsAppClient {
 
     switch (service.status) {
       case Service.STATUS_IN_PROGRESS:
-        const driver = this.store.findDriverById(service.driver_id!!)
         if (!service.metadata) {
           await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
           if (!session.notifications.assigned) {
             await session.setNotification(NotificationType.assigned)
-            msg = Messages.serviceAssigned(driver.vehicle)
+            const snapshotVehicle = (snapshot.val() as any)?.vehicle as VehicleSnapshot | undefined
+            const vehicleForMsg: VehicleSnapshot = snapshotVehicle?.plate
+              ? snapshotVehicle
+              : (() => {
+                  const driver = this.store.findDriverById(service.driver_id!!)
+                  return {
+                    plate: driver.vehicle?.plate ?? '',
+                    color: driver.vehicle?.color ?? null,
+                  }
+                })()
+            msg = Messages.serviceAssigned(vehicleForMsg)
             message = msg
             mustSend = msg.enabled && !this.wpClient.wpNotifications
           }

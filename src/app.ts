@@ -36,10 +36,12 @@ import UsersController from './Api/Controllers/Users/UsersController'
 import DriversController, {
   PublicDriversController,
 } from './Api/Controllers/Drivers/DriversController'
+import VehiclesController from './Api/Controllers/Vehicles/VehiclesController'
 import DriverAppController from './Api/Controllers/Drivers/DriverAppController'
 import ServiceHistoryController from './Api/Controllers/Services/ServiceHistoryController'
 import MetricsController from './Api/Controllers/Metrics/MetricsController'
 import ServiceHistoryInternalController from './Api/Controllers/Internal/ServiceHistoryInternalController'
+import DriversInternalController from './Api/Controllers/Internal/DriversInternalController'
 import BillingController from './Api/Controllers/Billing/BillingController'
 import type { CorsOptions } from 'cors'
 import ChatRealtimeGateway from './Services/whatsapp/ChatRealtimeGateway'
@@ -124,11 +126,13 @@ app.use('/public/master-data', PublicMasterDataController)
 app.use('/users', UsersController)
 app.use('/drivers', DriversController)
 app.use('/public/drivers', PublicDriversController)
+app.use('/vehicles', VehiclesController)
 app.use('/driver-app', DriverAppController)
 app.use('/services', ServiceHistoryController)
 app.use('/metrics', MetricsController)
 app.use('/billing', BillingController)
 app.use('/internal/service-history', ServiceHistoryInternalController)
+app.use('/internal/drivers', DriversInternalController)
 
 const serverSSL: HTTPSServer = https.createServer(SSL.getCredentials(config.APP_DOMAIN), app)
 const server: HTTPServer = http.createServer(app)

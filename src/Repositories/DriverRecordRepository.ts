@@ -1,6 +1,8 @@
-import { Op, literal, WhereOptions } from 'sequelize'
+import { Op, QueryTypes, literal, WhereOptions } from 'sequelize'
+import sequelize from '../Database/sequelize'
 import DriverRecord from '../Models/DriverRecord'
 import { DriverInterface } from '../Interfaces/DriverInterface'
+import { VehicleRecordInterface } from '../Interfaces/VehicleRecordInterface'
 import Driver from '../Models/Driver'
 import { buildDriverAvailability } from '../Services/drivers/DriverAvailability'
 
@@ -9,6 +11,7 @@ export interface DriverListQuery {
   status?: string
   paymentMode?: string
   inactiveDays?: number
+  needsVehicle?: boolean
   sort?: string
   page?: number
   perPage?: number
@@ -48,9 +51,17 @@ class DriverRecordRepository {
           { email: { [Op.iLike]: searchPattern } },
           { phone: { [Op.iLike]: searchPattern } },
           { document: { [Op.iLike]: searchPattern } },
-          literal(`vehicle->>'plate' ILIKE :search`),
+          literal(`"DriverRecord"."id" IN (
+            SELECT dv.driver_id FROM driver_vehicles dv
+            JOIN vehicles v ON v.id = dv.vehicle_id
+            WHERE v.plate ILIKE :search
+          )`),
         ],
       })
+    }
+
+    if (query.needsVehicle) {
+      andWhere.push(literal(`"DriverRecord"."selected_vehicle_id" IS NULL`))
     }
 
     if (query.status === 'enabled') {
@@ -83,8 +94,59 @@ class DriverRecordRepository {
       replacements,
     })
 
+    const driverPlains = rows.map((driver) => {
+      const plain = driver.get({ plain: true }) as any
+      return plain
+    })
+
+    // Bulk-fetch selected vehicles to avoid N+1
+    const selectedVehicleIds = driverPlains
+      .map((d: any) => d.selected_vehicle_id)
+      .filter((id: any): id is string => !!id)
+
+    const vehicleMap = new Map<string, VehicleRecordInterface>()
+    if (selectedVehicleIds.length > 0) {
+      const placeholders = selectedVehicleIds.map((_: any, i: number) => `:sv${i}`).join(', ')
+      const vehicleReplacements: Record<string, string> = {}
+      selectedVehicleIds.forEach((id: string, i: number) => {
+        vehicleReplacements[`sv${i}`] = id
+      })
+      const vehicleRows = await sequelize.query<VehicleRecordInterface>(
+        `SELECT * FROM vehicles WHERE id IN (${placeholders})`,
+        { replacements: vehicleReplacements, type: QueryTypes.SELECT }
+      )
+      vehicleRows.forEach((v) => vehicleMap.set(v.id, v))
+    }
+
+    // Bulk-fetch active vehicle assignments to avoid N+1
+    const driverIds = driverPlains.map((d: any) => d.id as string)
+    const activeVehicleMap = new Map<string, string>()
+    if (driverIds.length > 0) {
+      const placeholders = driverIds.map((_: any, i: number) => `:did${i}`).join(', ')
+      const activeReplacements: Record<string, string> = {}
+      driverIds.forEach((id: string, i: number) => {
+        activeReplacements[`did${i}`] = id
+      })
+      const activeRows = await sequelize.query<{ driver_id: string; vehicle_id: string }>(
+        `SELECT driver_id, vehicle_id FROM active_vehicle_assignments WHERE driver_id IN (${placeholders})`,
+        { replacements: activeReplacements, type: QueryTypes.SELECT }
+      )
+      activeRows.forEach((r) => activeVehicleMap.set(r.driver_id, r.vehicle_id))
+    }
+
     return {
-      rows: rows.map((driver) => this.mapDriver(driver)),
+      rows: rows.map((driver) => {
+        const mapped = this.mapDriver(driver)
+        const plain = driver.get({ plain: true }) as any
+        const selected_vehicle_id = plain.selected_vehicle_id ?? null
+        return {
+          ...mapped,
+          selected_vehicle: selected_vehicle_id
+            ? (vehicleMap.get(selected_vehicle_id) ?? null)
+            : null,
+          active_vehicle_id: activeVehicleMap.get(mapped.id!) ?? null,
+        }
+      }),
       total: count,
     }
   }

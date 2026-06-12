@@ -1,4 +1,3 @@
-import Vehicle from '../../Models/Vehicle'
 import MessageHelper from '../../Helpers/MessageHelper'
 import { Locale } from '../../Helpers/Locale'
 import { PlaceOption } from '../../Interfaces/PlaceOption'
@@ -6,6 +5,11 @@ import { Store } from '../store/Store'
 import { MessagesEnum } from './MessagesEnum'
 import { getPlaceholders, Placeholders, replacePlaceholders } from './Placeholders'
 import { ChatBotMessage } from '../../Types/ChatBotMessage'
+
+export interface VehicleSnapshot {
+  plate: string
+  color: { name: string; hex?: string } | null
+}
 
 function getStore(): Store {
   return Store.getInstance()
@@ -60,10 +64,10 @@ export const sendPlaceOptions = async (
   return getSingleMessage(MessagesEnum.DEFAULT_MESSAGE)
 }
 
-export const serviceAssigned = (vehicle: Vehicle): ChatBotMessage => {
+export const serviceAssigned = (vehicle: VehicleSnapshot): ChatBotMessage => {
   const placeholdersMap = getPlaceholders()
   placeholdersMap.set(Placeholders.PLATE, MessageHelper.truncatePlate(vehicle.plate))
-  placeholdersMap.set(Placeholders.COLOR, locale.__('colors.' + vehicle.color.name))
+  placeholdersMap.set(Placeholders.COLOR, locale.__('colors.' + (vehicle.color?.name ?? '')))
   const store = getStore()
   const message = store.findMessageById(MessagesEnum.SERVICE_ASSIGNED)
   return replacePlaceholders(message, placeholdersMap)

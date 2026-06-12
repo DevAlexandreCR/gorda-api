@@ -12,8 +12,10 @@ jest.mock('../../Services/drivers/DriverAvailability', () => ({
 
 // sequelize is imported transitively through DriverRecord's model init; mock it
 // so the test process does not attempt a real DB connection.
+// query() is also called by list() to bulk-fetch selected vehicles and active assignments.
 jest.mock('../../Database/sequelize', () => ({
   define: jest.fn(),
+  query: jest.fn().mockResolvedValue([]),
 }))
 
 // ---------------------------------------------------------------------------
@@ -54,12 +56,25 @@ function extractConditions(where: Record<symbol | string, any>): object[] {
   return where[Op.and] ?? [where]
 }
 
-/** Serialize an object to JSON, converting Symbol keys to their string representation. */
+/** Serialize an object to JSON, including Symbol keys and converting Symbol values to strings. */
 function serializeWhere(obj: object): string {
-  return JSON.stringify(obj, (_key, value) => {
-    if (typeof value === 'symbol') return value.toString()
-    return value
-  })
+  function serialize(val: any): any {
+    if (val === null || val === undefined) return val
+    if (typeof val === 'symbol') return val.toString()
+    if (Array.isArray(val)) return val.map(serialize)
+    if (typeof val === 'object') {
+      const result: Record<string, any> = {}
+      for (const key of Object.keys(val)) {
+        result[key] = serialize((val as any)[key])
+      }
+      for (const sym of Object.getOwnPropertySymbols(val)) {
+        result[sym.toString()] = serialize((val as any)[sym])
+      }
+      return result
+    }
+    return val
+  }
+  return JSON.stringify(serialize(obj))
 }
 
 // ---------------------------------------------------------------------------
@@ -203,10 +218,10 @@ describe('DriverRecordRepository.list()', () => {
     })
   })
 
-  // --- search: vehicle.plate via JSON extraction ---
+  // --- search: vehicle.plate via driver_vehicles JOIN ---
 
-  describe('search on vehicle plate (JSON extraction)', () => {
-    it('search query includes a literal SQL fragment for vehicle plate', async () => {
+  describe('search on vehicle plate (driver_vehicles JOIN)', () => {
+    it('search query includes a literal SQL subquery joining driver_vehicles and vehicles', async () => {
       ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
 
       await repository.list({ search: 'XYZ' })
@@ -215,11 +230,13 @@ describe('DriverRecordRepository.list()', () => {
       const conditions = extractConditions(callArg.where)
       const str = serializeWhere(conditions)
 
-      // The literal for vehicle plate must appear in the search clause
-      expect(str).toContain("vehicle->>'plate'")
+      // The literal for vehicle plate must use the JOIN-based subquery
+      expect(str).toContain('driver_vehicles dv')
+      expect(str).toContain('JOIN vehicles v')
+      expect(str).toContain('v.plate ILIKE :search')
     })
 
-    it('search query does NOT match arbitrary JSON keys (only plate value)', async () => {
+    it('search query does NOT use the legacy JSONB vehicle extraction', async () => {
       ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
 
       await repository.list({ search: 'XYZ' })
@@ -228,8 +245,37 @@ describe('DriverRecordRepository.list()', () => {
       const conditions = extractConditions(callArg.where)
       const str = serializeWhere(conditions)
 
-      // The clause must reference only "plate" key, not "vehicle" as a whole-column ilike
-      expect(str).not.toMatch(/"vehicle"\s*:\s*\{.*iLike/i)
+      // The old JSONB path must no longer appear
+      expect(str).not.toContain("vehicle->>'plate'")
+    })
+  })
+
+  // --- filter by needsVehicle ---
+
+  describe('filter by needsVehicle', () => {
+    it('needsVehicle=true adds a selected_vehicle_id IS NULL condition', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ needsVehicle: true })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+
+      // Find the literal condition by inspecting its .val property (Symbol-keyed Op.and array)
+      const literalCondition = conditions.find((c: any) => typeof c.val === 'string') as any
+      expect(literalCondition).toBeDefined()
+      expect(literalCondition.val).toContain('selected_vehicle_id')
+      expect(literalCondition.val).toContain('IS NULL')
+    })
+
+    it('needsVehicle=false does NOT add the selected_vehicle_id condition', async () => {
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+
+      await repository.list({ needsVehicle: false })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      // No filters → where is an empty object
+      expect(Object.keys(callArg.where)).toHaveLength(0)
     })
   })
 

@@ -133,4 +133,20 @@ DriverRecord.init(
   }
 )
 
+export function setupDriverAssociations(): void {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { default: VehicleRecord } = require('./VehicleRecord')
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { default: DriverVehicleRecord } = require('./DriverVehicleRecord')
+
+  DriverRecord.belongsTo(VehicleRecord, {
+    foreignKey: 'selected_vehicle_id',
+    as: 'selectedVehicle',
+  })
+  DriverRecord.hasMany(DriverVehicleRecord, {
+    foreignKey: 'driver_id',
+    as: 'driverVehicles',
+  })
+}
+
 export default DriverRecord
