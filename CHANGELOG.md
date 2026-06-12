@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.5(2026-06-12)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.5...2.0.4)
+
+### Added
+
+- Add normalized vehicle table migration, roster linking flow, and connect endpoint support for drivers.
+
+### Changed
+
+- Tighten vehicle completeness validation and lookup response handling for the extracted vehicles flow.
+
 ## [2.0.4(2026-06-08)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.4...2.0.3)
 
 ### Added
