@@ -29,11 +29,12 @@ jest.mock('../../../../Middlewares/Authorization', () => ({
 
 // DriverRecord — Sequelize Model used directly in DriverAppController
 const mockDriverRecordFindByPk = jest.fn()
+const mockDriverRecordUpdate = jest.fn()
 jest.mock('../../../../Models/DriverRecord', () => ({
   __esModule: true,
   default: {
     findByPk: mockDriverRecordFindByPk,
-    update: jest.fn(),
+    update: mockDriverRecordUpdate,
   },
   setupDriverAssociations: jest.fn(),
 }))
@@ -59,11 +60,12 @@ jest.mock('../../../../Models/ActiveVehicleAssignmentRecord', () => ({
 // ActiveVehicleAssignmentRepository — singleton default export
 const mockActiveVehicleAssignmentFindByVehicle = jest.fn()
 const mockActiveVehicleAssignmentReleaseByDriver = jest.fn()
+const mockActiveVehicleAssignmentFindByDriver = jest.fn()
 jest.mock('../../../../Repositories/ActiveVehicleAssignmentRepository', () => ({
   __esModule: true,
   default: {
     findByVehicle: mockActiveVehicleAssignmentFindByVehicle,
-    findByDriver: jest.fn(),
+    findByDriver: mockActiveVehicleAssignmentFindByDriver,
     releaseByDriver: mockActiveVehicleAssignmentReleaseByDriver,
     releaseByVehicle: jest.fn(),
     acquire: jest.fn(),
@@ -154,6 +156,77 @@ function post(
   })
 }
 
+function get(
+  server: http.Server,
+  path: string,
+  headers: Record<string, string> = {}
+): Promise<{ status: number; body: any }> {
+  return new Promise((resolve, reject) => {
+    const { port } = server.address() as AddressInfo
+    const opts: http.RequestOptions = {
+      hostname: '127.0.0.1',
+      port,
+      path,
+      method: 'GET',
+      headers,
+    }
+    const req = http.request(opts, (res) => {
+      let data = ''
+      res.on('data', (chunk) => {
+        data += chunk
+      })
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode ?? 0, body: JSON.parse(data) })
+        } catch {
+          resolve({ status: res.statusCode ?? 0, body: data })
+        }
+      })
+    })
+    req.on('error', reject)
+    req.end()
+  })
+}
+
+function put(
+  server: http.Server,
+  path: string,
+  body: any,
+  headers: Record<string, string> = {}
+): Promise<{ status: number; body: any }> {
+  return new Promise((resolve, reject) => {
+    const { port } = server.address() as AddressInfo
+    const payload = JSON.stringify(body)
+    const opts: http.RequestOptions = {
+      hostname: '127.0.0.1',
+      port,
+      path,
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+        ...headers,
+      },
+    }
+    const req = http.request(opts, (res) => {
+      let data = ''
+      res.on('data', (chunk) => {
+        data += chunk
+      })
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode ?? 0, body: JSON.parse(data) })
+        } catch {
+          resolve({ status: res.statusCode ?? 0, body: data })
+        }
+      })
+    })
+    req.on('error', reject)
+    req.write(payload)
+    req.end()
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Server setup
 // ---------------------------------------------------------------------------
@@ -202,6 +275,8 @@ beforeEach(() => {
   })
   mockRtdbChildSet.mockResolvedValue(undefined)
   mockRtdbChildRemove.mockResolvedValue(undefined)
+  mockDriverRecordUpdate.mockReset()
+  mockActiveVehicleAssignmentFindByDriver.mockReset()
 })
 
 afterEach(() => {

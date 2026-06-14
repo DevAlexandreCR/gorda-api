@@ -108,6 +108,7 @@ describe('DriverRecordRepository.list()', () => {
       expect(callArg.limit).toBe(30)
       expect(callArg.order).toEqual([['name', 'ASC']])
     })
+
   })
 
   // --- filter by status ---

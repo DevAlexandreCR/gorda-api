@@ -323,10 +323,11 @@ const mockStore = jest.fn()
 
 beforeAll((done) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const controller = require('../DriversController').default
+  const controllerModule = require('../DriversController')
   const app = express()
   app.use(express.json())
-  app.use('/drivers', controller)
+  app.use('/drivers', controllerModule.default)
+  app.use('/public/drivers', controllerModule.PublicDriversController)
   server = http.createServer(app)
   server.listen(0, '127.0.0.1', done)
 })
@@ -1020,7 +1021,14 @@ describe('POST /drivers/:id/vehicles (find-or-create reuse)', () => {
     const { status, body } = await post(
       server,
       `/drivers/${driverId}/vehicles`,
-      { vehicle: { plate: 'ABC123', brand: 'OtherBrand' } },
+      {
+        vehicle: {
+          plate: 'ABC123',
+          brand: 'OtherBrand',
+          model: 'Picanto',
+          color: { name: 'Blue' },
+        },
+      },
       VALID_AUTH_HEADERS
     )
 
@@ -1032,7 +1040,12 @@ describe('POST /drivers/:id/vehicles (find-or-create reuse)', () => {
     expect(mockFindOrCreateByPlate).toHaveBeenCalledTimes(1)
     expect(mockFindOrCreateByPlate).toHaveBeenCalledWith(
       'ABC123',
-      { plate: 'ABC123', brand: 'OtherBrand' },
+      {
+        plate: 'ABC123',
+        brand: 'OtherBrand',
+        model: 'Picanto',
+        color: { name: 'Blue' },
+      },
       mockTransaction
     )
     // link was created for the existing vehicle
@@ -1061,7 +1074,14 @@ describe('POST /drivers/:id/vehicles (find-or-create reuse)', () => {
     const { status, body } = await post(
       server,
       `/drivers/${driverId}/vehicles`,
-      { vehicle: { plate: 'XYZ789', brand: 'Toyota' } },
+      {
+        vehicle: {
+          plate: 'XYZ789',
+          brand: 'Toyota',
+          model: 'Corolla',
+          color: { name: 'White' },
+        },
+      },
       VALID_AUTH_HEADERS
     )
 
