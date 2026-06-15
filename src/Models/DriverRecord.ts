@@ -35,6 +35,7 @@ class DriverRecord
   public enabled_at!: number
   public created_at!: number
   public last_connection!: number
+  public selected_vehicle_id!: string | null
   public readonly updated_at!: Date
 }
 
@@ -118,6 +119,11 @@ DriverRecord.init(
       type: DataTypes.BIGINT,
       allowNull: false,
       defaultValue: 0,
+    },
+    selected_vehicle_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      defaultValue: null,
     },
     updated_at: {
       type: DataTypes.DATE,

@@ -1396,3 +1396,108 @@ describe('GET /drivers/:id (DriversController)', () => {
     expect(mockVehicleRepoFindById).not.toHaveBeenCalled()
   })
 })
+
+describe('GET /public/drivers/:id (PublicDriversController)', () => {
+  const baseDriver = {
+    id: 'drv-public-1',
+    name: 'Public Driver',
+    email: 'driver@test.com',
+    phone: '555-0000',
+    docType: 'cc',
+    document: '111111',
+    paymentMode: 'monthly',
+    balance: 0,
+    enabled_at: 0,
+    created_at: 0,
+    last_connection: 0,
+    vehicle: { plate: 'LEGACY123' },
+    selected_vehicle_id: 'veh-2',
+  }
+
+  it('returns selected_vehicle_id, selected_vehicle, and a flat Android-compatible roster', async () => {
+    mockFindById.mockResolvedValue(baseDriver)
+    mockDriverVehicleListForDriver.mockResolvedValue([
+      {
+        vehicle_id: 'veh-2',
+        selectable: true,
+        vehicle: {
+          id: 'veh-2',
+          plate: 'ABC123',
+          brand: 'Toyota',
+          model: 'Yaris',
+          photoUrl: 'https://img/1.png',
+          color: { name: 'White' },
+          enabled: true,
+        },
+      },
+      {
+        vehicle_id: 'veh-3',
+        selectable: true,
+        vehicle: {
+          id: 'veh-3',
+          plate: 'XYZ789',
+          brand: 'Mazda',
+          model: '2',
+          photoUrl: null,
+          color: { name: 'Red' },
+          enabled: false,
+        },
+      },
+    ])
+    mockActiveVehicleAssignmentFindByDriver.mockResolvedValue({
+      vehicle_id: 'veh-3',
+      driver_id: 'drv-public-1',
+      session_id: null,
+      acquired_at: new Date(),
+    })
+
+    const { status, body } = await get(server, '/public/drivers/drv-public-1')
+
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(mockDriverVehicleListForDriver).toHaveBeenCalledWith('drv-public-1', { includeAll: true })
+
+    const driver = body.data.driver
+    expect(driver.selected_vehicle_id).toBe('veh-2')
+    expect(driver.selected_vehicle).toEqual({
+      id: 'veh-2',
+      plate: 'ABC123',
+      brand: 'Toyota',
+      model: 'Yaris',
+      photoUrl: 'https://img/1.png',
+      color: { name: 'White' },
+      enabled: true,
+      is_selected: true,
+      is_selectable: true,
+      is_active: false,
+    })
+    expect(driver.roster).toEqual([
+      {
+        id: 'veh-2',
+        plate: 'ABC123',
+        brand: 'Toyota',
+        model: 'Yaris',
+        photoUrl: 'https://img/1.png',
+        color: { name: 'White' },
+        enabled: true,
+        is_selected: true,
+        is_selectable: true,
+        is_active: false,
+      },
+      {
+        id: 'veh-3',
+        plate: 'XYZ789',
+        brand: 'Mazda',
+        model: '2',
+        photoUrl: null,
+        color: { name: 'Red' },
+        enabled: false,
+        is_selected: false,
+        is_selectable: false,
+        is_active: true,
+      },
+    ])
+    expect(driver.roster.filter((vehicle: any) => vehicle.is_selected)).toHaveLength(1)
+    expect(driver.roster[0].vehicle).toBeUndefined()
+  })
+})

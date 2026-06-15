@@ -288,6 +288,7 @@ controller.get('/me/vehicles', async (req: Request, res: Response) => {
       ...v.vehicle,
       vehicle_id: v.vehicle_id,
       selectable: v.selectable,
+      is_selectable: v.selectable,
       is_selected: v.vehicle_id === selectedVehicleId,
       is_active: assignment?.vehicle_id === v.vehicle_id,
     }))

@@ -7,6 +7,7 @@ import { DriverInterface } from '../../../Interfaces/DriverInterface'
 import { Store } from '../../../Services/store/Store'
 import { DriverListQuery } from '../../../Repositories/DriverRecordRepository'
 import DriverRepository from '../../../Repositories/DriverRepository'
+import { VehicleRecordInterface } from '../../../Interfaces/VehicleRecordInterface'
 import FCM from '../../../Services/firebase/FCM'
 import { FCMNotification } from '../../../Types/FCMNotifications'
 import DriverVehicleRepository from '../../../Repositories/DriverVehicleRepository'
@@ -22,6 +23,37 @@ const publicController = Router()
 const store = Store.getInstance()
 const driverVehicleRepo = new DriverVehicleRepository()
 const vehicleRepo = new VehicleRepository()
+
+type MobileDriverVehicle = Pick<
+  VehicleRecordInterface,
+  'id' | 'plate' | 'brand' | 'model' | 'photoUrl' | 'color' | 'enabled'
+> & {
+  is_selected: boolean
+  is_selectable: boolean
+  is_active: boolean
+}
+
+function toMobileDriverVehicle(
+  vehicle: VehicleRecordInterface,
+  options: {
+    selectedVehicleId: string | null
+    isSelectable: boolean
+    activeVehicleId: string | null
+  }
+): MobileDriverVehicle {
+  return {
+    id: vehicle.id,
+    plate: vehicle.plate,
+    brand: vehicle.brand ?? null,
+    model: vehicle.model ?? null,
+    photoUrl: vehicle.photoUrl ?? null,
+    color: vehicle.color ?? null,
+    enabled: Boolean(vehicle.enabled),
+    is_selected: vehicle.id === options.selectedVehicleId,
+    is_selectable: options.isSelectable && Boolean(vehicle.enabled),
+    is_active: vehicle.id === options.activeVehicleId,
+  }
+}
 
 controller.use(requireAuth)
 
@@ -640,9 +672,43 @@ publicController.get('/:id', async (req: Request, res: Response) => {
       })
     }
 
+    const selectedVehicleId = driver.selected_vehicle_id ?? null
+    const [rosterLinks, activeAssignment] = await Promise.all([
+      driverVehicleRepo.listForDriver(req.params.id, { includeAll: true }),
+      ActiveVehicleAssignmentRepository.findByDriver(req.params.id),
+    ])
+
+    const activeVehicleId = activeAssignment?.vehicle_id ?? null
+    const roster = rosterLinks.map((link) =>
+      toMobileDriverVehicle(link.vehicle, {
+        selectedVehicleId,
+        isSelectable: link.selectable,
+        activeVehicleId,
+      })
+    )
+
+    let selected_vehicle = roster.find((vehicle) => vehicle.id === selectedVehicleId) ?? null
+    if (selectedVehicleId && selected_vehicle === null) {
+      const vehicle = await vehicleRepo.findById(selectedVehicleId)
+      if (vehicle) {
+        selected_vehicle = toMobileDriverVehicle(vehicle, {
+          selectedVehicleId,
+          isSelectable: false,
+          activeVehicleId,
+        })
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      data: { driver },
+      data: {
+        driver: {
+          ...driver,
+          selected_vehicle_id: selectedVehicleId,
+          selected_vehicle,
+          roster,
+        },
+      },
     })
   } catch (error) {
     console.error('Error fetching public driver:', error)

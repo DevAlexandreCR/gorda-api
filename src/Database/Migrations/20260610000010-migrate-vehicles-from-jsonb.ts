@@ -113,10 +113,7 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
       { transaction: t }
     )
 
-    // Step 6: drop the legacy JSONB column now that all data is migrated
-    await queryInterface.sequelize.query(`ALTER TABLE drivers DROP COLUMN IF EXISTS vehicle`, {
-      transaction: t,
-    })
+    // Step 6: keep the legacy JSONB column while the current model still reads it.
   })
 }
 

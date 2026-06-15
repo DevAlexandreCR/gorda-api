@@ -293,6 +293,7 @@ class DriverRecordRepository {
       enabled_at: Number(plain.enabled_at ?? 0),
       created_at: Number(plain.created_at ?? 0),
       last_connection: Number(plain.last_connection ?? 0),
+      selected_vehicle_id: plain.selected_vehicle_id ?? null,
       availability: buildDriverAvailability({
         paymentMode: plain.paymentMode ?? 'monthly',
         balance: Number(plain.balance ?? 0),

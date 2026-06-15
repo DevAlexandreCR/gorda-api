@@ -18,5 +18,6 @@ export interface DriverInterface {
   enabled_at: number
   created_at: number
   last_connection?: number
+  selected_vehicle_id?: string | null
   availability?: DriverAvailabilityInterface
 }

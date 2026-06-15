@@ -521,3 +521,56 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
     })
   })
 })
+
+describe('GET /driver-app/me/vehicles (DriverAppController)', () => {
+  it('returns both selectable and is_selectable using the enabled/selectable roster filter', async () => {
+    mockDriverVehicleListForDriver.mockResolvedValue([
+      {
+        vehicle_id: 'veh-eligible',
+        selectable: true,
+        vehicle: {
+          id: 'veh-eligible',
+          plate: 'ABC123',
+          brand: 'Toyota',
+          model: 'Yaris',
+          photoUrl: 'https://img/1.png',
+          color: { name: 'White' },
+          enabled: true,
+        },
+      },
+    ])
+    mockDriverRecordFindByPk.mockResolvedValue({
+      get: (_opts: any) => ({ selected_vehicle_id: 'veh-eligible' }),
+    })
+    mockActiveVehicleAssignmentFindByDriver.mockResolvedValue({
+      vehicle_id: 'veh-eligible',
+      driver_id: DRIVER_UID,
+      session_id: null,
+      acquired_at: new Date(),
+    })
+
+    const { status, body } = await get(server, '/driver-app/me/vehicles')
+
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(mockDriverVehicleListForDriver).toHaveBeenCalledWith(DRIVER_UID, {
+      includeAll: false,
+    })
+    expect(body.data.vehicles).toEqual([
+      {
+        id: 'veh-eligible',
+        plate: 'ABC123',
+        brand: 'Toyota',
+        model: 'Yaris',
+        photoUrl: 'https://img/1.png',
+        color: { name: 'White' },
+        enabled: true,
+        vehicle_id: 'veh-eligible',
+        selectable: true,
+        is_selectable: true,
+        is_selected: true,
+        is_active: true,
+      },
+    ])
+  })
+})

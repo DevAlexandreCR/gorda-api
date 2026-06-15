@@ -41,6 +41,7 @@ function makeDriverPlain(overrides: Record<string, any> = {}): Record<string, an
     enabled_at: 1_000_000,
     created_at: 900_000,
     last_connection: 800_000,
+    selected_vehicle_id: null,
     ...overrides,
   }
 }
@@ -93,7 +94,7 @@ describe('DriverRecordRepository.list()', () => {
 
   describe('defaults: no query params', () => {
     it('uses name ASC sort and perPage 30 when no params are supplied', async () => {
-      const plain = makeDriverPlain()
+      const plain = makeDriverPlain({ selected_vehicle_id: 'veh-1' })
       ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({
         count: 1,
         rows: [makeDriverModel(plain)],
@@ -103,6 +104,7 @@ describe('DriverRecordRepository.list()', () => {
 
       expect(result.total).toBe(1)
       expect(result.rows).toHaveLength(1)
+      expect(result.rows[0].selected_vehicle_id).toBe('veh-1')
 
       const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
       expect(callArg.limit).toBe(30)
