@@ -9,6 +9,7 @@ import DriverTokenRecordRepository from '../Repositories/DriverTokenRecordReposi
 import ServiceHistoryRepository from '../Repositories/ServiceHistoryRepository'
 import ServiceMetricsDailyRepository from '../Repositories/ServiceMetricsDailyRepository'
 import BillingRepository from '../Repositories/BillingRepository'
+import RechargeRepository from '../Repositories/RechargeRepository'
 
 class Container {
   private static sequelizeInstance: typeof sequelize
@@ -22,6 +23,7 @@ class Container {
   private static serviceHistoryRepository: ServiceHistoryRepository
   private static serviceMetricsDailyRepository: ServiceMetricsDailyRepository
   private static billingRepository: BillingRepository
+  private static rechargeRepository: RechargeRepository
 
   /**
    * Get or create Sequelize instance
@@ -110,6 +112,13 @@ class Container {
       this.billingRepository = new BillingRepository()
     }
     return this.billingRepository
+  }
+
+  static getRechargeRepository(): RechargeRepository {
+    if (!this.rechargeRepository) {
+      this.rechargeRepository = new RechargeRepository()
+    }
+    return this.rechargeRepository
   }
 
   /**

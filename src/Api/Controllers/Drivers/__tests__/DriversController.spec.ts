@@ -320,6 +320,8 @@ const mockBulkSetEnabled = jest.fn()
 const mockFindByDriverId = jest.fn()
 const mockFindById = jest.fn()
 const mockStore = jest.fn()
+const mockRechargeCreate = jest.fn()
+const mockRechargeListForDriver = jest.fn()
 
 beforeAll((done) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -383,6 +385,12 @@ beforeEach(() => {
   jest.spyOn(Container, 'getDriverTokenRecordRepository').mockReturnValue({
     findByDriverId: mockFindByDriverId,
   })
+  jest.spyOn(Container, 'getRechargeRepository').mockReturnValue({
+    create: mockRechargeCreate,
+    listForDriver: mockRechargeListForDriver,
+  } as any)
+  mockRechargeCreate.mockReset()
+  mockRechargeListForDriver.mockReset()
 })
 
 afterEach(() => {
@@ -1394,6 +1402,169 @@ describe('GET /drivers/:id (DriversController)', () => {
     expect(body.data.driver.selected_vehicle).toBeNull()
     expect(body.data.driver.active_vehicle_id).toBeNull()
     expect(mockVehicleRepoFindById).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// POST /drivers/:id/recharges
+// ---------------------------------------------------------------------------
+
+describe('POST /drivers/:id/recharges (DriversController)', () => {
+  const validBody = {
+    amount: 5000,
+    created_by: { uid: 'admin-uid', name: 'Admin User' },
+    note: 'recarga efectivo',
+  }
+  const rechargeResult = {
+    recharge: {
+      id: 'rch-1', driverId: 'drv-1', amount: 5000,
+      balanceBefore: 1000, balanceAfter: 6000,
+      createdByUid: 'admin-uid', createdByName: 'Admin User',
+      note: 'recarga efectivo', created_at: 1000000,
+    },
+    driver: { id: 'drv-1', balance: 6000 },
+  }
+
+  describe('201: successful recharge', () => {
+    it('creates recharge and returns recharge + driver', async () => {
+      mockRechargeCreate.mockResolvedValue(rechargeResult)
+
+      const { status, body } = await post(server, '/drivers/drv-1/recharges', validBody, VALID_AUTH_HEADERS)
+
+      expect(status).toBe(201)
+      expect(body.success).toBe(true)
+      expect(body.data.recharge).toEqual(rechargeResult.recharge)
+      expect(body.data.driver).toEqual(rechargeResult.driver)
+      expect(mockRechargeCreate).toHaveBeenCalledTimes(1)
+      expect(mockRechargeCreate).toHaveBeenCalledWith({
+        driverId: 'drv-1',
+        amount: 5000,
+        createdBy: { uid: 'admin-uid', name: 'Admin User' },
+        note: 'recarga efectivo',
+      })
+    })
+
+    it('calls store.refreshDrivers() after successful recharge', async () => {
+      mockRechargeCreate.mockResolvedValue(rechargeResult)
+
+      await post(server, '/drivers/drv-1/recharges', validBody, VALID_AUTH_HEADERS)
+
+      expect(mockRefreshDrivers).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('400: validation errors', () => {
+    it('returns 400 when amount is missing', async () => {
+      const { status, body } = await post(
+        server, '/drivers/drv-1/recharges',
+        { created_by: { uid: 'u', name: 'n' } },
+        VALID_AUTH_HEADERS
+      )
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockRechargeCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when amount is zero', async () => {
+      const { status, body } = await post(
+        server, '/drivers/drv-1/recharges',
+        { amount: 0, created_by: { uid: 'u', name: 'n' } },
+        VALID_AUTH_HEADERS
+      )
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockRechargeCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when amount is a string', async () => {
+      const { status, body } = await post(
+        server, '/drivers/drv-1/recharges',
+        { amount: '5000', created_by: { uid: 'u', name: 'n' } },
+        VALID_AUTH_HEADERS
+      )
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+    })
+
+    it('returns 400 when created_by is missing', async () => {
+      const { status, body } = await post(
+        server, '/drivers/drv-1/recharges',
+        { amount: 5000 },
+        VALID_AUTH_HEADERS
+      )
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockRechargeCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when created_by.uid is missing', async () => {
+      const { status, body } = await post(
+        server, '/drivers/drv-1/recharges',
+        { amount: 5000, created_by: { name: 'Admin' } },
+        VALID_AUTH_HEADERS
+      )
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+    })
+  })
+
+  describe('404: driver not found', () => {
+    it('returns 404 when repository throws Driver not found', async () => {
+      mockRechargeCreate.mockRejectedValue(new Error('Driver not found'))
+
+      const { status, body } = await post(
+        server, '/drivers/nonexistent/recharges',
+        validBody,
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(404)
+      expect(body.success).toBe(false)
+      expect(mockRefreshDrivers).not.toHaveBeenCalled()
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /drivers/:id/recharges
+// ---------------------------------------------------------------------------
+
+describe('GET /drivers/:id/recharges (DriversController)', () => {
+  const sampleRecharges = [
+    { id: 'rch-2', driverId: 'drv-1', amount: -2000, balanceBefore: 6000, balanceAfter: 4000, createdByUid: 'u', createdByName: 'Admin', note: null, created_at: 1000100 },
+    { id: 'rch-1', driverId: 'drv-1', amount: 5000, balanceBefore: 1000, balanceAfter: 6000, createdByUid: 'u', createdByName: 'Admin', note: 'recarga', created_at: 1000000 },
+  ]
+
+  describe('200: returns paginated history', () => {
+    it('returns recharges and total', async () => {
+      mockRechargeListForDriver.mockResolvedValue({ rows: sampleRecharges, total: 2 })
+
+      const { status, body } = await get(server, '/drivers/drv-1/recharges', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(200)
+      expect(body.success).toBe(true)
+      expect(body.data.recharges).toHaveLength(2)
+      expect(body.data.total).toBe(2)
+      expect(mockRechargeListForDriver).toHaveBeenCalledWith('drv-1', { page: 1, perPage: 20 })
+    })
+
+    it('returns empty list when driver has no recharges', async () => {
+      mockRechargeListForDriver.mockResolvedValue({ rows: [], total: 0 })
+
+      const { status, body } = await get(server, '/drivers/drv-1/recharges', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(200)
+      expect(body.data.recharges).toEqual([])
+      expect(body.data.total).toBe(0)
+    })
+
+    it('forwards page and perPage query params', async () => {
+      mockRechargeListForDriver.mockResolvedValue({ rows: [], total: 0 })
+
+      await get(server, '/drivers/drv-1/recharges?page=2&perPage=10', VALID_AUTH_HEADERS)
+
+      expect(mockRechargeListForDriver).toHaveBeenCalledWith('drv-1', { page: 2, perPage: 10 })
+    })
   })
 })
 
