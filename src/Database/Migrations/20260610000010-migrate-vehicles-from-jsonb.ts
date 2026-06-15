@@ -15,41 +15,81 @@ export async function up(queryInterface: QueryInterface): Promise<void> {
     // normalized plate = UPPER(REPLACE(REPLACE(vehicle->>'plate', ' ', ''), '-', ''))
     await queryInterface.sequelize.query(
       `
+      WITH vehicle_source AS (
+        SELECT
+          UPPER(REPLACE(REPLACE(vehicle->>'plate', ' ', ''), '-', '')) AS normalized_plate,
+          NULLIF(BTRIM(vehicle->>'brand'), '') AS brand,
+          NULLIF(BTRIM(vehicle->>'model'), '') AS model,
+          CASE
+            WHEN vehicle->>'color' IS NOT NULL AND vehicle->>'color' != 'null'
+            THEN (
+              CASE jsonb_typeof(vehicle->'color')
+                WHEN 'object' THEN vehicle->'color'
+                ELSE jsonb_build_object('name', vehicle->>'color')
+              END
+            )
+            ELSE NULL
+          END AS color,
+          NULLIF(BTRIM(COALESCE(vehicle->>'photoUrl', vehicle->>'photo_url')), '') AS photo_url,
+          CASE
+            WHEN NULLIF(BTRIM(vehicle->>'soat_exp'), '') IS NULL THEN NULL
+            WHEN BTRIM(vehicle->>'soat_exp') ~ '^\\d{13}$'
+              THEN to_timestamp((BTRIM(vehicle->>'soat_exp'))::double precision / 1000.0)
+            WHEN BTRIM(vehicle->>'soat_exp') ~ '^\\d{10}$'
+              THEN to_timestamp((BTRIM(vehicle->>'soat_exp'))::double precision)
+            WHEN BTRIM(vehicle->>'soat_exp') ~ '^\\d{4}-\\d{2}-\\d{2}'
+              AND to_char(to_date(LEFT(BTRIM(vehicle->>'soat_exp'), 10), 'YYYY-MM-DD'), 'YYYY-MM-DD') = LEFT(BTRIM(vehicle->>'soat_exp'), 10)
+              THEN to_date(LEFT(BTRIM(vehicle->>'soat_exp'), 10), 'YYYY-MM-DD')::timestamp
+            ELSE NULL
+          END AS soat_exp,
+          CASE
+            WHEN NULLIF(BTRIM(vehicle->>'tec_exp'), '') IS NULL THEN NULL
+            WHEN BTRIM(vehicle->>'tec_exp') ~ '^\\d{13}$'
+              THEN to_timestamp((BTRIM(vehicle->>'tec_exp'))::double precision / 1000.0)
+            WHEN BTRIM(vehicle->>'tec_exp') ~ '^\\d{10}$'
+              THEN to_timestamp((BTRIM(vehicle->>'tec_exp'))::double precision)
+            WHEN BTRIM(vehicle->>'tec_exp') ~ '^\\d{4}-\\d{2}-\\d{2}'
+              AND to_char(to_date(LEFT(BTRIM(vehicle->>'tec_exp'), 10), 'YYYY-MM-DD'), 'YYYY-MM-DD') = LEFT(BTRIM(vehicle->>'tec_exp'), 10)
+              THEN to_date(LEFT(BTRIM(vehicle->>'tec_exp'), 10), 'YYYY-MM-DD')::timestamp
+            ELSE NULL
+          END AS tec_exp
+        FROM drivers
+        WHERE vehicle IS NOT NULL
+          AND vehicle != '{}'::jsonb
+          AND vehicle->>'plate' IS NOT NULL
+          AND vehicle->>'plate' != ''
+      )
       INSERT INTO vehicles (id, plate, brand, model, color, photo_url, soat_exp, tec_exp, enabled, created_at, updated_at)
-      SELECT DISTINCT ON (UPPER(REPLACE(REPLACE(vehicle->>'plate', ' ', ''), '-', '')))
+      SELECT DISTINCT ON (normalized_plate)
         gen_random_uuid(),
-        UPPER(REPLACE(REPLACE(vehicle->>'plate', ' ', ''), '-', '')),
-        vehicle->>'brand',
-        vehicle->>'model',
+        normalized_plate,
+        brand,
+        model,
+        color,
+        photo_url,
+        soat_exp,
+        tec_exp,
         CASE
-          WHEN vehicle->>'color' IS NOT NULL AND vehicle->>'color' != 'null'
-          THEN (
-            CASE jsonb_typeof(vehicle->'color')
-              WHEN 'object' THEN vehicle->'color'
-              ELSE jsonb_build_object('name', vehicle->>'color')
-            END
-          )
-          ELSE NULL
+          WHEN brand IS NOT NULL
+            AND model IS NOT NULL
+            AND color IS NOT NULL
+            AND soat_exp IS NOT NULL
+            AND tec_exp IS NOT NULL
+          THEN true
+          ELSE false
         END,
-        vehicle->>'photo_url',
-        NULL,
-        NULL,
-        -- enabled=false if plate/brand/model missing, or soat_exp/tec_exp absent.
-        -- Rule tightened retroactively: soat_exp and tec_exp are always NULL at
-        -- migration time (drivers provided them separately), so all freshly-migrated
-        -- vehicles start disabled. Data fix for already-migrated DBs is handled by
-        -- 20260610000012-disable-incomplete-vehicles.ts.
-        CASE WHEN
-          (vehicle->>'plate' IS NULL OR vehicle->>'plate' = '') OR
-          (vehicle->>'brand' IS NULL OR vehicle->>'brand' = '') OR
-          (vehicle->>'model' IS NULL OR vehicle->>'model' = '') OR
-          vehicle->>'soat_exp' IS NULL OR
-          vehicle->>'tec_exp' IS NULL
-        THEN false ELSE true END,
-        NOW(), NOW()
-      FROM drivers
-      WHERE vehicle IS NOT NULL AND vehicle != '{}'::jsonb
-        AND vehicle->>'plate' IS NOT NULL AND vehicle->>'plate' != ''
+        NOW(),
+        NOW()
+      FROM vehicle_source
+      WHERE normalized_plate IS NOT NULL AND normalized_plate != ''
+      ORDER BY
+        normalized_plate,
+        (brand IS NOT NULL) DESC,
+        (model IS NOT NULL) DESC,
+        (color IS NOT NULL) DESC,
+        (photo_url IS NOT NULL) DESC,
+        (soat_exp IS NOT NULL) DESC,
+        (tec_exp IS NOT NULL) DESC
       ON CONFLICT (plate) DO NOTHING
     `,
       { transaction: t }

@@ -18,6 +18,52 @@ controller.use(requireAuth)
 
 const ALLOWED_PER_PAGE = [20, 30, 50]
 
+function normalizeOptionalVehicleDateInput(value: unknown): Date | null | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (value === null) {
+    return null
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim()
+    if (trimmedValue === '' || trimmedValue.toLowerCase() === 'invalid date') {
+      return null
+    }
+
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)
+      ? new Date(`${trimmedValue}T00:00:00.000Z`)
+      : new Date(trimmedValue)
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+  }
+
+  if (typeof value === 'number' || value instanceof Date) {
+    const parsedDate = new Date(value)
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+  }
+
+  return null
+}
+
+function normalizeOptionalPhotoUrl(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (value === null) {
+    return null
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim()
+    return trimmedValue === '' ? null : trimmedValue
+  }
+
+  return null
+}
+
 // GET /vehicles
 controller.get('/', async (req: Request, res: Response) => {
   try {
@@ -148,6 +194,9 @@ controller.get('/:id', async (req: Request, res: Response) => {
 controller.post('/', async (req: Request, res: Response) => {
   try {
     const { plate, brand, model, color, photoUrl, soat_exp, tec_exp } = req.body
+    const normalizedPhotoUrl = normalizeOptionalPhotoUrl(photoUrl)
+    const normalizedSoatExp = normalizeOptionalVehicleDateInput(soat_exp)
+    const normalizedTecExp = normalizeOptionalVehicleDateInput(tec_exp)
 
     if (!plate || typeof plate !== 'string') {
       return res.status(400).json({
@@ -190,9 +239,9 @@ controller.post('/', async (req: Request, res: Response) => {
       brand: brand ?? null,
       model: model ?? null,
       color: color ?? null,
-      photoUrl: photoUrl ?? null,
-      soat_exp: soat_exp ?? null,
-      tec_exp: tec_exp ?? null,
+      photoUrl: normalizedPhotoUrl ?? null,
+      soat_exp: normalizedSoatExp ?? null,
+      tec_exp: normalizedTecExp ?? null,
     })
 
     return res.status(201).json({
@@ -226,6 +275,9 @@ controller.patch('/:id', async (req: Request, res: Response) => {
     }
 
     const { brand, model, color, soat_exp, tec_exp, photoUrl } = req.body
+    const normalizedPhotoUrl = normalizeOptionalPhotoUrl(photoUrl)
+    const normalizedSoatExp = normalizeOptionalVehicleDateInput(soat_exp)
+    const normalizedTecExp = normalizeOptionalVehicleDateInput(tec_exp)
     if (color !== undefined && color !== null) {
       if (typeof color !== 'object' || Array.isArray(color) || typeof color.name !== 'string') {
         return res.status(400).json({ error: 'color_invalid' })
@@ -236,9 +288,9 @@ controller.patch('/:id', async (req: Request, res: Response) => {
     if (brand !== undefined) updatePayload.brand = brand
     if (model !== undefined) updatePayload.model = model
     if (color !== undefined) updatePayload.color = color
-    if (soat_exp !== undefined) updatePayload.soat_exp = soat_exp
-    if (tec_exp !== undefined) updatePayload.tec_exp = tec_exp
-    if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl
+    if (normalizedSoatExp !== undefined) updatePayload.soat_exp = normalizedSoatExp
+    if (normalizedTecExp !== undefined) updatePayload.tec_exp = normalizedTecExp
+    if (normalizedPhotoUrl !== undefined) updatePayload.photoUrl = normalizedPhotoUrl
 
     await vehicleRepo.update(req.params.id, updatePayload as any)
 

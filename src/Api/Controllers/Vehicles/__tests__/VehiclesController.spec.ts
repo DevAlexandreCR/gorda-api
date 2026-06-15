@@ -394,6 +394,68 @@ describe('PATCH /vehicles/:id (update)', () => {
     expect(status).toBe(200)
     expect(body.success).toBe(true)
   })
+
+  it('forwards photoUrl on patch updates', async () => {
+    mockFindById.mockResolvedValue({
+      id: 'veh-1',
+      plate: 'ABC123',
+      brand: 'Mazda',
+      model: '3',
+      color: { name: 'Blue', hex: '#0000ff' },
+      photoUrl: null,
+      soat_exp: null,
+      tec_exp: null,
+      enabled: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    mockUpdate.mockResolvedValue(undefined)
+
+    const { status, body } = await patch(server, '/vehicles/veh-1', {
+      photoUrl: 'https://img.example/vehicle.png',
+    })
+
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'veh-1',
+      expect.objectContaining({
+        photoUrl: 'https://img.example/vehicle.png',
+      })
+    )
+  })
+
+  it('normalizes empty and invalid nullable date payloads before update', async () => {
+    mockFindById.mockResolvedValue({
+      id: 'veh-1',
+      plate: 'ABC123',
+      brand: 'Mazda',
+      model: '3',
+      color: { name: 'Blue', hex: '#0000ff' },
+      photoUrl: null,
+      soat_exp: new Date('2026-01-01'),
+      tec_exp: new Date('2026-02-01'),
+      enabled: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    mockUpdate.mockResolvedValue(undefined)
+
+    const { status, body } = await patch(server, '/vehicles/veh-1', {
+      soat_exp: '',
+      tec_exp: 'Invalid date',
+    })
+
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'veh-1',
+      expect.objectContaining({
+        soat_exp: null,
+        tec_exp: null,
+      })
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
