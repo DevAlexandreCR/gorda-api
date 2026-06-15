@@ -36,6 +36,7 @@ class ServiceHistoryRecord
   public assigned_by!: string | null
   public canceled_by!: string | null
   public terminated_by!: string | null
+  public vehicle_id!: string | null
   public readonly updated_at!: Date
 }
 
@@ -118,6 +119,11 @@ ServiceHistoryRecord.init(
     },
     terminated_by: {
       type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
+    vehicle_id: {
+      type: DataTypes.UUID,
       allowNull: true,
       defaultValue: null,
     },

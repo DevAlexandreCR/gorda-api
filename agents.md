@@ -25,6 +25,13 @@ This document explains the agents (long-running services, jobs, and helper modul
 - Caches branches, WhatsApp clients, and settings so that the Socket/HTTP layers can read them without repeating DB calls.
 - Emits hydrated data into memory upon app start (`store.getBranches()`, `store.getWpClients()` in `app.ts`).
 - Acts as a central registry for downstream agents needing tenant-level configuration.
+- Exposes `Store.isFeatureEnabled('vehicles.read_from_tables')` — the feature flag that gates reading vehicle data from Postgres tables vs. the legacy JSONB column. The flag is backed by the `settings` table and can be flipped live via `PUT /feature-flags/vehicles.read_from_tables`.
+
+### 1.5 Driver-App Connect/Disconnect (`src/Api/Controllers/DriverAppController.ts`)
+- `POST /driver-app/me/connect` is the single entry point for driver presence. It runs a five-step flow — check driver enabled → check vehicle enabled → check driver-vehicle link selectable → `ActiveVehicleAssignmentRepository.acquire` (SQL) → write `/online_drivers/{id}` to RTDB — all inside a single Sequelize transaction. Direct RTDB presence writes from the Android app are deprecated; the API now owns all writes to `/online_drivers`.
+- `POST /driver-app/me/disconnect` idempotently deletes the assignment row and removes the RTDB presence node.
+- **`ForceDisconnect` service** — internal helper called when an admin disables a vehicle or toggles `selectable=false` on an active link. It deletes the assignment, removes the RTDB node, and sends an FCM data payload `{ type: "force_disconnect", reason }` to the driver via the existing FCM path.
+- **`AutoPromoteVehicle` service** — picks the most recently-linked eligible vehicle (`ORDER BY added_at DESC LIMIT 1`) and updates `drivers.selected_vehicle_id`; sets `NULL` if no eligible link exists. Called on `setSelectable=false` and on `vehicles.enabled=false` for every affected driver.
 
 ## 2. Background Jobs (`src/Jobs`)
 
@@ -52,9 +59,16 @@ This document explains the agents (long-running services, jobs, and helper modul
 ### 4.1 Sequelize Layer (`src/Database`)
 - `sequelize.ts` exports the configured Sequelize instance (PostgreSQL driver). Migration files live under `Database/Migrations` while seeders reflect initial data loads.
 - Models under `/src/Models` adhere to interfaces in `/src/Interfaces`, ensuring that services stay strongly typed.
+- **Vehicle tables** (added in `extract-vehicles-table`):
+  - `vehicles` — master vehicle registry; `plate` has a unique index and is immutable after creation.
+  - `driver_vehicles` — many-to-many join between drivers and vehicles with a per-link `selectable` boolean flag.
+  - `active_vehicle_assignments` — enforces a one-driver-per-vehicle mutex; `vehicle_id` is the PK and `driver_id` has a separate unique constraint, so attempting to acquire an already-held assignment raises a named unique-constraint error that callers inspect to distinguish `vehicle_in_use` from `driver_already_connected`.
 
 ### 4.2 Repositories (`src/Repositories`)
 - Each repository (`ClientRepository`, `PlaceRepository`, etc.) acts as an internal API for queries. Services never hit Sequelize directly; they request data through repositories so that caching, eager-loading, and auditing are centralized.
+- `VehicleRepository` — `findByNormalizedPlate`, `findById`, `create`, `update`, `setEnabled`, `search`, `findWithLinkedDrivers`, and `findOrCreateByPlate` (uses `SELECT … FOR UPDATE` inside a transaction).
+- `DriverVehicleRepository` — `listForDriver`, `link`, `setSelectable`, `findEligibleForDriver`, `findMostRecentEligible`.
+- `ActiveVehicleAssignmentRepository` — `acquire`, `releaseByDriver`, `releaseByVehicle`, `findByDriver`, `findByVehicle`.
 
 ## 5. Notification Agents
 

@@ -8,6 +8,7 @@ import ServiceHistoryRecord from '../../Models/ServiceHistoryRecord'
 import ServiceMetricsDailyRepository from '../../Repositories/ServiceMetricsDailyRepository'
 import ServiceRepository from '../../Repositories/ServiceRepository'
 import ChatIdHelper from '../../Helpers/ChatIdHelper'
+import VehicleRepository from '../../Repositories/VehicleRepository'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -152,7 +153,13 @@ class ServiceHistoryMigrationService {
   }
 
   async upsertHistoryRecord(service: ServiceInterface): Promise<void> {
-    await ServiceHistoryRecord.upsert(this.buildHistoryPayload(service))
+    const payload: any = this.buildHistoryPayload(service)
+    if (service.vehicle?.plate && !payload.vehicle_id) {
+      const vehicleRepo = new VehicleRepository()
+      const vehicle = await vehicleRepo.findByNormalizedPlate(service.vehicle.plate)
+      if (vehicle) payload.vehicle_id = vehicle.id
+    }
+    await ServiceHistoryRecord.upsert(payload)
   }
 
   private buildHistoryPayload(
@@ -178,6 +185,7 @@ class ServiceHistoryMigrationService {
       assigned_by: persist.assigned_by ?? null,
       canceled_by: persist.canceled_by ?? null,
       terminated_by: persist.terminated_by ?? null,
+      vehicle_id: persist.vehicle_id ?? null,
     }
   }
 }
