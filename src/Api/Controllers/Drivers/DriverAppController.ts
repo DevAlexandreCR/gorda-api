@@ -1,5 +1,4 @@
 import { Request, Response, Router } from 'express'
-import { UniqueConstraintError } from 'sequelize'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
@@ -181,151 +180,159 @@ controller.post('/me/connect', async (req: Request, res: Response) => {
   // Steps 4 & 5 — insert assignment in a transaction, then write RTDB presence
   const txn = await sequelize.transaction()
   try {
-    const createAssignment = async () =>
-      ActiveVehicleAssignmentRecord.create(
+    type AssignmentSnapshot = {
+      vehicle_id: string
+      driver_id: string
+      session_id: string | null
+    }
+
+    const loadRequestedVehicleAssignment = async (): Promise<AssignmentSnapshot | null> => {
+      const record = await ActiveVehicleAssignmentRecord.findByPk(requestedVehicleId, {
+        transaction: txn,
+      })
+
+      if (!record) return null
+
+      const plain = record.get({ plain: true }) as AssignmentSnapshot
+      return {
+        vehicle_id: plain.vehicle_id,
+        driver_id: plain.driver_id,
+        session_id: plain.session_id ?? null,
+      }
+    }
+
+    const loadDriverAssignment = async (): Promise<AssignmentSnapshot | null> => {
+      const record = await ActiveVehicleAssignmentRecord.findOne({
+        where: { driver_id: driverUid },
+        transaction: txn,
+      })
+
+      if (!record) return null
+
+      const plain = record.get({ plain: true }) as AssignmentSnapshot
+      return {
+        vehicle_id: plain.vehicle_id,
+        driver_id: plain.driver_id,
+        session_id: plain.session_id ?? null,
+      }
+    }
+
+    const refreshRequestedVehicleSession = async (): Promise<void> => {
+      await ActiveVehicleAssignmentRecord.update(
+        { session_id: requestedSessionId },
         {
-          vehicle_id: requestedVehicleId,
-          driver_id: driverUid,
-          session_id: requestedSessionId,
-        },
-        { transaction: txn }
+          where: {
+            vehicle_id: requestedVehicleId,
+            driver_id: driverUid,
+          },
+          transaction: txn,
+        }
       )
 
-    const resolveUniqueConstraint = async (err: UniqueConstraintError): Promise<Response | null> => {
-      const constraint = (err as any).parent?.constraint
-
-      if (constraint === 'active_vehicle_assignments_pkey') {
-        const heldRecord = await ActiveVehicleAssignmentRecord.findByPk(requestedVehicleId, {
-          transaction: txn,
+      console.log(
+        JSON.stringify({
+          metric: 'connect.refreshed_existing_driver_assignment',
+          driverId: driverUid,
+          vehicleId: requestedVehicleId,
         })
-        const heldAssignment = heldRecord?.get({ plain: true }) as
-          | { vehicle_id: string; driver_id: string; session_id: string | null }
-          | undefined
+      )
+    }
 
-        if (!heldAssignment || heldAssignment.driver_id !== driverUid) {
-          await txn.rollback()
+    const rejectVehicleInUse = async (heldAssignment: AssignmentSnapshot | null): Promise<Response> => {
+      await txn.rollback()
 
-          let heldBy: { id: string; name: string } | null = null
-          if (heldAssignment) {
-            const holderDriver = await DriverRecord.findByPk(heldAssignment.driver_id)
-            if (holderDriver) {
-              const holderPlain = holderDriver.get({ plain: true }) as any
-              heldBy = { id: holderPlain.id, name: holderPlain.name }
-            }
-          }
-
-          console.log(
-            JSON.stringify({
-              metric: 'connect.rejected.vehicle_in_use',
-              driverId: driverUid,
-              vehicleId: requestedVehicleId,
-              heldByDriverId: heldAssignment?.driver_id ?? null,
-            })
-          )
-          return res.status(409).json({ error: 'vehicle_in_use', held_by: heldBy })
+      let heldBy: { id: string; name: string } | null = null
+      if (heldAssignment) {
+        const holderDriver = await DriverRecord.findByPk(heldAssignment.driver_id)
+        if (holderDriver) {
+          const holderPlain = holderDriver.get({ plain: true }) as any
+          heldBy = { id: holderPlain.id, name: holderPlain.name }
         }
-
-        await ActiveVehicleAssignmentRecord.update(
-          { session_id: requestedSessionId },
-          {
-            where: {
-              vehicle_id: requestedVehicleId,
-              driver_id: driverUid,
-            },
-            transaction: txn,
-          }
-        )
-
-        console.log(
-          JSON.stringify({
-            metric: 'connect.refreshed_existing_driver_assignment',
-            driverId: driverUid,
-            vehicleId: requestedVehicleId,
-          })
-        )
-        return null
       }
 
-      if (constraint === 'active_vehicle_assignments_driver_id_key') {
-        const existingRecord = await ActiveVehicleAssignmentRecord.findOne({
-          where: { driver_id: driverUid },
-          transaction: txn,
+      console.log(
+        JSON.stringify({
+          metric: 'connect.rejected.vehicle_in_use',
+          driverId: driverUid,
+          vehicleId: requestedVehicleId,
+          heldByDriverId: heldAssignment?.driver_id ?? null,
         })
-        const existingAssignment = existingRecord?.get({ plain: true }) as
-          | { vehicle_id: string; driver_id: string; session_id: string | null }
-          | undefined
+      )
+      return res.status(409).json({ error: 'vehicle_in_use', held_by: heldBy })
+    }
+
+    const rejectDriverAlreadyConnected = async (): Promise<Response> => {
+      console.log(
+        JSON.stringify({
+          metric: 'connect.rejected.driver_already_connected',
+          driverId: driverUid,
+        })
+      )
+      await txn.rollback()
+      return res.status(409).json({ error: 'driver_already_connected' })
+    }
+
+    let acquired = await ActiveVehicleAssignmentRepository.tryAcquire(
+      driverUid,
+      requestedVehicleId,
+      requestedSessionId,
+      txn
+    )
+
+    if (!acquired) {
+      const requestedAssignment = await loadRequestedVehicleAssignment()
+
+      if (requestedAssignment) {
+        if (requestedAssignment.driver_id !== driverUid) {
+          return rejectVehicleInUse(requestedAssignment)
+        }
+
+        await refreshRequestedVehicleSession()
+      } else {
+        const existingAssignment = await loadDriverAssignment()
 
         if (!existingAssignment) {
-          console.log(
-            JSON.stringify({
-              metric: 'connect.rejected.driver_already_connected',
-              driverId: driverUid,
-            })
-          )
-          await txn.rollback()
-          return res.status(409).json({ error: 'driver_already_connected' })
+          return rejectDriverAlreadyConnected()
         }
 
         if (existingAssignment.vehicle_id === requestedVehicleId) {
-          await ActiveVehicleAssignmentRecord.update(
-            { session_id: requestedSessionId },
-            {
-              where: {
-                vehicle_id: requestedVehicleId,
-                driver_id: driverUid,
-              },
-              transaction: txn,
-            }
-          )
+          await refreshRequestedVehicleSession()
+        } else {
+          await ActiveVehicleAssignmentRecord.destroy({
+            where: { driver_id: driverUid },
+            transaction: txn,
+          })
 
           console.log(
             JSON.stringify({
-              metric: 'connect.refreshed_existing_driver_assignment',
+              metric: 'connect.cleaned_stale_driver_assignment',
               driverId: driverUid,
-              vehicleId: requestedVehicleId,
+              oldVehicleId: existingAssignment.vehicle_id,
+              newVehicleId: requestedVehicleId,
             })
           )
-          return null
-        }
 
-        await ActiveVehicleAssignmentRecord.destroy({
-          where: { driver_id: driverUid },
-          transaction: txn,
-        })
+          acquired = await ActiveVehicleAssignmentRepository.tryAcquire(
+            driverUid,
+            requestedVehicleId,
+            requestedSessionId,
+            txn
+          )
 
-        console.log(
-          JSON.stringify({
-            metric: 'connect.cleaned_stale_driver_assignment',
-            driverId: driverUid,
-            oldVehicleId: existingAssignment.vehicle_id,
-            newVehicleId: requestedVehicleId,
-          })
-        )
+          if (!acquired) {
+            const concurrentRequestedAssignment = await loadRequestedVehicleAssignment()
 
-        try {
-          await createAssignment()
-          return null
-        } catch (retryErr) {
-          if (!(retryErr instanceof UniqueConstraintError)) {
-            throw retryErr
+            if (concurrentRequestedAssignment) {
+              if (concurrentRequestedAssignment.driver_id !== driverUid) {
+                return rejectVehicleInUse(concurrentRequestedAssignment)
+              }
+
+              await refreshRequestedVehicleSession()
+            } else {
+              return rejectDriverAlreadyConnected()
+            }
           }
-          return resolveUniqueConstraint(retryErr)
         }
-      }
-
-      throw err
-    }
-
-    try {
-      await createAssignment()
-    } catch (err) {
-      if (!(err instanceof UniqueConstraintError)) {
-        throw err
-      }
-
-      const response = await resolveUniqueConstraint(err)
-      if (response) {
-        return response
       }
     }
 

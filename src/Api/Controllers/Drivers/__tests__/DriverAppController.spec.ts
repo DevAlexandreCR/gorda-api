@@ -1,7 +1,6 @@
 import http from 'http'
 import express from 'express'
 import type { AddressInfo } from 'net'
-import { UniqueConstraintError } from 'sequelize'
 
 // --- Module mocks (hoisted) ---
 
@@ -49,7 +48,6 @@ jest.mock('../../../../Models/VehicleRecord', () => ({
 }))
 
 // ActiveVehicleAssignmentRecord — Sequelize Model used directly in DriverAppController
-const mockActiveVehicleAssignmentCreate = jest.fn()
 const mockActiveVehicleAssignmentDestroy = jest.fn()
 const mockActiveVehicleAssignmentUpdate = jest.fn()
 const mockActiveVehicleAssignmentFindByPk = jest.fn()
@@ -57,7 +55,6 @@ const mockActiveVehicleAssignmentFindOne = jest.fn()
 jest.mock('../../../../Models/ActiveVehicleAssignmentRecord', () => ({
   __esModule: true,
   default: {
-    create: mockActiveVehicleAssignmentCreate,
     destroy: mockActiveVehicleAssignmentDestroy,
     update: mockActiveVehicleAssignmentUpdate,
     findByPk: mockActiveVehicleAssignmentFindByPk,
@@ -69,6 +66,7 @@ jest.mock('../../../../Models/ActiveVehicleAssignmentRecord', () => ({
 const mockActiveVehicleAssignmentFindByVehicle = jest.fn()
 const mockActiveVehicleAssignmentReleaseByDriver = jest.fn()
 const mockActiveVehicleAssignmentFindByDriver = jest.fn()
+const mockActiveVehicleAssignmentTryAcquire = jest.fn()
 jest.mock('../../../../Repositories/ActiveVehicleAssignmentRepository', () => ({
   __esModule: true,
   default: {
@@ -77,6 +75,7 @@ jest.mock('../../../../Repositories/ActiveVehicleAssignmentRepository', () => ({
     releaseByDriver: mockActiveVehicleAssignmentReleaseByDriver,
     releaseByVehicle: jest.fn(),
     acquire: jest.fn(),
+    tryAcquire: mockActiveVehicleAssignmentTryAcquire,
   },
 }))
 
@@ -284,6 +283,7 @@ beforeEach(() => {
   mockRtdbChildSet.mockResolvedValue(undefined)
   mockRtdbChildRemove.mockResolvedValue(undefined)
   mockDriverRecordUpdate.mockReset()
+  mockActiveVehicleAssignmentTryAcquire.mockReset()
   mockActiveVehicleAssignmentFindByDriver.mockReset()
   mockActiveVehicleAssignmentDestroy.mockReset()
   mockActiveVehicleAssignmentUpdate.mockReset()
@@ -352,7 +352,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
       expect(status).toBe(400)
       expect(body.error).toBe('vehicle_disabled')
-      expect(mockActiveVehicleAssignmentCreate).not.toHaveBeenCalled()
+      expect(mockActiveVehicleAssignmentTryAcquire).not.toHaveBeenCalled()
     })
   })
 
@@ -369,7 +369,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
       expect(status).toBe(400)
       expect(body.error).toBe('vehicle_not_selectable')
-      expect(mockActiveVehicleAssignmentCreate).not.toHaveBeenCalled()
+      expect(mockActiveVehicleAssignmentTryAcquire).not.toHaveBeenCalled()
     })
 
     it('returns 400 with error=vehicle_not_selectable when link exists but selectable=false', async () => {
@@ -383,7 +383,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
       expect(status).toBe(400)
       expect(body.error).toBe('vehicle_not_selectable')
-      expect(mockActiveVehicleAssignmentCreate).not.toHaveBeenCalled()
+      expect(mockActiveVehicleAssignmentTryAcquire).not.toHaveBeenCalled()
     })
   })
 
@@ -398,7 +398,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       expect(status).toBe(403)
       expect(body.error).toBe('driver_disabled')
       expect(mockVehicleRecordFindByPk).not.toHaveBeenCalled()
-      expect(mockActiveVehicleAssignmentCreate).not.toHaveBeenCalled()
+      expect(mockActiveVehicleAssignmentTryAcquire).not.toHaveBeenCalled()
     })
 
     it('returns 403 with error=driver_disabled when driver.enabled_at is 0', async () => {
@@ -414,7 +414,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
   })
 
   describe('409: vehicle_in_use', () => {
-    it('returns 409 with error=vehicle_in_use and held_by when vehicle PK constraint fires', async () => {
+    it('returns 409 with error=vehicle_in_use and held_by when another driver already holds the vehicle', async () => {
       const holderDriverId = 'holder-driver-uid'
       mockDriverRecordFindByPk
         .mockResolvedValueOnce(makeEnabledDriver()) // for the requesting driver
@@ -424,11 +424,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
         })
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-
-      // Simulate PK constraint violation on vehicle_id
-      const pkError = new UniqueConstraintError({ errors: [] })
-      ;(pkError as any).parent = { constraint: 'active_vehicle_assignments_pkey' }
-      mockActiveVehicleAssignmentCreate.mockRejectedValue(pkError)
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(false)
 
       mockActiveVehicleAssignmentFindByPk.mockResolvedValue(
         makeActiveAssignment({
@@ -448,15 +444,14 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       expect(mockRtdbChildSet).not.toHaveBeenCalled()
     })
 
-    it('returns 409 with error=vehicle_in_use and held_by=null when no assignment record is found', async () => {
-      mockDriverRecordFindByPk.mockResolvedValue(makeEnabledDriver())
+    it('returns 409 with error=vehicle_in_use and held_by=null when the holder lookup disappears after the conflict', async () => {
+      mockDriverRecordFindByPk.mockResolvedValueOnce(makeEnabledDriver()).mockResolvedValueOnce(null)
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-
-      const pkError = new UniqueConstraintError({ errors: [] })
-      ;(pkError as any).parent = { constraint: 'active_vehicle_assignments_pkey' }
-      mockActiveVehicleAssignmentCreate.mockRejectedValue(pkError)
-      mockActiveVehicleAssignmentFindByPk.mockResolvedValue(null)
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(false)
+      mockActiveVehicleAssignmentFindByPk.mockResolvedValue(
+        makeActiveAssignment({ vehicle_id: VEHICLE_ID, driver_id: 'holder-driver-uid' })
+      )
 
       const { status, body } = await post(server, '/driver-app/me/connect', {
         vehicle_id: VEHICLE_ID,
@@ -473,10 +468,8 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       mockDriverRecordFindByPk.mockResolvedValue(makeEnabledDriver())
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-
-      const driverError = new UniqueConstraintError({ errors: [] })
-      ;(driverError as any).parent = { constraint: 'active_vehicle_assignments_driver_id_key' }
-      mockActiveVehicleAssignmentCreate.mockRejectedValueOnce(driverError).mockResolvedValueOnce({})
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+      mockActiveVehicleAssignmentFindByPk.mockResolvedValue(null)
       mockActiveVehicleAssignmentFindOne.mockResolvedValue(
         makeActiveAssignment({
           vehicle_id: OLD_VEHICLE_ID,
@@ -494,7 +487,21 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
       expect(status).toBe(200)
       expect(body.success).toBe(true)
-      expect(mockActiveVehicleAssignmentCreate).toHaveBeenCalledTimes(2)
+      expect(mockActiveVehicleAssignmentTryAcquire).toHaveBeenCalledTimes(2)
+      expect(mockActiveVehicleAssignmentTryAcquire).toHaveBeenNthCalledWith(
+        1,
+        DRIVER_UID,
+        VEHICLE_ID,
+        'sess-next',
+        mockTransaction
+      )
+      expect(mockActiveVehicleAssignmentTryAcquire).toHaveBeenNthCalledWith(
+        2,
+        DRIVER_UID,
+        VEHICLE_ID,
+        'sess-next',
+        mockTransaction
+      )
       expect(mockActiveVehicleAssignmentDestroy).toHaveBeenCalledWith({
         where: { driver_id: DRIVER_UID },
         transaction: mockTransaction,
@@ -515,10 +522,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       mockDriverRecordFindByPk.mockResolvedValue(makeEnabledDriver())
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-
-      const pkError = new UniqueConstraintError({ errors: [] })
-      ;(pkError as any).parent = { constraint: 'active_vehicle_assignments_pkey' }
-      mockActiveVehicleAssignmentCreate.mockRejectedValueOnce(pkError)
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValueOnce(false)
       mockActiveVehicleAssignmentFindByPk.mockResolvedValue(
         makeActiveAssignment({
           vehicle_id: VEHICLE_ID,
@@ -558,6 +562,49 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       expect(mockTransactionCommit).toHaveBeenCalledTimes(1)
       expect(mockTransactionRollback).not.toHaveBeenCalled()
     })
+
+    it('returns vehicle_in_use after stale cleanup when the requested vehicle is taken concurrently', async () => {
+      const holderDriverId = 'holder-driver-uid'
+      mockDriverRecordFindByPk
+        .mockResolvedValueOnce(makeEnabledDriver())
+        .mockResolvedValueOnce({
+          get: (_opts: any) => ({ id: holderDriverId, name: 'Holder Driver' }),
+        })
+      mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
+      mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValueOnce(false).mockResolvedValueOnce(false)
+      mockActiveVehicleAssignmentFindByPk
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(
+          makeActiveAssignment({
+            vehicle_id: VEHICLE_ID,
+            driver_id: holderDriverId,
+            session_id: 'holder-session',
+          })
+        )
+      mockActiveVehicleAssignmentFindOne.mockResolvedValue(
+        makeActiveAssignment({
+          vehicle_id: OLD_VEHICLE_ID,
+          driver_id: DRIVER_UID,
+          session_id: 'stale-session',
+        })
+      )
+      mockActiveVehicleAssignmentDestroy.mockResolvedValue(1)
+
+      const { status, body } = await post(server, '/driver-app/me/connect', {
+        vehicle_id: VEHICLE_ID,
+        session_id: 'sess-next',
+      })
+
+      expect(status).toBe(409)
+      expect(body).toEqual({
+        error: 'vehicle_in_use',
+        held_by: { id: holderDriverId, name: 'Holder Driver' },
+      })
+      expect(mockActiveVehicleAssignmentDestroy).toHaveBeenCalledTimes(1)
+      expect(mockTransactionRollback).toHaveBeenCalledTimes(1)
+      expect(mockTransactionCommit).not.toHaveBeenCalled()
+    })
   })
 
   describe('200: success', () => {
@@ -565,7 +612,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       mockDriverRecordFindByPk.mockResolvedValue(makeEnabledDriver())
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-      mockActiveVehicleAssignmentCreate.mockResolvedValue({})
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(true)
       mockRtdbChildSet.mockResolvedValue(undefined)
 
       const { status, body } = await post(server, '/driver-app/me/connect', {
@@ -575,14 +622,12 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
       expect(status).toBe(200)
       expect(body.success).toBe(true)
-      expect(mockActiveVehicleAssignmentCreate).toHaveBeenCalledTimes(1)
-      expect(mockActiveVehicleAssignmentCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          vehicle_id: VEHICLE_ID,
-          driver_id: DRIVER_UID,
-          session_id: 'sess-abc',
-        }),
-        { transaction: mockTransaction }
+      expect(mockActiveVehicleAssignmentTryAcquire).toHaveBeenCalledTimes(1)
+      expect(mockActiveVehicleAssignmentTryAcquire).toHaveBeenCalledWith(
+        DRIVER_UID,
+        VEHICLE_ID,
+        'sess-abc',
+        mockTransaction
       )
       expect(mockRtdbChild).toHaveBeenCalledWith(DRIVER_UID)
       expect(mockRtdbChildSet).toHaveBeenCalledTimes(1)
@@ -602,7 +647,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       mockDriverRecordFindByPk.mockResolvedValue(makeEnabledDriver())
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-      mockActiveVehicleAssignmentCreate.mockResolvedValue({})
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(true)
       mockRtdbChildSet.mockRejectedValue(new Error('RTDB unavailable'))
 
       const { status, body } = await post(server, '/driver-app/me/connect', {
@@ -613,6 +658,35 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
       expect(body.error).toBe('presence_unavailable')
       expect(mockTransactionRollback).toHaveBeenCalledTimes(1)
       expect(mockTransactionCommit).not.toHaveBeenCalled()
+    })
+
+    it('keeps the transaction usable after a conflict path and does not surface 25P02', async () => {
+      const holderDriverId = 'holder-driver-uid'
+      mockDriverRecordFindByPk
+        .mockResolvedValueOnce(makeEnabledDriver())
+        .mockResolvedValueOnce({
+          get: (_opts: any) => ({ id: holderDriverId, name: 'Holder Driver' }),
+        })
+      mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
+      mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
+      mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(false)
+      mockActiveVehicleAssignmentFindByPk.mockResolvedValue(
+        makeActiveAssignment({
+          vehicle_id: VEHICLE_ID,
+          driver_id: holderDriverId,
+        })
+      )
+
+      const { status, body } = await post(server, '/driver-app/me/connect', {
+        vehicle_id: VEHICLE_ID,
+      })
+
+      expect(status).toBe(409)
+      expect(body.error).toBe('vehicle_in_use')
+      expect(mockActiveVehicleAssignmentFindByPk).toHaveBeenCalledWith(VEHICLE_ID, {
+        transaction: mockTransaction,
+      })
+      expect(body.success).toBeUndefined()
     })
   })
 })

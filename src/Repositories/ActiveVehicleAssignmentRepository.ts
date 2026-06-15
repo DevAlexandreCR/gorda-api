@@ -1,3 +1,5 @@
+import { Transaction } from 'sequelize'
+import sequelize from '../Database/sequelize'
 import ActiveVehicleAssignmentRecord from '../Models/ActiveVehicleAssignmentRecord'
 
 export interface ActiveVehicleAssignment {
@@ -14,6 +16,30 @@ class ActiveVehicleAssignmentRepository {
       driver_id: driverId,
       session_id: sessionId,
     })
+  }
+
+  async tryAcquire(
+    driverId: string,
+    vehicleId: string,
+    sessionId: string | null,
+    txn: Transaction
+  ): Promise<boolean> {
+    const [rows] = (await sequelize.query(
+      `INSERT INTO active_vehicle_assignments (vehicle_id, driver_id, session_id)
+       VALUES (:vehicleId, :driverId, :sessionId)
+       ON CONFLICT DO NOTHING
+       RETURNING vehicle_id`,
+      {
+        replacements: {
+          vehicleId,
+          driverId,
+          sessionId,
+        },
+        transaction: txn,
+      }
+    )) as [{ vehicle_id: string }[], unknown]
+
+    return rows.length > 0
   }
 
   async releaseByDriver(driverId: string): Promise<void> {
