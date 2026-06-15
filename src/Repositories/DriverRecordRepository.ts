@@ -115,7 +115,9 @@ class DriverRecordRepository {
         `SELECT * FROM vehicles WHERE id IN (${placeholders})`,
         { replacements: vehicleReplacements, type: QueryTypes.SELECT }
       )
-      vehicleRows.forEach((v) => vehicleMap.set(v.id, v))
+      vehicleRows
+        .map((vehicle) => this.mapSelectedVehicle(vehicle))
+        .forEach((vehicle) => vehicleMap.set(vehicle.id, vehicle))
     }
 
     // Bulk-fetch active vehicle assignments to avoid N+1
@@ -299,6 +301,17 @@ class DriverRecordRepository {
         balance: Number(plain.balance ?? 0),
         enabled_at: Number(plain.enabled_at ?? 0),
       }),
+    }
+  }
+
+  private mapSelectedVehicle(vehicle: VehicleRecordInterface & { photo_url?: string | null }): VehicleRecordInterface {
+    const { photo_url, photoUrl, ...rest } = vehicle as VehicleRecordInterface & {
+      photo_url?: string | null
+    }
+
+    return {
+      ...rest,
+      photoUrl: photoUrl ?? photo_url ?? null,
     }
   }
 }

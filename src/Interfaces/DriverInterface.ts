@@ -1,5 +1,6 @@
 import { VehicleInterface } from './VehicleInterface'
 import { DriverAvailabilityInterface } from './DriverAvailabilityInterface'
+import { VehicleRecordInterface } from './VehicleRecordInterface'
 
 export interface DriverInterface {
   id: string | null
@@ -19,5 +20,7 @@ export interface DriverInterface {
   created_at: number
   last_connection?: number
   selected_vehicle_id?: string | null
+  selected_vehicle?: VehicleRecordInterface | null
+  active_vehicle_id?: string | null
   availability?: DriverAvailabilityInterface
 }

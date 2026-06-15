@@ -1,5 +1,6 @@
 import DriverRecordRepository from '../DriverRecordRepository'
 import DriverRecord from '../../Models/DriverRecord'
+import sequelize from '../../Database/sequelize'
 
 jest.mock('../../Models/DriverRecord', () => ({
   findAndCountAll: jest.fn(),
@@ -109,6 +110,39 @@ describe('DriverRecordRepository.list()', () => {
       const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
       expect(callArg.limit).toBe(30)
       expect(callArg.order).toEqual([['name', 'ASC']])
+    })
+
+    it('maps raw selected vehicle photo_url rows to selected_vehicle.photoUrl', async () => {
+      const plain = makeDriverPlain({ selected_vehicle_id: 'veh-1' })
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({
+        count: 1,
+        rows: [makeDriverModel(plain)],
+      })
+      ;(sequelize.query as jest.Mock)
+        .mockResolvedValueOnce([
+          {
+            id: 'veh-1',
+            plate: 'ABC123',
+            brand: 'Mazda',
+            model: 'Cx30',
+            color: { name: 'white', hex: '#ffffff' },
+            photo_url: 'https://vehicle.example/photo.jpg',
+            soat_exp: null,
+            tec_exp: null,
+            enabled: true,
+            created_at: new Date('2026-06-15T00:00:00Z'),
+            updated_at: new Date('2026-06-15T00:00:00Z'),
+          },
+        ])
+        .mockResolvedValueOnce([])
+
+      const result = await repository.list({})
+
+      expect(result.rows[0].selected_vehicle).toMatchObject({
+        id: 'veh-1',
+        photoUrl: 'https://vehicle.example/photo.jpg',
+      })
+      expect((result.rows[0].selected_vehicle as any).photo_url).toBeUndefined()
     })
 
   })
