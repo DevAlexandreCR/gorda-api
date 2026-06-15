@@ -496,6 +496,7 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
         expect.objectContaining({
           id: DRIVER_UID,
           vehicle_id: VEHICLE_ID,
+          vehicle_plate: 'ABC123',
           session_id: 'sess-abc',
         })
       )

@@ -195,6 +195,7 @@ controller.post('/me/connect', async (req: Request, res: Response) => {
         .set({
           id: driverUid,
           vehicle_id: String(vehicle_id),
+          vehicle_plate: vehiclePlain.plate,
           session_id: session_id ? String(session_id) : null,
           location: location ?? null,
           last_seen_at: Date.now(),
