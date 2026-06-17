@@ -322,6 +322,10 @@ const mockFindById = jest.fn()
 const mockStore = jest.fn()
 const mockRechargeCreate = jest.fn()
 const mockRechargeListForDriver = jest.fn()
+const mockMonthlyPaymentSettingsGet = jest.fn()
+const mockMonthlyPaymentSettingsUpsert = jest.fn()
+const mockMonthlyPaymentCreate = jest.fn()
+const mockMonthlyPaymentListForDriver = jest.fn()
 
 beforeAll((done) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -391,6 +395,18 @@ beforeEach(() => {
   } as any)
   mockRechargeCreate.mockReset()
   mockRechargeListForDriver.mockReset()
+  jest.spyOn(Container, 'getMonthlyPaymentSettingsRepository').mockReturnValue({
+    get: mockMonthlyPaymentSettingsGet,
+    upsert: mockMonthlyPaymentSettingsUpsert,
+  } as any)
+  mockMonthlyPaymentSettingsGet.mockReset()
+  mockMonthlyPaymentSettingsUpsert.mockReset()
+  jest.spyOn(Container, 'getMonthlyPaymentRepository').mockReturnValue({
+    create: mockMonthlyPaymentCreate,
+    listForDriver: mockMonthlyPaymentListForDriver,
+  } as any)
+  mockMonthlyPaymentCreate.mockReset()
+  mockMonthlyPaymentListForDriver.mockReset()
 })
 
 afterEach(() => {
@@ -1564,6 +1580,362 @@ describe('GET /drivers/:id/recharges (DriversController)', () => {
       await get(server, '/drivers/drv-1/recharges?page=2&perPage=10', VALID_AUTH_HEADERS)
 
       expect(mockRechargeListForDriver).toHaveBeenCalledWith('drv-1', { page: 2, perPage: 10 })
+    })
+  })
+})
+
+describe('GET /drivers/monthly-payment-settings — route ordering (DriversController)', () => {
+  it('hits the settings handler and is not treated as a driver lookup by id', async () => {
+    const settings = {
+      id: 'default',
+      suggested_amount: 90000,
+      auto_disable: true,
+      cutoff_day: 4,
+      reminder_offsets: [3, 1],
+    }
+    mockMonthlyPaymentSettingsGet.mockResolvedValue(settings)
+
+    const { status, body } = await get(
+      server,
+      '/drivers/monthly-payment-settings',
+      VALID_AUTH_HEADERS
+    )
+
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.data).toEqual(settings)
+    expect(mockMonthlyPaymentSettingsGet).toHaveBeenCalledTimes(1)
+    expect(mockFindById).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// POST /drivers/:id/monthly-payments
+// ---------------------------------------------------------------------------
+
+describe('POST /drivers/:id/monthly-payments (DriversController)', () => {
+  const validBody = {
+    amount: 90000,
+    period: '2026-06',
+    created_by: { uid: 'admin-uid', name: 'Admin User' },
+    note: 'efectivo',
+  }
+  const paymentResult = {
+    payment: {
+      id: 'mp-1',
+      driverId: 'drv-1',
+      period: '2026-06',
+      amount: 90000,
+      createdByUid: 'admin-uid',
+      createdByName: 'Admin User',
+      note: 'efectivo',
+      created_at: 1000000,
+    },
+    driver: { id: 'drv-1', enabled_at: 1000000 },
+  }
+
+  describe('201: successful registration', () => {
+    it('creates monthly payment and returns payment + driver', async () => {
+      mockMonthlyPaymentCreate.mockResolvedValue(paymentResult)
+
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        validBody,
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(201)
+      expect(body.success).toBe(true)
+      expect(body.data.payment).toEqual(paymentResult.payment)
+      expect(body.data.driver).toEqual(paymentResult.driver)
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledTimes(1)
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledWith({
+        driverId: 'drv-1',
+        period: '2026-06',
+        amount: 90000,
+        createdBy: { uid: 'admin-uid', name: 'Admin User' },
+        note: 'efectivo',
+      })
+    })
+
+    it('calls store.refreshDrivers() after successful registration', async () => {
+      mockMonthlyPaymentCreate.mockResolvedValue(paymentResult)
+
+      await post(server, '/drivers/drv-1/monthly-payments', validBody, VALID_AUTH_HEADERS)
+
+      expect(mockRefreshDrivers).toHaveBeenCalledTimes(1)
+    })
+
+    it('defaults period to the current Bogota period when omitted', async () => {
+      mockMonthlyPaymentCreate.mockResolvedValue(paymentResult)
+      const { period: _period, ...bodyWithoutPeriod } = validBody
+
+      await post(server, '/drivers/drv-1/monthly-payments', bodyWithoutPeriod, VALID_AUTH_HEADERS)
+
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledTimes(1)
+      const [callArg] = mockMonthlyPaymentCreate.mock.calls[0]
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { currentPeriod } = require('../../../../Services/time/BogotaTime')
+      expect(callArg.period).toBe(currentPeriod())
+    })
+  })
+
+  describe('200/201: zero amount is accepted (divergence from /recharges)', () => {
+    it('accepts amount = 0 and creates the payment', async () => {
+      mockMonthlyPaymentCreate.mockResolvedValue({
+        payment: { ...paymentResult.payment, amount: 0 },
+        driver: paymentResult.driver,
+      })
+
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, amount: 0 },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(201)
+      expect(body.success).toBe(true)
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 0 })
+      )
+    })
+  })
+
+  describe('400: validation errors', () => {
+    it('returns 400 when amount is negative', async () => {
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, amount: -1 },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockMonthlyPaymentCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when amount is a non-numeric string', async () => {
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, amount: '90000' },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockMonthlyPaymentCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when created_by is missing', async () => {
+      const { created_by: _createdBy, ...bodyWithoutActor } = validBody
+
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        bodyWithoutActor,
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockMonthlyPaymentCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when created_by.uid is missing', async () => {
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, created_by: { name: 'Admin User' } },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockMonthlyPaymentCreate).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when period does not match YYYY-MM', async () => {
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, period: '2026/06' },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockMonthlyPaymentCreate).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('404: driver not found', () => {
+    it('returns 404 when repository throws Driver not found', async () => {
+      mockMonthlyPaymentCreate.mockRejectedValue(new Error('Driver not found'))
+
+      const { status, body } = await post(
+        server,
+        '/drivers/nonexistent/monthly-payments',
+        validBody,
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(404)
+      expect(body.success).toBe(false)
+      expect(mockRefreshDrivers).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('current-vs-past period re-enable passthrough', () => {
+    it('passes the explicit current period through to the repository and forwards the re-enabled driver in the response', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { currentPeriod } = require('../../../../Services/time/BogotaTime')
+      const reenabledResult = {
+        payment: { ...paymentResult.payment, period: currentPeriod() },
+        driver: { id: 'drv-1', enabled_at: 1700000000 },
+      }
+      mockMonthlyPaymentCreate.mockResolvedValue(reenabledResult)
+
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, period: currentPeriod() },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(201)
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ period: currentPeriod() })
+      )
+      expect(body.data.driver.enabled_at).toBe(1700000000)
+    })
+
+    it('passes a past period through to the repository and forwards the unchanged (still-disabled) driver in the response', async () => {
+      const pastPeriodResult = {
+        payment: { ...paymentResult.payment, period: '2020-01' },
+        driver: { id: 'drv-1', enabled_at: 0 },
+      }
+      mockMonthlyPaymentCreate.mockResolvedValue(pastPeriodResult)
+
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        { ...validBody, period: '2020-01' },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(201)
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ period: '2020-01' })
+      )
+      expect(body.data.driver.enabled_at).toBe(0)
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /drivers/:id/monthly-payments
+// ---------------------------------------------------------------------------
+
+describe('GET /drivers/:id/monthly-payments (DriversController)', () => {
+  const samplePayments = [
+    { id: 'mp-2', driverId: 'drv-1', period: '2026-06', amount: 90000, createdByUid: 'u', createdByName: 'Admin', note: null, created_at: 1000100 },
+    { id: 'mp-1', driverId: 'drv-1', period: '2026-05', amount: 90000, createdByUid: 'u', createdByName: 'Admin', note: 'efectivo', created_at: 1000000 },
+  ]
+
+  describe('200: returns paginated history', () => {
+    it('returns rows and total', async () => {
+      mockMonthlyPaymentListForDriver.mockResolvedValue({ rows: samplePayments, total: 2 })
+
+      const { status, body } = await get(server, '/drivers/drv-1/monthly-payments', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(200)
+      expect(body.success).toBe(true)
+      expect(body.data.rows).toHaveLength(2)
+      expect(body.data.total).toBe(2)
+      expect(mockMonthlyPaymentListForDriver).toHaveBeenCalledWith('drv-1', { page: 1, perPage: 20 })
+    })
+
+    it('returns empty list when driver has no payments', async () => {
+      mockMonthlyPaymentListForDriver.mockResolvedValue({ rows: [], total: 0 })
+
+      const { status, body } = await get(server, '/drivers/drv-1/monthly-payments', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(200)
+      expect(body.data.rows).toEqual([])
+      expect(body.data.total).toBe(0)
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET/PUT /drivers/monthly-payment-settings
+// ---------------------------------------------------------------------------
+
+describe('GET /drivers/monthly-payment-settings (DriversController)', () => {
+  it('returns the current settings', async () => {
+    const settings = {
+      id: 'default',
+      suggested_amount: 90000,
+      auto_disable: true,
+      cutoff_day: 4,
+      reminder_offsets: [3, 1],
+    }
+    mockMonthlyPaymentSettingsGet.mockResolvedValue(settings)
+
+    const { status, body } = await get(server, '/drivers/monthly-payment-settings', VALID_AUTH_HEADERS)
+
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.data).toEqual(settings)
+  })
+})
+
+describe('PUT /drivers/monthly-payment-settings (DriversController)', () => {
+  const validSettingsBody = {
+    suggested_amount: 90000,
+    auto_disable: true,
+    cutoff_day: 4,
+    reminder_offsets: [3, 1],
+  }
+
+  describe('200: successful update', () => {
+    it('upserts settings and returns the persisted values', async () => {
+      mockMonthlyPaymentSettingsUpsert.mockResolvedValue(validSettingsBody)
+
+      const { status, body } = await put(
+        server,
+        '/drivers/monthly-payment-settings',
+        validSettingsBody,
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(200)
+      expect(body.success).toBe(true)
+      expect(body.data).toEqual(validSettingsBody)
+      expect(mockMonthlyPaymentSettingsUpsert).toHaveBeenCalledWith(validSettingsBody)
+    })
+  })
+
+  describe('400: validation errors', () => {
+    it('returns 400 and the repository error message when cutoff_day is invalid', async () => {
+      mockMonthlyPaymentSettingsUpsert.mockRejectedValue(
+        new Error('Invalid cutoff_day: must be between 1 and 28')
+      )
+
+      const { status, body } = await put(
+        server,
+        '/drivers/monthly-payment-settings',
+        { ...validSettingsBody, cutoff_day: 0 },
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(body.message).toMatch(/Invalid cutoff_day/)
     })
   })
 })

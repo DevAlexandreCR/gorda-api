@@ -17,6 +17,9 @@ import DriverRecord from '../../../Models/DriverRecord'
 import sequelize from '../../../Database/sequelize'
 import { autoPromoteSelectedVehicle } from '../../../Services/drivers/AutoPromoteVehicle'
 import { forceDisconnect } from '../../../Services/drivers/ForceDisconnect'
+import { currentPeriod } from '../../../Services/time/BogotaTime'
+
+const PERIOD_FORMAT = /^\d{4}-(0[1-9]|1[0-2])$/
 
 const controller = Router()
 const publicController = Router()
@@ -225,6 +228,37 @@ controller.post('/bulk/send-message', async (req: Request, res: Response) => {
   )
 
   return res.status(200).json({ success: true, data: { processed, failed } })
+})
+
+controller.get('/monthly-payment-settings', async (req: Request, res: Response) => {
+  try {
+    const settings = await Container.getMonthlyPaymentSettingsRepository().get()
+    return res.status(200).json({ success: true, data: settings })
+  } catch (error) {
+    console.error('Error fetching monthly payment settings:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+})
+
+controller.put('/monthly-payment-settings', async (req: Request, res: Response) => {
+  const { suggested_amount, auto_disable, cutoff_day, reminder_offsets } = req.body
+
+  try {
+    const settings = await Container.getMonthlyPaymentSettingsRepository().upsert({
+      suggested_amount,
+      auto_disable,
+      cutoff_day,
+      reminder_offsets,
+    })
+    return res.status(200).json({ success: true, data: settings })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    if (message.startsWith('Invalid')) {
+      return res.status(400).json({ success: false, message, data: {} })
+    }
+    console.error('Error updating monthly payment settings:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
 })
 
 // GET /:id/vehicles — list all linked vehicles for a driver
@@ -478,6 +512,83 @@ controller.get('/:id/recharges', async (req: Request, res: Response) => {
     return res.status(200).json({ success: true, data: { recharges: rows, total } })
   } catch (error) {
     console.error('Error fetching recharges:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+})
+
+controller.post('/:id/monthly-payments', async (req: Request, res: Response) => {
+  const driverId = req.params.id
+  const { amount, created_by, note, period: periodInput } = req.body
+
+  if (typeof amount !== 'number' || Number.isNaN(amount) || amount < 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'amount must be a number >= 0',
+      data: {},
+    })
+  }
+
+  if (
+    !created_by ||
+    typeof created_by.uid !== 'string' ||
+    !created_by.uid ||
+    typeof created_by.name !== 'string' ||
+    !created_by.name
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'created_by.uid and created_by.name are required',
+      data: {},
+    })
+  }
+
+  let period: string
+  if (periodInput === undefined || periodInput === null || periodInput === '') {
+    period = currentPeriod()
+  } else {
+    if (typeof periodInput !== 'string' || !PERIOD_FORMAT.test(periodInput)) {
+      return res.status(400).json({
+        success: false,
+        message: 'period must match the format YYYY-MM',
+        data: {},
+      })
+    }
+    period = periodInput
+  }
+
+  try {
+    const { payment, driver } = await Container.getMonthlyPaymentRepository().create({
+      driverId,
+      period,
+      amount,
+      createdBy: { uid: created_by.uid, name: created_by.name },
+      note: note ?? null,
+    })
+    await store.refreshDrivers()
+    return res.status(201).json({ success: true, data: { payment, driver } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    if (message === 'Driver not found') {
+      return res.status(404).json({ success: false, message, data: {} })
+    }
+    console.error('Error creating monthly payment:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+})
+
+controller.get('/:id/monthly-payments', async (req: Request, res: Response) => {
+  const driverId = req.params.id
+  const page = parseInt(String(req.query.page ?? '1'), 10) || 1
+  const perPage = parseInt(String(req.query.perPage ?? '20'), 10) || 20
+
+  try {
+    const { rows, total } = await Container.getMonthlyPaymentRepository().listForDriver(
+      driverId,
+      { page, perPage }
+    )
+    return res.status(200).json({ success: true, data: { rows, total } })
+  } catch (error) {
+    console.error('Error fetching monthly payments:', error)
     return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
   }
 })

@@ -10,6 +10,8 @@ import ServiceHistoryRepository from '../Repositories/ServiceHistoryRepository'
 import ServiceMetricsDailyRepository from '../Repositories/ServiceMetricsDailyRepository'
 import BillingRepository from '../Repositories/BillingRepository'
 import RechargeRepository from '../Repositories/RechargeRepository'
+import MonthlyPaymentRepository from '../Repositories/MonthlyPaymentRepository'
+import MonthlyPaymentSettingsRepository from '../Repositories/MonthlyPaymentSettingsRepository'
 
 class Container {
   private static sequelizeInstance: typeof sequelize
@@ -24,6 +26,8 @@ class Container {
   private static serviceMetricsDailyRepository: ServiceMetricsDailyRepository
   private static billingRepository: BillingRepository
   private static rechargeRepository: RechargeRepository
+  private static monthlyPaymentRepository: MonthlyPaymentRepository
+  private static monthlyPaymentSettingsRepository: MonthlyPaymentSettingsRepository
 
   /**
    * Get or create Sequelize instance
@@ -119,6 +123,20 @@ class Container {
       this.rechargeRepository = new RechargeRepository()
     }
     return this.rechargeRepository
+  }
+
+  static getMonthlyPaymentRepository(): MonthlyPaymentRepository {
+    if (!this.monthlyPaymentRepository) {
+      this.monthlyPaymentRepository = new MonthlyPaymentRepository()
+    }
+    return this.monthlyPaymentRepository
+  }
+
+  static getMonthlyPaymentSettingsRepository(): MonthlyPaymentSettingsRepository {
+    if (!this.monthlyPaymentSettingsRepository) {
+      this.monthlyPaymentSettingsRepository = new MonthlyPaymentSettingsRepository()
+    }
+    return this.monthlyPaymentSettingsRepository
   }
 
   /**
