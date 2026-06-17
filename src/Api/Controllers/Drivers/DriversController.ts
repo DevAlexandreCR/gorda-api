@@ -720,10 +720,33 @@ controller.put('/:id', async (req: Request, res: Response) => {
 
 controller.patch('/:id/enabled', async (req: Request, res: Response) => {
   try {
-    const driver = await Container.getDriverRecordRepository().setEnabled(
-      req.params.id,
-      Number(req.body?.enabled_at ?? 0)
-    )
+    const enabledAt = Number(req.body?.enabled_at ?? 0)
+
+    if (enabledAt > 0) {
+      const existing = await Container.getDriverRecordRepository().findById(req.params.id)
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: 'Driver not found',
+          data: {},
+        })
+      }
+      if (existing.paymentMode === 'monthly') {
+        const hasPaid = await Container.getMonthlyPaymentRepository().hasPaymentForPeriod(
+          req.params.id,
+          currentPeriod()
+        )
+        if (!hasPaid) {
+          return res.status(422).json({
+            success: false,
+            message: 'El conductor no tiene pago registrado para el mes en curso.',
+            data: {},
+          })
+        }
+      }
+    }
+
+    const driver = await Container.getDriverRecordRepository().setEnabled(req.params.id, enabledAt)
     if (!driver) {
       return res.status(404).json({
         success: false,
@@ -982,10 +1005,33 @@ publicController.patch('/:id/balance', async (req: Request, res: Response) => {
 
 publicController.patch('/:id/enabled', async (req: Request, res: Response) => {
   try {
-    const driver = await Container.getDriverRecordRepository().setEnabled(
-      req.params.id,
-      Number(req.body?.enabled_at ?? 0)
-    )
+    const enabledAt = Number(req.body?.enabled_at ?? 0)
+
+    if (enabledAt > 0) {
+      const existing = await Container.getDriverRecordRepository().findById(req.params.id)
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: 'Driver not found',
+          data: {},
+        })
+      }
+      if (existing.paymentMode === 'monthly') {
+        const hasPaid = await Container.getMonthlyPaymentRepository().hasPaymentForPeriod(
+          req.params.id,
+          currentPeriod()
+        )
+        if (!hasPaid) {
+          return res.status(422).json({
+            success: false,
+            message: 'El conductor no tiene pago registrado para el mes en curso.',
+            data: {},
+          })
+        }
+      }
+    }
+
+    const driver = await Container.getDriverRecordRepository().setEnabled(req.params.id, enabledAt)
     if (!driver) {
       return res.status(404).json({
         success: false,
