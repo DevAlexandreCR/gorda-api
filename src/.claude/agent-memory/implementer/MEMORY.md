@@ -1,0 +1,3 @@
+- [Repository singleton vs class pattern](feedback_repo_singleton_vs_class.md) — ActiveVehicleAssignmentRepository exports a singleton; VehicleRepository exports a class
+- [Driver vehicle resolver](project_driver_vehicle_resolver.md) — resolveDriverCurrentVehicle replaces stale in-memory-cache store.findDriverById().vehicle lookups
+- [Jest 30 CLI flag rename](feedback_jest_cli_flag.md) — Use --testPathPatterns (not --testPathPattern) with Jest 30
