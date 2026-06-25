@@ -36,6 +36,7 @@ import ChatIdHelper from '../../Helpers/ChatIdHelper'
 import MessageRepository from '../../Repositories/MessageRepository'
 import DatabaseService from '../firebase/Database'
 import { VehicleSnapshot } from '../chatBot/Messages'
+import { resolveDriverCurrentVehicle } from '../drivers/DriverVehicleResolver'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -410,8 +411,8 @@ export class WhatsAppClient {
       ? (serviceSnap.val()?.driver_id ?? null)
       : null
     if (driverId) {
-      const driver = this.store.findDriverById(driverId)
-      return { plate: driver.vehicle?.plate ?? '', color: driver.vehicle?.color ?? null }
+      const vehicle = await resolveDriverCurrentVehicle(driverId)
+      return { plate: vehicle?.plate ?? '', color: vehicle?.color ?? null }
     }
     return { plate: '', color: null }
   }
@@ -531,15 +532,15 @@ export class WhatsAppClient {
           if (!session.notifications.assigned) {
             await session.setNotification(NotificationType.assigned)
             const snapshotVehicle = (snapshot.val() as any)?.vehicle as VehicleSnapshot | undefined
-            const vehicleForMsg: VehicleSnapshot = snapshotVehicle?.plate
-              ? snapshotVehicle
-              : (() => {
-                  const driver = this.store.findDriverById(service.driver_id!!)
-                  return {
-                    plate: driver.vehicle?.plate ?? '',
-                    color: driver.vehicle?.color ?? null,
-                  }
-                })()
+            let vehicleForMsg: VehicleSnapshot
+            if (snapshotVehicle?.plate) {
+              vehicleForMsg = snapshotVehicle
+            } else if (service.driver_id) {
+              const vehicle = await resolveDriverCurrentVehicle(service.driver_id)
+              vehicleForMsg = { plate: vehicle?.plate ?? '', color: vehicle?.color ?? null }
+            } else {
+              vehicleForMsg = { plate: '', color: null }
+            }
             msg = Messages.serviceAssigned(vehicleForMsg)
             message = msg
             mustSend = msg.enabled && !this.wpClient.wpNotifications
