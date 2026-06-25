@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.6(2026-06-25)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.6...2.0.5)
+
+### Added
+
+- Add driver monthly payment domain: settings and payment records (models, migrations, repositories) with monthly payment validation when enabling drivers.
+- Add scheduled jobs to send monthly payment reminders and disable drivers with unpaid monthly payments.
+- Add a Bogota timezone helper service.
+
 ## [2.0.5(2026-06-12)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.5...2.0.4)
 
 ### Added
