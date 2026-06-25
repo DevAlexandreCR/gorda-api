@@ -6,6 +6,8 @@ import { cancelPendingServices } from './CancelPendingServicesJob'
 import { cleanIgnoredInboundAudit } from './CleanIgnoredInboundAuditJob'
 import { cleanProcessedInboundMessages } from './CleanProcessedInboundMessagesJob'
 import { runPhase5FirestoreDailyCleanup } from '../Migration/phase5FirebaseCleanup'
+import { sendMonthlyPaymentReminders } from './MonthlyPaymentReminderJob'
+import { disableUnpaidMonthlyDrivers } from './DisableUnpaidMonthlyDriversJob'
 
 class Schedule {
   execute(): void {
@@ -16,6 +18,8 @@ class Schedule {
     cron.schedule('30 6 * * *', cleanIgnoredInboundAudit, { timezone: 'UTC' })
     cron.schedule('45 6 * * *', cleanProcessedInboundMessages, { timezone: 'UTC' })
     cron.schedule('15 7 * * *', runPhase5FirestoreDailyCleanup, { timezone: 'UTC' })
+    cron.schedule('5 0 * * *', sendMonthlyPaymentReminders, { timezone: 'America/Bogota' })
+    cron.schedule('10 0 * * *', disableUnpaidMonthlyDrivers, { timezone: 'America/Bogota' })
   }
 }
 
