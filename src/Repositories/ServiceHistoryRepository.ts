@@ -2,6 +2,9 @@ import { Op, WhereOptions, fn, col, literal } from 'sequelize'
 import ServiceHistoryRecord from '../Models/ServiceHistoryRecord'
 import { ServiceInterface } from '../Interfaces/ServiceInterface'
 import ChatIdHelper from '../Helpers/ChatIdHelper'
+import VehicleRepository from './VehicleRepository'
+
+const vehicleRepo = new VehicleRepository()
 
 type HistoryFilters = {
   from?: number
@@ -61,7 +64,24 @@ class ServiceHistoryRepository {
     })
 
     const services = rows.map((service) => service.get({ plain: true }) as ServiceInterface)
+    await this.attachVehicles(services)
     return isPrevPage ? services.reverse() : services
+  }
+
+  private async attachVehicles(services: ServiceInterface[]): Promise<void> {
+    const vehicleIds = Array.from(
+      new Set(services.map((service) => service.vehicle_id).filter((id): id is string => !!id))
+    )
+
+    const vehicles = await vehicleRepo.findByIds(vehicleIds)
+    const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]))
+
+    for (const service of services) {
+      const vehicle = service.vehicle_id ? vehicleById.get(service.vehicle_id) : undefined
+      service.vehicle = vehicle
+        ? { plate: vehicle.plate, brand: vehicle.brand, model: vehicle.model, color: vehicle.color }
+        : null
+    }
   }
 
   async count(filters: HistoryFilters = {}): Promise<number> {

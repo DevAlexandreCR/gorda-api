@@ -23,7 +23,19 @@ class DriverRecordRepository {
       order: [['created_at', 'DESC']],
     })
 
-    return drivers.map((driver) => this.mapDriver(driver))
+    const driverPlains = drivers.map((driver) => driver.get({ plain: true }) as any)
+    const vehicleMap = await this.buildSelectedVehicleMap(driverPlains)
+
+    return drivers.map((driver) => {
+      const mapped = this.mapDriver(driver)
+      const selected_vehicle_id = mapped.selected_vehicle_id ?? null
+      return {
+        ...mapped,
+        selected_vehicle: selected_vehicle_id
+          ? (vehicleMap.get(selected_vehicle_id) ?? null)
+          : null,
+      }
+    })
   }
 
   async list(query: DriverListQuery): Promise<{ rows: DriverInterface[]; total: number }> {
@@ -100,25 +112,7 @@ class DriverRecordRepository {
     })
 
     // Bulk-fetch selected vehicles to avoid N+1
-    const selectedVehicleIds = driverPlains
-      .map((d: any) => d.selected_vehicle_id)
-      .filter((id: any): id is string => !!id)
-
-    const vehicleMap = new Map<string, VehicleRecordInterface>()
-    if (selectedVehicleIds.length > 0) {
-      const placeholders = selectedVehicleIds.map((_: any, i: number) => `:sv${i}`).join(', ')
-      const vehicleReplacements: Record<string, string> = {}
-      selectedVehicleIds.forEach((id: string, i: number) => {
-        vehicleReplacements[`sv${i}`] = id
-      })
-      const vehicleRows = await sequelize.query<VehicleRecordInterface>(
-        `SELECT * FROM vehicles WHERE id IN (${placeholders})`,
-        { replacements: vehicleReplacements, type: QueryTypes.SELECT }
-      )
-      vehicleRows
-        .map((vehicle) => this.mapSelectedVehicle(vehicle))
-        .forEach((vehicle) => vehicleMap.set(vehicle.id, vehicle))
-    }
+    const vehicleMap = await this.buildSelectedVehicleMap(driverPlains)
 
     // Bulk-fetch active vehicle assignments to avoid N+1
     const driverIds = driverPlains.map((d: any) => d.id as string)
@@ -304,7 +298,35 @@ class DriverRecordRepository {
     }
   }
 
-  private mapSelectedVehicle(vehicle: VehicleRecordInterface & { photo_url?: string | null }): VehicleRecordInterface {
+  /** Bulk-fetch selected vehicles for a set of driver plains, keyed by vehicle id, to avoid N+1. */
+  private async buildSelectedVehicleMap(
+    driverPlains: any[]
+  ): Promise<Map<string, VehicleRecordInterface>> {
+    const selectedVehicleIds = driverPlains
+      .map((d: any) => d.selected_vehicle_id)
+      .filter((id: any): id is string => !!id)
+
+    const vehicleMap = new Map<string, VehicleRecordInterface>()
+    if (selectedVehicleIds.length > 0) {
+      const placeholders = selectedVehicleIds.map((_: any, i: number) => `:sv${i}`).join(', ')
+      const vehicleReplacements: Record<string, string> = {}
+      selectedVehicleIds.forEach((id: string, i: number) => {
+        vehicleReplacements[`sv${i}`] = id
+      })
+      const vehicleRows = await sequelize.query<VehicleRecordInterface>(
+        `SELECT * FROM vehicles WHERE id IN (${placeholders})`,
+        { replacements: vehicleReplacements, type: QueryTypes.SELECT }
+      )
+      vehicleRows
+        .map((vehicle) => this.mapSelectedVehicle(vehicle))
+        .forEach((vehicle) => vehicleMap.set(vehicle.id, vehicle))
+    }
+    return vehicleMap
+  }
+
+  private mapSelectedVehicle(
+    vehicle: VehicleRecordInterface & { photo_url?: string | null }
+  ): VehicleRecordInterface {
     const { photo_url, photoUrl, ...rest } = vehicle as VehicleRecordInterface & {
       photo_url?: string | null
     }

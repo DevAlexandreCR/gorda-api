@@ -73,6 +73,12 @@ class VehicleRepository {
     return record ? this.mapVehicle(record) : null
   }
 
+  async findByIds(ids: string[]): Promise<VehicleRecordInterface[]> {
+    if (ids.length === 0) return []
+    const records = await VehicleRecord.findAll({ where: { id: ids } })
+    return records.map((r) => this.mapVehicle(r))
+  }
+
   async create(data: Partial<VehicleRecordInterface>): Promise<VehicleRecordInterface> {
     const record = await VehicleRecord.create(data as any)
     return this.mapVehicle(record)

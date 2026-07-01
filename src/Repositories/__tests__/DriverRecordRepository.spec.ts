@@ -4,6 +4,7 @@ import sequelize from '../../Database/sequelize'
 
 jest.mock('../../Models/DriverRecord', () => ({
   findAndCountAll: jest.fn(),
+  findAll: jest.fn(),
 }))
 
 // buildDriverAvailability is called inside mapDriver — provide a lightweight stub
@@ -83,6 +84,54 @@ function serializeWhere(obj: object): string {
 // Tests
 // ---------------------------------------------------------------------------
 
+describe('DriverRecordRepository.index()', () => {
+  let repository: DriverRecordRepository
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    repository = new DriverRecordRepository()
+  })
+
+  it('returns selected_vehicle resolved for a driver with a selected_vehicle_id', async () => {
+    const plain = makeDriverPlain({ selected_vehicle_id: 'veh-1' })
+    ;(DriverRecord.findAll as jest.Mock).mockResolvedValue([makeDriverModel(plain)])
+    ;(sequelize.query as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'veh-1',
+        plate: 'ABC123',
+        brand: 'Mazda',
+        model: 'Cx30',
+        color: { name: 'white', hex: '#ffffff' },
+        photo_url: 'https://vehicle.example/photo.jpg',
+        soat_exp: null,
+        tec_exp: null,
+        enabled: true,
+        created_at: new Date('2026-06-15T00:00:00Z'),
+        updated_at: new Date('2026-06-15T00:00:00Z'),
+      },
+    ])
+
+    const result = await repository.index()
+
+    expect(result).toHaveLength(1)
+    expect(result[0].selected_vehicle).toMatchObject({
+      id: 'veh-1',
+      plate: 'ABC123',
+      photoUrl: 'https://vehicle.example/photo.jpg',
+    })
+  })
+
+  it('returns selected_vehicle: null for a driver without a selected_vehicle_id', async () => {
+    const plain = makeDriverPlain({ selected_vehicle_id: null })
+    ;(DriverRecord.findAll as jest.Mock).mockResolvedValue([makeDriverModel(plain)])
+
+    const result = await repository.index()
+
+    expect(result).toHaveLength(1)
+    expect(result[0].selected_vehicle).toBeNull()
+  })
+})
+
 describe('DriverRecordRepository.list()', () => {
   let repository: DriverRecordRepository
 
@@ -144,7 +193,6 @@ describe('DriverRecordRepository.list()', () => {
       })
       expect((result.rows[0].selected_vehicle as any).photo_url).toBeUndefined()
     })
-
   })
 
   // --- filter by status ---

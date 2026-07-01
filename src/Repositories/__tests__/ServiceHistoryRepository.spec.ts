@@ -1,16 +1,39 @@
 import ServiceHistoryRepository from '../ServiceHistoryRepository'
 import ServiceHistoryRecord from '../../Models/ServiceHistoryRecord'
+import { VehicleRecordInterface } from '../../Interfaces/VehicleRecordInterface'
 
 jest.mock('../../Models/ServiceHistoryRecord', () => ({
   findAll: jest.fn(),
   count: jest.fn(),
 }))
 
+// VehicleRepository — class instantiated at module-level in ServiceHistoryRepository.
+// Imports run before any same-file top-level statement, so `ServiceHistoryRepository`
+// (and its module-level `new VehicleRepository()`) is evaluated before any local const
+// would be assigned. Instead, the shared mock fn lives inside the jest.mock factory
+// closure (both the constructor mock and the `new VehicleRepository()` call inside
+// ServiceHistoryRepository return the SAME object), and is exposed to the test file
+// via jest.requireMock so it can be configured/asserted on per test.
+jest.mock('../VehicleRepository', () => {
+  const sharedInstance = { findByIds: jest.fn() }
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => sharedInstance),
+  }
+})
+
+const mockFindByIds = (
+  jest.requireMock('../VehicleRepository').default() as {
+    findByIds: jest.Mock
+  }
+).findByIds
+
 describe('ServiceHistoryRepository filter normalization', () => {
   let repository: ServiceHistoryRepository
 
   beforeEach(() => {
     jest.clearAllMocks()
+    mockFindByIds.mockResolvedValue([])
     repository = new ServiceHistoryRepository()
   })
 
@@ -102,5 +125,102 @@ describe('ServiceHistoryRepository filter normalization', () => {
 
       expect(whereString).not.toContain('@c.us')
     })
+  })
+})
+
+describe('ServiceHistoryRepository.listPage vehicle attachment', () => {
+  let repository: ServiceHistoryRepository
+
+  function makeVehicle(overrides: Partial<VehicleRecordInterface> = {}): VehicleRecordInterface {
+    return {
+      id: 'veh-1',
+      plate: 'ABC123',
+      brand: 'Toyota',
+      model: 'Yaris',
+      color: { name: 'White', hex: '#FFFFFF' },
+      photoUrl: null,
+      soat_exp: null,
+      tec_exp: null,
+      enabled: true,
+      created_at: new Date('2024-01-01'),
+      updated_at: new Date('2024-01-01'),
+      ...overrides,
+    }
+  }
+
+  function makeRow(overrides: Record<string, any> = {}) {
+    const plain = {
+      id: 'svc-1',
+      client_id: '573001234567',
+      driver_id: 'drv-1',
+      vehicle_id: null,
+      status: 'terminated',
+      created_at: 1,
+      ...overrides,
+    }
+    return { get: (_opts: any) => plain }
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    repository = new ServiceHistoryRepository()
+  })
+
+  it('attaches vehicle.plate for a row with a resolvable vehicle_id', async () => {
+    const row = makeRow({ id: 'svc-1', vehicle_id: 'veh-1' })
+    ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue([row])
+    mockFindByIds.mockResolvedValue([makeVehicle({ id: 'veh-1', plate: 'ABC123' })])
+
+    const result = await repository.listPage({})
+
+    expect(result).toHaveLength(1)
+    expect(result[0].vehicle).toEqual({
+      plate: 'ABC123',
+      brand: 'Toyota',
+      model: 'Yaris',
+      color: { name: 'White', hex: '#FFFFFF' },
+    })
+  })
+
+  it('sets vehicle: null and keeps the row when vehicle_id is null or unresolved', async () => {
+    const rowWithNullId = makeRow({ id: 'svc-null', vehicle_id: null })
+    const rowWithUnresolvedId = makeRow({ id: 'svc-unresolved', vehicle_id: 'veh-missing' })
+    ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue([
+      rowWithNullId,
+      rowWithUnresolvedId,
+    ])
+    // 'veh-missing' is requested but not returned by the repo (unresolved FK)
+    mockFindByIds.mockResolvedValue([])
+
+    const result = await repository.listPage({})
+
+    expect(result).toHaveLength(2)
+    expect(result[0].vehicle).toBeNull()
+    expect(result[1].vehicle).toBeNull()
+  })
+
+  it('calls VehicleRepository.findByIds exactly once for the page (no N+1)', async () => {
+    const rows = [
+      makeRow({ id: 'svc-1', vehicle_id: 'veh-1' }),
+      makeRow({ id: 'svc-2', vehicle_id: 'veh-2' }),
+      makeRow({ id: 'svc-3', vehicle_id: 'veh-1' }),
+      makeRow({ id: 'svc-4', vehicle_id: null }),
+    ]
+    ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue(rows)
+    mockFindByIds.mockResolvedValue([
+      makeVehicle({ id: 'veh-1', plate: 'ABC123' }),
+      makeVehicle({ id: 'veh-2', plate: 'XYZ789' }),
+    ])
+
+    const result = await repository.listPage({})
+
+    expect(mockFindByIds).toHaveBeenCalledTimes(1)
+    // distinct, non-null vehicle ids only
+    expect(mockFindByIds).toHaveBeenCalledWith(expect.arrayContaining(['veh-1', 'veh-2']))
+    expect((mockFindByIds.mock.calls[0][0] as string[]).length).toBe(2)
+    expect(result[0].vehicle?.plate).toBe('ABC123')
+    expect(result[1].vehicle?.plate).toBe('XYZ789')
+    expect(result[2].vehicle?.plate).toBe('ABC123')
+    expect(result[3].vehicle).toBeNull()
   })
 })
