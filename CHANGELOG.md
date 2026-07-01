@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.7(2026-06-30)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.7...2.0.6)
+
+### Added
+
+- Resolve and expose the per-service vehicle (`{ plate, brand, model, color }`) on the services history endpoint from the persisted `vehicle_id`, batching the lookup to avoid N+1.
+
+### Fixed
+
+- Include the resolved `selected_vehicle` in the unparameterized drivers list (`GET /drivers`) so consumers receive the driver's currently selected vehicle, not just its id.
+
 ## [2.0.6(2026-06-25)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.6...2.0.5)
 
 ### Added
