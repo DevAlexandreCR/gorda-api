@@ -15,9 +15,8 @@ export async function sendMonthlyPaymentReminders(): Promise<void> {
     return
   }
 
-  const driverIds = await Container.getMonthlyPaymentRepository().findUnpaidMonthlyDriverIds(
-    currentPeriod()
-  )
+  const driverIds =
+    await Container.getMonthlyPaymentRepository().findUnpaidMonthlyDriverIds(currentPeriod())
 
   if (driverIds.length === 0) {
     return
@@ -29,9 +28,8 @@ export async function sendMonthlyPaymentReminders(): Promise<void> {
   await Promise.allSettled(
     driverIds.map(async (driverId) => {
       try {
-        const tokenRecord = await Container.getDriverTokenRecordRepository().findByDriverId(
-          driverId
-        )
+        const tokenRecord =
+          await Container.getDriverTokenRecordRepository().findByDriverId(driverId)
         if (!tokenRecord?.token) {
           failed.push({ id: driverId, reason: 'Driver token not found' })
           return

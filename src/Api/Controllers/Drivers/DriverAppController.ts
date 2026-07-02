@@ -238,7 +238,9 @@ controller.post('/me/connect', async (req: Request, res: Response) => {
       )
     }
 
-    const rejectVehicleInUse = async (heldAssignment: AssignmentSnapshot | null): Promise<Response> => {
+    const rejectVehicleInUse = async (
+      heldAssignment: AssignmentSnapshot | null
+    ): Promise<Response> => {
       await txn.rollback()
 
       let heldBy: { id: string; name: string } | null = null
@@ -356,7 +358,11 @@ controller.post('/me/connect', async (req: Request, res: Response) => {
 
     await txn.commit()
     console.log(
-      JSON.stringify({ metric: 'connect.success', driverId: driverUid, vehicleId: requestedVehicleId })
+      JSON.stringify({
+        metric: 'connect.success',
+        driverId: driverUid,
+        vehicleId: requestedVehicleId,
+      })
     )
     return res.status(200).json({ success: true, data: {} })
   } catch (err) {

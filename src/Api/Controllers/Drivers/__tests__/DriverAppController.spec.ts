@@ -445,7 +445,9 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
     })
 
     it('returns 409 with error=vehicle_in_use and held_by=null when the holder lookup disappears after the conflict', async () => {
-      mockDriverRecordFindByPk.mockResolvedValueOnce(makeEnabledDriver()).mockResolvedValueOnce(null)
+      mockDriverRecordFindByPk
+        .mockResolvedValueOnce(makeEnabledDriver())
+        .mockResolvedValueOnce(null)
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
       mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(false)
@@ -565,23 +567,21 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
     it('returns vehicle_in_use after stale cleanup when the requested vehicle is taken concurrently', async () => {
       const holderDriverId = 'holder-driver-uid'
-      mockDriverRecordFindByPk
-        .mockResolvedValueOnce(makeEnabledDriver())
-        .mockResolvedValueOnce({
-          get: (_opts: any) => ({ id: holderDriverId, name: 'Holder Driver' }),
-        })
+      mockDriverRecordFindByPk.mockResolvedValueOnce(makeEnabledDriver()).mockResolvedValueOnce({
+        get: (_opts: any) => ({ id: holderDriverId, name: 'Holder Driver' }),
+      })
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
-      mockActiveVehicleAssignmentTryAcquire.mockResolvedValueOnce(false).mockResolvedValueOnce(false)
-      mockActiveVehicleAssignmentFindByPk
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(
-          makeActiveAssignment({
-            vehicle_id: VEHICLE_ID,
-            driver_id: holderDriverId,
-            session_id: 'holder-session',
-          })
-        )
+      mockActiveVehicleAssignmentTryAcquire
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(false)
+      mockActiveVehicleAssignmentFindByPk.mockResolvedValueOnce(null).mockResolvedValueOnce(
+        makeActiveAssignment({
+          vehicle_id: VEHICLE_ID,
+          driver_id: holderDriverId,
+          session_id: 'holder-session',
+        })
+      )
       mockActiveVehicleAssignmentFindOne.mockResolvedValue(
         makeActiveAssignment({
           vehicle_id: OLD_VEHICLE_ID,
@@ -662,11 +662,9 @@ describe('POST /driver-app/me/connect (DriverAppController)', () => {
 
     it('keeps the transaction usable after a conflict path and does not surface 25P02', async () => {
       const holderDriverId = 'holder-driver-uid'
-      mockDriverRecordFindByPk
-        .mockResolvedValueOnce(makeEnabledDriver())
-        .mockResolvedValueOnce({
-          get: (_opts: any) => ({ id: holderDriverId, name: 'Holder Driver' }),
-        })
+      mockDriverRecordFindByPk.mockResolvedValueOnce(makeEnabledDriver()).mockResolvedValueOnce({
+        get: (_opts: any) => ({ id: holderDriverId, name: 'Holder Driver' }),
+      })
       mockVehicleRecordFindByPk.mockResolvedValue(makeEnabledVehicle())
       mockDriverVehicleListForDriver.mockResolvedValue([makeLink()])
       mockActiveVehicleAssignmentTryAcquire.mockResolvedValue(false)

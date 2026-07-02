@@ -224,3 +224,64 @@ describe('ServiceHistoryRepository.listPage vehicle attachment', () => {
     expect(result[3].vehicle).toBeNull()
   })
 })
+
+describe('ServiceHistoryRepository deducted_value passthrough', () => {
+  let repository: ServiceHistoryRepository
+
+  function makeRow(overrides: Record<string, any> = {}) {
+    const plain = {
+      id: 'svc-1',
+      client_id: '573001234567',
+      driver_id: 'drv-1',
+      vehicle_id: null,
+      status: 'terminated',
+      created_at: 1,
+      deducted_value: 0,
+      ...overrides,
+    }
+    return { get: (_opts: any) => plain }
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockFindByIds.mockResolvedValue([])
+    repository = new ServiceHistoryRepository()
+  })
+
+  it('listPage() includes deducted_value per row, sourced from the column', async () => {
+    const row = makeRow({ id: 'svc-1', deducted_value: 2000 })
+    ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue([row])
+
+    const result = await repository.listPage({})
+
+    expect(result).toHaveLength(1)
+    expect((result[0] as any).deducted_value).toBe(2000)
+  })
+
+  it('listPage() returns deducted_value: 0 (not null) for a legacy row where the column defaulted', async () => {
+    // Legacy row: deducted_value was never explicitly set, so the DB default (0) applies.
+    const legacyRow = makeRow({ id: 'svc-legacy', deducted_value: 0 })
+    ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue([legacyRow])
+
+    const result = await repository.listPage({})
+
+    expect(result).toHaveLength(1)
+    expect((result[0] as any).deducted_value).toBe(0)
+    expect((result[0] as any).deducted_value).not.toBeNull()
+  })
+
+  it('listByDriver() includes deducted_value per row, defaulting to 0 for legacy rows', async () => {
+    const rows = [
+      makeRow({ id: 'svc-1', deducted_value: 1500 }),
+      makeRow({ id: 'svc-legacy', deducted_value: 0 }),
+    ]
+    ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue(rows)
+
+    const result = await repository.listByDriver('drv-1')
+
+    expect(result).toHaveLength(2)
+    expect((result[0] as any).deducted_value).toBe(1500)
+    expect((result[1] as any).deducted_value).toBe(0)
+    expect((result[1] as any).deducted_value).not.toBeNull()
+  })
+})

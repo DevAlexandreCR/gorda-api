@@ -186,6 +186,7 @@ class ServiceHistoryMigrationService {
       canceled_by: persist.canceled_by ?? null,
       terminated_by: persist.terminated_by ?? null,
       vehicle_id: persist.vehicle_id ?? null,
+      deducted_value: Number(persist.metadata?.discount ?? 0),
     }
   }
 }

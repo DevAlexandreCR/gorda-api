@@ -126,7 +126,11 @@ describe('resolveDriverCurrentVehicle', () => {
     it('returns the vehicle from the active assignment and does not fall through to selected-vehicle path', async () => {
       const driverId = 'drv-1'
       const vehicleId = 'veh-active-1'
-      const expectedVehicle = makeVehicle({ id: vehicleId, plate: 'ACT001', color: { name: 'Blue', hex: '#0000FF' } })
+      const expectedVehicle = makeVehicle({
+        id: vehicleId,
+        plate: 'ACT001',
+        color: { name: 'Blue', hex: '#0000FF' },
+      })
 
       mockFindByDriver.mockResolvedValue(makeAssignment(vehicleId, driverId))
       mockFindById.mockResolvedValue(expectedVehicle)

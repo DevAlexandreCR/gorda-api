@@ -130,7 +130,11 @@ describe('RechargeRepository.create()', () => {
       const driver = makeDriverModel({ balance: 200 })
       ;(DriverRecord.findOne as jest.Mock).mockResolvedValue(driver)
 
-      const rechargeModel = makeRechargeModel({ amount: 100, balanceBefore: 200, balanceAfter: 300 })
+      const rechargeModel = makeRechargeModel({
+        amount: 100,
+        balanceBefore: 200,
+        balanceAfter: 300,
+      })
       ;(RechargeRecord.create as jest.Mock).mockResolvedValue(rechargeModel)
 
       await repository.create({
@@ -173,7 +177,11 @@ describe('RechargeRepository.create()', () => {
     })
 
     it('percentage driver with balanceAfter <= 0 does not throw and commits', async () => {
-      const driver = makeDriverModel({ balance: 100, paymentMode: 'percentage', enabled_at: 1000000 })
+      const driver = makeDriverModel({
+        balance: 100,
+        paymentMode: 'percentage',
+        enabled_at: 1000000,
+      })
       ;(DriverRecord.findOne as jest.Mock).mockResolvedValue(driver)
 
       const rechargeModel = makeRechargeModel({

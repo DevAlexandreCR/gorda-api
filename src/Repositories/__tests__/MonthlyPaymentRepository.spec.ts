@@ -222,10 +222,7 @@ describe('MonthlyPaymentRepository.findUnpaidMonthlyDriverIds()', () => {
     const conditions = extractConditions(callArg.where)
 
     expect(conditions).toEqual(
-      expect.arrayContaining([
-        { paymentMode: 'monthly' },
-        { enabled_at: { [Op.gt]: 0 } },
-      ])
+      expect.arrayContaining([{ paymentMode: 'monthly' }, { enabled_at: { [Op.gt]: 0 } }])
     )
 
     const literalCondition = conditions.find((c: any) => typeof c.val === 'string') as any
@@ -239,7 +236,10 @@ describe('MonthlyPaymentRepository.findUnpaidMonthlyDriverIds()', () => {
     // The repository itself only maps whatever DriverRecord.findAll returns;
     // the exclusion logic (paid/disabled/percentage) is expressed in the where
     // clause asserted above. Here we verify the mapping of the query result.
-    ;(DriverRecord.findAll as jest.Mock).mockResolvedValue([{ id: 'drv-unpaid-1' }, { id: 'drv-unpaid-2' }])
+    ;(DriverRecord.findAll as jest.Mock).mockResolvedValue([
+      { id: 'drv-unpaid-1' },
+      { id: 'drv-unpaid-2' },
+    ])
 
     const result = await repository.findUnpaidMonthlyDriverIds('2026-06')
 

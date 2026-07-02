@@ -1433,10 +1433,15 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
   }
   const rechargeResult = {
     recharge: {
-      id: 'rch-1', driverId: 'drv-1', amount: 5000,
-      balanceBefore: 1000, balanceAfter: 6000,
-      createdByUid: 'admin-uid', createdByName: 'Admin User',
-      note: 'recarga efectivo', created_at: 1000000,
+      id: 'rch-1',
+      driverId: 'drv-1',
+      amount: 5000,
+      balanceBefore: 1000,
+      balanceAfter: 6000,
+      createdByUid: 'admin-uid',
+      createdByName: 'Admin User',
+      note: 'recarga efectivo',
+      created_at: 1000000,
     },
     driver: { id: 'drv-1', balance: 6000 },
   }
@@ -1445,7 +1450,12 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
     it('creates recharge and returns recharge + driver', async () => {
       mockRechargeCreate.mockResolvedValue(rechargeResult)
 
-      const { status, body } = await post(server, '/drivers/drv-1/recharges', validBody, VALID_AUTH_HEADERS)
+      const { status, body } = await post(
+        server,
+        '/drivers/drv-1/recharges',
+        validBody,
+        VALID_AUTH_HEADERS
+      )
 
       expect(status).toBe(201)
       expect(body.success).toBe(true)
@@ -1472,7 +1482,8 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
   describe('400: validation errors', () => {
     it('returns 400 when amount is missing', async () => {
       const { status, body } = await post(
-        server, '/drivers/drv-1/recharges',
+        server,
+        '/drivers/drv-1/recharges',
         { created_by: { uid: 'u', name: 'n' } },
         VALID_AUTH_HEADERS
       )
@@ -1483,7 +1494,8 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
 
     it('returns 400 when amount is zero', async () => {
       const { status, body } = await post(
-        server, '/drivers/drv-1/recharges',
+        server,
+        '/drivers/drv-1/recharges',
         { amount: 0, created_by: { uid: 'u', name: 'n' } },
         VALID_AUTH_HEADERS
       )
@@ -1494,7 +1506,8 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
 
     it('returns 400 when amount is a string', async () => {
       const { status, body } = await post(
-        server, '/drivers/drv-1/recharges',
+        server,
+        '/drivers/drv-1/recharges',
         { amount: '5000', created_by: { uid: 'u', name: 'n' } },
         VALID_AUTH_HEADERS
       )
@@ -1504,7 +1517,8 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
 
     it('returns 400 when created_by is missing', async () => {
       const { status, body } = await post(
-        server, '/drivers/drv-1/recharges',
+        server,
+        '/drivers/drv-1/recharges',
         { amount: 5000 },
         VALID_AUTH_HEADERS
       )
@@ -1515,7 +1529,8 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
 
     it('returns 400 when created_by.uid is missing', async () => {
       const { status, body } = await post(
-        server, '/drivers/drv-1/recharges',
+        server,
+        '/drivers/drv-1/recharges',
         { amount: 5000, created_by: { name: 'Admin' } },
         VALID_AUTH_HEADERS
       )
@@ -1529,7 +1544,8 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
       mockRechargeCreate.mockRejectedValue(new Error('Driver not found'))
 
       const { status, body } = await post(
-        server, '/drivers/nonexistent/recharges',
+        server,
+        '/drivers/nonexistent/recharges',
         validBody,
         VALID_AUTH_HEADERS
       )
@@ -1547,8 +1563,28 @@ describe('POST /drivers/:id/recharges (DriversController)', () => {
 
 describe('GET /drivers/:id/recharges (DriversController)', () => {
   const sampleRecharges = [
-    { id: 'rch-2', driverId: 'drv-1', amount: -2000, balanceBefore: 6000, balanceAfter: 4000, createdByUid: 'u', createdByName: 'Admin', note: null, created_at: 1000100 },
-    { id: 'rch-1', driverId: 'drv-1', amount: 5000, balanceBefore: 1000, balanceAfter: 6000, createdByUid: 'u', createdByName: 'Admin', note: 'recarga', created_at: 1000000 },
+    {
+      id: 'rch-2',
+      driverId: 'drv-1',
+      amount: -2000,
+      balanceBefore: 6000,
+      balanceAfter: 4000,
+      createdByUid: 'u',
+      createdByName: 'Admin',
+      note: null,
+      created_at: 1000100,
+    },
+    {
+      id: 'rch-1',
+      driverId: 'drv-1',
+      amount: 5000,
+      balanceBefore: 1000,
+      balanceAfter: 6000,
+      createdByUid: 'u',
+      createdByName: 'Admin',
+      note: 'recarga',
+      created_at: 1000000,
+    },
   ]
 
   describe('200: returns paginated history', () => {
@@ -1697,9 +1733,7 @@ describe('POST /drivers/:id/monthly-payments (DriversController)', () => {
 
       expect(status).toBe(201)
       expect(body.success).toBe(true)
-      expect(mockMonthlyPaymentCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ amount: 0 })
-      )
+      expect(mockMonthlyPaymentCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 0 }))
     })
   })
 
@@ -1842,27 +1876,56 @@ describe('POST /drivers/:id/monthly-payments (DriversController)', () => {
 
 describe('GET /drivers/:id/monthly-payments (DriversController)', () => {
   const samplePayments = [
-    { id: 'mp-2', driverId: 'drv-1', period: '2026-06', amount: 90000, createdByUid: 'u', createdByName: 'Admin', note: null, created_at: 1000100 },
-    { id: 'mp-1', driverId: 'drv-1', period: '2026-05', amount: 90000, createdByUid: 'u', createdByName: 'Admin', note: 'efectivo', created_at: 1000000 },
+    {
+      id: 'mp-2',
+      driverId: 'drv-1',
+      period: '2026-06',
+      amount: 90000,
+      createdByUid: 'u',
+      createdByName: 'Admin',
+      note: null,
+      created_at: 1000100,
+    },
+    {
+      id: 'mp-1',
+      driverId: 'drv-1',
+      period: '2026-05',
+      amount: 90000,
+      createdByUid: 'u',
+      createdByName: 'Admin',
+      note: 'efectivo',
+      created_at: 1000000,
+    },
   ]
 
   describe('200: returns paginated history', () => {
     it('returns rows and total', async () => {
       mockMonthlyPaymentListForDriver.mockResolvedValue({ rows: samplePayments, total: 2 })
 
-      const { status, body } = await get(server, '/drivers/drv-1/monthly-payments', VALID_AUTH_HEADERS)
+      const { status, body } = await get(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        VALID_AUTH_HEADERS
+      )
 
       expect(status).toBe(200)
       expect(body.success).toBe(true)
       expect(body.data.rows).toHaveLength(2)
       expect(body.data.total).toBe(2)
-      expect(mockMonthlyPaymentListForDriver).toHaveBeenCalledWith('drv-1', { page: 1, perPage: 20 })
+      expect(mockMonthlyPaymentListForDriver).toHaveBeenCalledWith('drv-1', {
+        page: 1,
+        perPage: 20,
+      })
     })
 
     it('returns empty list when driver has no payments', async () => {
       mockMonthlyPaymentListForDriver.mockResolvedValue({ rows: [], total: 0 })
 
-      const { status, body } = await get(server, '/drivers/drv-1/monthly-payments', VALID_AUTH_HEADERS)
+      const { status, body } = await get(
+        server,
+        '/drivers/drv-1/monthly-payments',
+        VALID_AUTH_HEADERS
+      )
 
       expect(status).toBe(200)
       expect(body.data.rows).toEqual([])
@@ -1886,7 +1949,11 @@ describe('GET /drivers/monthly-payment-settings (DriversController)', () => {
     }
     mockMonthlyPaymentSettingsGet.mockResolvedValue(settings)
 
-    const { status, body } = await get(server, '/drivers/monthly-payment-settings', VALID_AUTH_HEADERS)
+    const { status, body } = await get(
+      server,
+      '/drivers/monthly-payment-settings',
+      VALID_AUTH_HEADERS
+    )
 
     expect(status).toBe(200)
     expect(body.success).toBe(true)
@@ -1998,7 +2065,9 @@ describe('GET /public/drivers/:id (PublicDriversController)', () => {
 
     expect(status).toBe(200)
     expect(body.success).toBe(true)
-    expect(mockDriverVehicleListForDriver).toHaveBeenCalledWith('drv-public-1', { includeAll: true })
+    expect(mockDriverVehicleListForDriver).toHaveBeenCalledWith('drv-public-1', {
+      includeAll: true,
+    })
 
     const driver = body.data.driver
     expect(driver.selected_vehicle_id).toBe('veh-2')

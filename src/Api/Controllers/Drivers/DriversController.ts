@@ -582,10 +582,10 @@ controller.get('/:id/monthly-payments', async (req: Request, res: Response) => {
   const perPage = parseInt(String(req.query.perPage ?? '20'), 10) || 20
 
   try {
-    const { rows, total } = await Container.getMonthlyPaymentRepository().listForDriver(
-      driverId,
-      { page, perPage }
-    )
+    const { rows, total } = await Container.getMonthlyPaymentRepository().listForDriver(driverId, {
+      page,
+      perPage,
+    })
     return res.status(200).json({ success: true, data: { rows, total } })
   } catch (error) {
     console.error('Error fetching monthly payments:', error)
@@ -849,6 +849,75 @@ controller.patch('/:id/balance', async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('Error updating driver balance:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: {},
+    })
+  }
+})
+
+controller.patch('/:id/device', async (req: Request, res: Response) => {
+  try {
+    const driver = await Container.getDriverRecordRepository().updateDevice(
+      req.params.id,
+      req.body?.device ?? null
+    )
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: 'Driver not found',
+        data: {},
+      })
+    }
+
+    await store.refreshDrivers()
+    return res.status(200).json({
+      success: true,
+      data: { driver },
+    })
+  } catch (error) {
+    console.error('Error updating driver device:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: {},
+    })
+  }
+})
+
+const PAYMENT_MODES = ['monthly', 'percentage']
+
+controller.patch('/:id/payment-mode', async (req: Request, res: Response) => {
+  try {
+    const paymentMode = String(req.body?.paymentMode ?? '')
+    if (!PAYMENT_MODES.includes(paymentMode)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid paymentMode value. Allowed values: ${PAYMENT_MODES.join(', ')}`,
+        data: {},
+      })
+    }
+
+    const driver = await Container.getDriverRecordRepository().updatePaymentMode(
+      req.params.id,
+      paymentMode
+    )
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: 'Driver not found',
+        data: {},
+      })
+    }
+
+    await store.refreshDrivers()
+    return res.status(200).json({
+      success: true,
+      data: { driver },
+    })
+  } catch (error) {
+    console.error('Error updating driver payment mode:', error)
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

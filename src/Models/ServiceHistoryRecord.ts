@@ -37,6 +37,7 @@ class ServiceHistoryRecord
   public canceled_by!: string | null
   public terminated_by!: string | null
   public vehicle_id!: string | null
+  public deducted_value!: number
   public readonly updated_at!: Date
 }
 
@@ -126,6 +127,11 @@ ServiceHistoryRecord.init(
       type: DataTypes.UUID,
       allowNull: true,
       defaultValue: null,
+    },
+    deducted_value: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
     },
     updated_at: {
       type: DataTypes.DATE,

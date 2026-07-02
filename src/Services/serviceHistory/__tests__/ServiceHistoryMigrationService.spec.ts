@@ -96,4 +96,32 @@ describe('ServiceHistoryMigrationService.upsertHistoryRecord', () => {
       expect(capturedArg).not.toHaveProperty('client_completed_services_count')
     })
   })
+
+  describe('Case E: captures the driver deduction from metadata.discount', () => {
+    it('sets deducted_value to metadata.discount when present', async () => {
+      ;(ServiceHistoryRecord.upsert as jest.Mock).mockResolvedValue([{}, true])
+
+      const input = buildMinimalService({ metadata: { discount: 2000 } })
+
+      await service.upsertHistoryRecord(input)
+
+      expect(ServiceHistoryRecord.upsert).toHaveBeenCalledTimes(1)
+
+      const capturedArg = (ServiceHistoryRecord.upsert as jest.Mock).mock.calls[0][0]
+      expect(capturedArg.deducted_value).toBe(2000)
+    })
+
+    it('defaults deducted_value to 0 when metadata.discount is absent', async () => {
+      ;(ServiceHistoryRecord.upsert as jest.Mock).mockResolvedValue([{}, true])
+
+      const input = buildMinimalService({ metadata: {} })
+
+      await service.upsertHistoryRecord(input)
+
+      expect(ServiceHistoryRecord.upsert).toHaveBeenCalledTimes(1)
+
+      const capturedArg = (ServiceHistoryRecord.upsert as jest.Mock).mock.calls[0][0]
+      expect(capturedArg.deducted_value).toBe(0)
+    })
+  })
 })

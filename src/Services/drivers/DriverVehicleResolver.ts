@@ -26,8 +26,7 @@ export async function resolveDriverCurrentVehicle(
   const driverRaw = await DriverRecord.findByPk(driverId)
   if (!driverRaw) return null
 
-  const selectedVehicleId =
-    (driverRaw.get({ plain: true }) as any)?.selected_vehicle_id ?? null
+  const selectedVehicleId = (driverRaw.get({ plain: true }) as any)?.selected_vehicle_id ?? null
   if (!selectedVehicleId) return null
 
   const vehicle = await vehicleRepo.findById(selectedVehicleId)

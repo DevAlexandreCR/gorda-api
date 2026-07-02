@@ -25,4 +25,6 @@ export interface ServiceInterface {
   vehicle?: { plate: string; brand?: string | null; model?: string | null; color?: any } | null
   // Persisted FK — set from vehicle snapshot on finalize
   vehicle_id?: string | null
+  // Persisted column — copied from metadata.discount on finalize; not an RTDB snapshot field
+  deducted_value?: number
 }

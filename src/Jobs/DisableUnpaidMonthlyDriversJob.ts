@@ -16,18 +16,14 @@ export async function disableUnpaidMonthlyDrivers(): Promise<void> {
     return
   }
 
-  const driverIds = await Container.getMonthlyPaymentRepository().findUnpaidMonthlyDriverIds(
-    currentPeriod()
-  )
+  const driverIds =
+    await Container.getMonthlyPaymentRepository().findUnpaidMonthlyDriverIds(currentPeriod())
 
   if (driverIds.length === 0) {
     return
   }
 
-  await DriverRecord.update(
-    { enabled_at: 0 },
-    { where: { id: { [Op.in]: driverIds } } }
-  )
+  await DriverRecord.update({ enabled_at: 0 }, { where: { id: { [Op.in]: driverIds } } })
 
   const processed: string[] = []
   const failed: { id: string; reason: string }[] = []
@@ -35,14 +31,15 @@ export async function disableUnpaidMonthlyDrivers(): Promise<void> {
   await Promise.allSettled(
     driverIds.map(async (driverId) => {
       try {
-        const onlineSnapshot = await DatabaseService.dbConnectedDrivers().child(driverId).once('value')
+        const onlineSnapshot = await DatabaseService.dbConnectedDrivers()
+          .child(driverId)
+          .once('value')
 
         if (onlineSnapshot.exists()) {
           await forceDisconnect(driverId, DISABLE_REASON)
         } else {
-          const tokenRecord = await Container.getDriverTokenRecordRepository().findByDriverId(
-            driverId
-          )
+          const tokenRecord =
+            await Container.getDriverTokenRecordRepository().findByDriverId(driverId)
           if (!tokenRecord?.token) {
             failed.push({ id: driverId, reason: 'Driver token not found' })
             return

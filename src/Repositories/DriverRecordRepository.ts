@@ -243,6 +243,15 @@ class DriverRecordRepository {
     return this.mapDriver(driver)
   }
 
+  async updatePaymentMode(id: string, paymentMode: string): Promise<DriverInterface | null> {
+    const driver = await DriverRecord.findByPk(id)
+    if (!driver) return null
+
+    driver.paymentMode = paymentMode
+    await driver.save()
+    return this.mapDriver(driver)
+  }
+
   async updateDevice(
     id: string,
     device: Record<string, any> | null
