@@ -86,6 +86,11 @@ This document explains the agents (long-running services, jobs, and helper modul
 
 ## 7. Operational Checklist
 
+**Local development**: `api` runs inside Docker Compose. After finishing a change, restart the container from `dock/` so the running instance picks it up and the local stack stays functional:
+```bash
+docker compose restart api
+```
+
 1. **Bootstrap**: `npm run build` followed by `npm run serve` (or PM2 using `ecosystem.config.example.js`). Ensure environment variables, Firebase credentials, and SSL certs (`src/Helpers/SSL.ts`) are available.
 2. **Monitoring**: Sentry DSN configured; check Socket.IO logs for WhatsApp reconnect loops.
 3. **Scaling WhatsApp Clients**: Add rows through the admin panel or seeders; the `Store` hot-reloads clients and `app.ts` instantiates a `WhatsAppClient` per tenant.
