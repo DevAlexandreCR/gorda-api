@@ -46,6 +46,8 @@ class ServiceRepository {
   public async create(service: ServiceInterface): Promise<ServiceInterface> {
     const res = Database.dbServices().push()
     service.id = res.key
+    // 'bot' literal used instead of Service.ORIGIN_BOT to avoid a circular import (Service.ts imports ServiceRepository)
+    service.origin = service.origin ?? 'bot'
     await res.set(service)
     return service
   }

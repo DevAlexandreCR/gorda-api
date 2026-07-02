@@ -182,6 +182,7 @@ class ServiceHistoryMigrationService {
       wp_client_id: persist.wp_client_id ?? null,
       created_at: Number(persist.created_at),
       created_by: persist.created_by ?? null,
+      origin: persist.origin ?? null,
       assigned_by: persist.assigned_by ?? null,
       canceled_by: persist.canceled_by ?? null,
       terminated_by: persist.terminated_by ?? null,

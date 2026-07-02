@@ -1,0 +1,2 @@
+- [Service/ServiceRepository circular import](project_service_repository_circular_import.md) — Service.ts imports ServiceRepository; never import Service back into ServiceRepository.ts, use literals instead
+- [api dev migration script name](project_migrate_script_name.md) — correct script is `migrate:sql:development`, not `migrate:sql:dev`

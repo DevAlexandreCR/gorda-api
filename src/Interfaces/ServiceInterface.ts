@@ -17,6 +17,7 @@ export interface ServiceInterface {
   wp_client_id?: string | null
   created_at: number
   created_by?: string | null
+  origin?: string | null
   assigned_by?: string | null
   canceled_by?: string | null
   terminated_by?: string | null

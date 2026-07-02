@@ -19,11 +19,14 @@ export default class Service implements ServiceInterface {
   comment: string | null
   metadata: Metadata
   client_completed_services_count?: number | null
+  origin: string | null
 
   static readonly STATUS_PENDING = 'pending'
   static readonly STATUS_IN_PROGRESS = 'in_progress'
   static readonly STATUS_TERMINATED = 'terminated'
   static readonly STATUS_CANCELED = 'canceled'
+  static readonly ORIGIN_ADMIN = 'admin'
+  static readonly ORIGIN_BOT = 'bot'
   static readonly EVENT_CANCEL = 'cancel-service'
   static readonly EVENT_TERMINATE = 'end-service'
   static readonly EVENT_ASSIGN = 'assign-service'

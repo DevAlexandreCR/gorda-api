@@ -33,6 +33,7 @@ class ServiceHistoryRecord
   public wp_client_id!: string | null
   public created_at!: number
   public created_by!: string | null
+  public origin!: string | null
   public assigned_by!: string | null
   public canceled_by!: string | null
   public terminated_by!: string | null
@@ -105,6 +106,11 @@ ServiceHistoryRecord.init(
     },
     created_by: {
       type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
+    origin: {
+      type: DataTypes.STRING(255),
       allowNull: true,
       defaultValue: null,
     },
