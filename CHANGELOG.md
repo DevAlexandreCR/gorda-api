@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.9(2026-07-03)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.9...2.0.8)
+
+### Added
+
+- Add an authenticated endpoint to void a driver monthly payment (`POST /drivers/:id/monthly-payments/:paymentId/void`) that soft-voids the record — recording status, reason, actor, and timestamp — without deleting it, preserving the audit trail.
+
+### Changed
+
+- Redefine "paid for a period" to count only active (non-voided) monthly payments, so a voided payment no longer counts as paid in the monthly payment reminder and auto-disable jobs or the manual re-enable gate.
+
 ## [2.0.8(2026-07-01)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.8...2.0.7)
 
 ### Added
