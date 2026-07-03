@@ -229,6 +229,7 @@ describe('MonthlyPaymentRepository.findUnpaidMonthlyDriverIds()', () => {
     expect(literalCondition).toBeDefined()
     expect(literalCondition.val).toContain('NOT EXISTS')
     expect(literalCondition.val).toContain('driver_monthly_payments')
+    expect(literalCondition.val).toContain("dmp.status = 'active'")
     expect(callArg.replacements).toEqual({ period: '2026-06' })
   })
 
@@ -274,7 +275,7 @@ describe('MonthlyPaymentRepository.hasPaymentForPeriod()', () => {
 
     expect(result).toBe(true)
     expect(MonthlyPaymentRecord.count).toHaveBeenCalledWith({
-      where: { driverId: 'drv-1', period: '2026-06' },
+      where: { driverId: 'drv-1', period: '2026-06', status: 'active' },
     })
   })
 

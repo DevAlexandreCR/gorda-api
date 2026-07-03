@@ -593,6 +593,54 @@ controller.get('/:id/monthly-payments', async (req: Request, res: Response) => {
   }
 })
 
+controller.post('/:id/monthly-payments/:paymentId/void', async (req: Request, res: Response) => {
+  const driverId = req.params.id
+  const paymentId = req.params.paymentId
+  const { reason, created_by } = req.body
+
+  if (typeof reason !== 'string' || !reason.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'reason is required',
+      data: {},
+    })
+  }
+
+  if (
+    !created_by ||
+    typeof created_by.uid !== 'string' ||
+    !created_by.uid ||
+    typeof created_by.name !== 'string' ||
+    !created_by.name
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'created_by.uid and created_by.name are required',
+      data: {},
+    })
+  }
+
+  try {
+    const payment = await Container.getMonthlyPaymentRepository().void(driverId, paymentId, {
+      uid: created_by.uid,
+      name: created_by.name,
+      reason,
+    })
+    await store.refreshDrivers()
+    return res.status(200).json({ success: true, data: { payment } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    if (message === 'Payment not found') {
+      return res.status(404).json({ success: false, message, data: {} })
+    }
+    if (message === 'Payment already voided') {
+      return res.status(409).json({ success: false, message, data: {} })
+    }
+    console.error('Error voiding monthly payment:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+})
+
 controller.get('/:id', async (req: Request, res: Response) => {
   try {
     const driverId = req.params.id

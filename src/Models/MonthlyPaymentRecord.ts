@@ -2,11 +2,16 @@ import { DataTypes, Model, Optional } from 'sequelize'
 import sequelize from '../Database/sequelize'
 import { MonthlyPaymentInterface } from '../Interfaces/MonthlyPaymentInterface'
 
-type MonthlyPaymentCreationAttributes = Optional<MonthlyPaymentInterface, 'note' | 'created_at'>
+type MonthlyPaymentAttributes = MonthlyPaymentInterface
+
+type MonthlyPaymentCreationAttributes = Optional<
+  MonthlyPaymentAttributes,
+  'note' | 'created_at' | 'status' | 'voidedAt' | 'voidedByUid' | 'voidedByName' | 'voidReason'
+>
 
 class MonthlyPaymentRecord
-  extends Model<MonthlyPaymentInterface, MonthlyPaymentCreationAttributes>
-  implements MonthlyPaymentInterface
+  extends Model<MonthlyPaymentAttributes, MonthlyPaymentCreationAttributes>
+  implements MonthlyPaymentAttributes
 {
   public id!: string
   public driverId!: string
@@ -16,6 +21,11 @@ class MonthlyPaymentRecord
   public createdByName!: string
   public note!: string | null
   public created_at!: number
+  public status!: string
+  public voidedAt!: number | null
+  public voidedByUid!: string | null
+  public voidedByName!: string | null
+  public voidReason!: string | null
 }
 
 MonthlyPaymentRecord.init(
@@ -58,6 +68,35 @@ MonthlyPaymentRecord.init(
       type: DataTypes.BIGINT,
       allowNull: false,
       defaultValue: 0,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'active',
+    },
+    voidedAt: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+      field: 'voided_at',
+    },
+    voidedByUid: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+      field: 'voided_by_uid',
+    },
+    voidedByName: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+      field: 'voided_by_name',
+    },
+    voidReason: {
+      type: DataTypes.STRING(1024),
+      allowNull: true,
+      defaultValue: null,
+      field: 'void_reason',
     },
   } as any,
   {

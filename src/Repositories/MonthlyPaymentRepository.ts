@@ -60,6 +60,43 @@ class MonthlyPaymentRepository {
     }
   }
 
+  async void(
+    driverId: string,
+    paymentId: string,
+    { uid, name, reason }: { uid: string; name: string; reason: string }
+  ): Promise<MonthlyPaymentInterface> {
+    const txn = await sequelize.transaction()
+    try {
+      const payment = await MonthlyPaymentRecord.findOne({
+        where: { id: paymentId, driverId },
+        lock: true,
+        transaction: txn,
+      })
+
+      if (!payment) {
+        throw new Error('Payment not found')
+      }
+
+      if (payment.status === 'voided') {
+        throw new Error('Payment already voided')
+      }
+
+      payment.status = 'voided'
+      payment.voidedAt = Math.floor(Date.now() / 1000)
+      payment.voidedByUid = uid
+      payment.voidedByName = name
+      payment.voidReason = reason
+      await payment.save({ transaction: txn })
+
+      await txn.commit()
+
+      return this.mapPayment(payment)
+    } catch (error) {
+      await txn.rollback()
+      throw error
+    }
+  }
+
   async listForDriver(
     driverId: string,
     { page, perPage }: { page?: number; perPage?: number } = {}
@@ -79,7 +116,7 @@ class MonthlyPaymentRepository {
 
   async hasPaymentForPeriod(driverId: string, period: string): Promise<boolean> {
     const count = await MonthlyPaymentRecord.count({
-      where: { driverId, period },
+      where: { driverId, period, status: 'active' },
     })
 
     return count > 0
@@ -96,6 +133,7 @@ class MonthlyPaymentRepository {
             SELECT 1 FROM driver_monthly_payments dmp
             WHERE dmp.driver_id = "DriverRecord"."id"
             AND dmp.period = :period
+            AND dmp.status = 'active'
           )`),
         ],
       },
@@ -116,6 +154,11 @@ class MonthlyPaymentRepository {
       createdByName: plain.createdByName,
       note: plain.note ?? null,
       created_at: Number(plain.created_at),
+      status: plain.status,
+      voidedAt: plain.voidedAt !== null && plain.voidedAt !== undefined ? Number(plain.voidedAt) : null,
+      voidedByUid: plain.voidedByUid ?? null,
+      voidedByName: plain.voidedByName ?? null,
+      voidReason: plain.voidReason ?? null,
     }
   }
 
