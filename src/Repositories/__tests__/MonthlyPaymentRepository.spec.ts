@@ -260,6 +260,56 @@ describe('MonthlyPaymentRepository.findUnpaidMonthlyDriverIds()', () => {
 // hasPaymentForPeriod()
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// buildPaymentStatusClause()
+// ---------------------------------------------------------------------------
+
+describe('MonthlyPaymentRepository.buildPaymentStatusClause()', () => {
+  let repository: MonthlyPaymentRepository
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    repository = new MonthlyPaymentRepository()
+  })
+
+  it('paid: returns an EXISTS clause scoped to active payments for the period', () => {
+    const result = repository.buildPaymentStatusClause('paid', '2026-06')
+
+    expect(result.literal).toContain('EXISTS')
+    expect(result.literal).not.toContain('NOT EXISTS')
+    expect(result.literal).toContain('driver_monthly_payments')
+    expect(result.literal).toContain("dmp.status = 'active'")
+    expect(result.literal).toContain('dmp.period = :period')
+    expect(result.replacements).toEqual({ period: '2026-06' })
+  })
+
+  it('pending: returns the negation of the same active-payment EXISTS clause', () => {
+    const paid = repository.buildPaymentStatusClause('paid', '2026-06')
+    const pending = repository.buildPaymentStatusClause('pending', '2026-06')
+
+    expect(pending.literal).toBe(`NOT ${paid.literal}`)
+    expect(pending.replacements).toEqual({ period: '2026-06' })
+  })
+
+  it('scopes to the requested period via a replacement, not an inline literal', () => {
+    const result = repository.buildPaymentStatusClause('paid', '2026-07')
+
+    expect(result.replacements).toEqual({ period: '2026-07' })
+    expect(result.literal).not.toContain('2026-07')
+  })
+
+  it('a voided-only payment counts as pending, not paid, because the clause requires status = active', () => {
+    // There is no live-DB test harness in this suite (all repository specs mock the
+    // Sequelize layer), so "voided doesn't count as paid" is verified structurally:
+    // the EXISTS subquery only matches rows with status = 'active', so a row with
+    // status = 'voided' can never satisfy it and the driver falls through to pending.
+    const { literal } = repository.buildPaymentStatusClause('paid', '2026-06')
+
+    expect(literal).toContain("dmp.status = 'active'")
+    expect(literal).not.toContain("status = 'voided'")
+  })
+})
+
 describe('MonthlyPaymentRepository.hasPaymentForPeriod()', () => {
   let repository: MonthlyPaymentRepository
 

@@ -499,6 +499,74 @@ describe('GET /drivers (DriversController)', () => {
     })
   })
 
+  // --- paymentStatus / period validation (controller-level) ---
+
+  describe('400: invalid paymentStatus value', () => {
+    it('returns 400 when paymentStatus is "late" (not paid/pending)', async () => {
+      const { status, body } = await get(server, '/drivers?paymentStatus=late', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(body.message).toMatch(/paymentStatus/i)
+      expect(mockList).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('400: invalid period format', () => {
+    it('returns 400 when period is "2026-6" (missing leading zero)', async () => {
+      const { status, body } = await get(
+        server,
+        '/drivers?paymentStatus=paid&period=2026-6',
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(body.message).toMatch(/period/i)
+      expect(mockList).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when period is "June" (not YYYY-MM)', async () => {
+      const { status, body } = await get(
+        server,
+        '/drivers?paymentStatus=paid&period=June',
+        VALID_AUTH_HEADERS
+      )
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(body.message).toMatch(/period/i)
+      expect(mockList).not.toHaveBeenCalled()
+    })
+
+    it('does NOT validate period when paymentStatus is absent — an invalid period is simply ignored', async () => {
+      mockList.mockResolvedValue({ rows: [], total: 0 })
+
+      const { status, body } = await get(server, '/drivers?period=2026-6', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(200)
+      expect(body.success).toBe(true)
+      expect(mockList).toHaveBeenCalledTimes(1)
+      const callArg = (mockList as jest.Mock).mock.calls[0][0]
+      expect(callArg.paymentStatus).toBeUndefined()
+    })
+  })
+
+  describe('200: paymentStatus forwarding to list()', () => {
+    it('forwards period=undefined to list() when paymentStatus is set but period is omitted', async () => {
+      mockList.mockResolvedValue({ rows: [], total: 0 })
+
+      const { status, body } = await get(server, '/drivers?paymentStatus=paid', VALID_AUTH_HEADERS)
+
+      expect(status).toBe(200)
+      expect(body.success).toBe(true)
+      const callArg = (mockList as jest.Mock).mock.calls[0][0]
+      expect(callArg.paymentStatus).toBe('paid')
+      // period is left undefined here — the repository resolves the default (currentPeriod())
+      expect(callArg.period).toBeUndefined()
+    })
+  })
+
   // --- fallback to index() when no listed params ---
 
   describe('200: no listed params falls back to index()', () => {

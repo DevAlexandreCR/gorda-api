@@ -5,11 +5,15 @@ import { DriverInterface } from '../Interfaces/DriverInterface'
 import { VehicleRecordInterface } from '../Interfaces/VehicleRecordInterface'
 import Driver from '../Models/Driver'
 import { buildDriverAvailability } from '../Services/drivers/DriverAvailability'
+import Container from '../Container/Container'
+import { currentPeriod, periodEnd } from '../Services/time/BogotaTime'
 
 export interface DriverListQuery {
   search?: string
   status?: string
   paymentMode?: string
+  paymentStatus?: 'paid' | 'pending'
+  period?: string
   inactiveDays?: number
   needsVehicle?: boolean
   sort?: string
@@ -84,6 +88,22 @@ class DriverRecordRepository {
 
     if (query.paymentMode) {
       andWhere.push({ paymentMode: query.paymentMode })
+    }
+
+    if (query.paymentStatus) {
+      const period = query.period ?? currentPeriod()
+      andWhere.push({ paymentMode: 'monthly' })
+
+      const paymentStatusClause = Container.getMonthlyPaymentRepository().buildPaymentStatusClause(
+        query.paymentStatus,
+        period
+      )
+      andWhere.push(literal(paymentStatusClause.literal))
+      Object.assign(replacements, paymentStatusClause.replacements)
+
+      if (query.paymentStatus === 'pending') {
+        andWhere.push({ created_at: { [Op.lte]: periodEnd(period) } })
+      }
     }
 
     if (query.inactiveDays !== undefined && query.inactiveDays > 0) {

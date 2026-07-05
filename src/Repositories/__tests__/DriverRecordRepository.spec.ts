@@ -1,10 +1,22 @@
 import DriverRecordRepository from '../DriverRecordRepository'
 import DriverRecord from '../../Models/DriverRecord'
 import sequelize from '../../Database/sequelize'
+import Container from '../../Container/Container'
+import { currentPeriod, periodEnd } from '../../Services/time/BogotaTime'
 
 jest.mock('../../Models/DriverRecord', () => ({
   findAndCountAll: jest.fn(),
   findAll: jest.fn(),
+}))
+
+// Container is used to reach MonthlyPaymentRepository.buildPaymentStatusClause() for the
+// paymentStatus filter; stub it so the paymentStatus tests control the clause returned
+// without constructing a real MonthlyPaymentRepository (which loads its own models).
+jest.mock('../../Container/Container', () => ({
+  __esModule: true,
+  default: {
+    getMonthlyPaymentRepository: jest.fn(),
+  },
 }))
 
 // buildDriverAvailability is called inside mapDriver — provide a lightweight stub
@@ -248,6 +260,130 @@ describe('DriverRecordRepository.list()', () => {
       const str = serializeWhere(conditions)
 
       expect(str).toContain('"paymentMode":"monthly"')
+    })
+  })
+
+  // --- filter by paymentStatus ---
+
+  describe('filter by paymentStatus', () => {
+    const mockBuildPaymentStatusClause = jest.fn()
+
+    beforeEach(() => {
+      mockBuildPaymentStatusClause.mockReset()
+      ;(Container.getMonthlyPaymentRepository as jest.Mock).mockReturnValue({
+        buildPaymentStatusClause: mockBuildPaymentStatusClause,
+      })
+      ;(DriverRecord.findAndCountAll as jest.Mock).mockResolvedValue({ count: 0, rows: [] })
+    })
+
+    it('paid: forces paymentMode=monthly and merges the EXISTS clause + replacements from MonthlyPaymentRepository', async () => {
+      mockBuildPaymentStatusClause.mockReturnValue({
+        literal: `EXISTS (
+          SELECT 1 FROM driver_monthly_payments dmp
+          WHERE dmp.driver_id = "DriverRecord"."id"
+          AND dmp.period = :period
+          AND dmp.status = 'active'
+        )`,
+        replacements: { period: '2026-06' },
+      })
+
+      await repository.list({ paymentStatus: 'paid', period: '2026-06' })
+
+      expect(mockBuildPaymentStatusClause).toHaveBeenCalledWith('paid', '2026-06')
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+
+      expect(str).toContain('"paymentMode":"monthly"')
+      expect(str).toContain('EXISTS')
+      expect(callArg.replacements.period).toBe('2026-06')
+    })
+
+    it('pending: adds the NOT EXISTS clause and excludes drivers created after the resolved period end', async () => {
+      mockBuildPaymentStatusClause.mockReturnValue({
+        literal: `NOT EXISTS (
+          SELECT 1 FROM driver_monthly_payments dmp
+          WHERE dmp.driver_id = "DriverRecord"."id"
+          AND dmp.period = :period
+          AND dmp.status = 'active'
+        )`,
+        replacements: { period: '2026-06' },
+      })
+
+      await repository.list({ paymentStatus: 'pending', period: '2026-06' })
+
+      expect(mockBuildPaymentStatusClause).toHaveBeenCalledWith('pending', '2026-06')
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const str = serializeWhere(conditions)
+      expect(str).toContain('NOT EXISTS')
+
+      const { Op } = require('sequelize')
+      const createdAtCondition = conditions.find((c: any) => c.created_at !== undefined) as any
+      expect(createdAtCondition).toBeDefined()
+      expect(createdAtCondition.created_at[Op.lte]).toBe(periodEnd('2026-06'))
+    })
+
+    it('paid does NOT add the created_at cutoff (only pending is period-bounded)', async () => {
+      mockBuildPaymentStatusClause.mockReturnValue({
+        literal: `EXISTS (...)`,
+        replacements: { period: '2026-06' },
+      })
+
+      await repository.list({ paymentStatus: 'paid', period: '2026-06' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const createdAtCondition = conditions.find((c: any) => c.created_at !== undefined)
+
+      expect(createdAtCondition).toBeUndefined()
+    })
+
+    it('pending does NOT restrict by enabled_at — disabled monthly drivers still match', async () => {
+      mockBuildPaymentStatusClause.mockReturnValue({
+        literal: `NOT EXISTS (...)`,
+        replacements: { period: '2026-06' },
+      })
+
+      await repository.list({ paymentStatus: 'pending', period: '2026-06' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+      const enabledAtCondition = conditions.find((c: any) => c.enabled_at !== undefined)
+
+      expect(enabledAtCondition).toBeUndefined()
+    })
+
+    it('paymentMode=percentage combined with paymentStatus produces a contradictory, unsatisfiable where clause', async () => {
+      mockBuildPaymentStatusClause.mockReturnValue({
+        literal: `EXISTS (...)`,
+        replacements: { period: '2026-06' },
+      })
+
+      await repository.list({ paymentMode: 'percentage', paymentStatus: 'paid', period: '2026-06' })
+
+      const callArg = (DriverRecord.findAndCountAll as jest.Mock).mock.calls[0][0]
+      const conditions = extractConditions(callArg.where)
+
+      // Both { paymentMode: 'percentage' } (from the paymentMode param) and
+      // { paymentMode: 'monthly' } (forced by paymentStatus) end up ANDed together,
+      // so no row can ever satisfy both — percentage drivers never match paid/pending.
+      expect(conditions).toEqual(
+        expect.arrayContaining([{ paymentMode: 'percentage' }, { paymentMode: 'monthly' }])
+      )
+    })
+
+    it('defaults period to currentPeriod() when paymentStatus is set without an explicit period', async () => {
+      mockBuildPaymentStatusClause.mockReturnValue({
+        literal: `EXISTS (...)`,
+        replacements: { period: currentPeriod() },
+      })
+
+      await repository.list({ paymentStatus: 'paid' })
+
+      expect(mockBuildPaymentStatusClause).toHaveBeenCalledWith('paid', currentPeriod())
     })
   })
 

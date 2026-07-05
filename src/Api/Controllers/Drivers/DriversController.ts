@@ -17,9 +17,7 @@ import DriverRecord from '../../../Models/DriverRecord'
 import sequelize from '../../../Database/sequelize'
 import { autoPromoteSelectedVehicle } from '../../../Services/drivers/AutoPromoteVehicle'
 import { forceDisconnect } from '../../../Services/drivers/ForceDisconnect'
-import { currentPeriod } from '../../../Services/time/BogotaTime'
-
-const PERIOD_FORMAT = /^\d{4}-(0[1-9]|1[0-2])$/
+import { currentPeriod, PERIOD_FORMAT } from '../../../Services/time/BogotaTime'
 
 const controller = Router()
 const publicController = Router()
@@ -60,8 +58,19 @@ function toMobileDriverVehicle(
 
 controller.use(requireAuth)
 
-const LISTED_PARAMS = ['search', 'status', 'paymentMode', 'inactiveDays', 'sort', 'page', 'perPage']
+const LISTED_PARAMS = [
+  'search',
+  'status',
+  'paymentMode',
+  'paymentStatus',
+  'period',
+  'inactiveDays',
+  'sort',
+  'page',
+  'perPage',
+]
 const ALLOWED_PER_PAGE = [20, 30, 50]
+const PAYMENT_STATUSES = ['paid', 'pending']
 
 controller.get('/', async (req: Request, res: Response) => {
   const hasListedParams = LISTED_PARAMS.some((p) => req.query[p] !== undefined)
@@ -84,7 +93,8 @@ controller.get('/', async (req: Request, res: Response) => {
   }
 
   try {
-    const { search, status, paymentMode, inactiveDays, sort, page, perPage } = req.query
+    const { search, status, paymentMode, paymentStatus, period, inactiveDays, sort, page, perPage } =
+      req.query
 
     if (perPage !== undefined) {
       const perPageNum = Number(perPage)
@@ -97,12 +107,40 @@ controller.get('/', async (req: Request, res: Response) => {
       }
     }
 
+    let paymentStatusValue: 'paid' | 'pending' | undefined
+    if (paymentStatus !== undefined && String(paymentStatus) !== '') {
+      const paymentStatusStr = String(paymentStatus)
+      if (!PAYMENT_STATUSES.includes(paymentStatusStr)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid paymentStatus value. Allowed values: ${PAYMENT_STATUSES.join(', ')}`,
+          data: {},
+        })
+      }
+      paymentStatusValue = paymentStatusStr as 'paid' | 'pending'
+    }
+
+    let periodValue: string | undefined
+    if (paymentStatusValue !== undefined && period !== undefined && String(period) !== '') {
+      const periodStr = String(period)
+      if (!PERIOD_FORMAT.test(periodStr)) {
+        return res.status(400).json({
+          success: false,
+          message: 'period must match the format YYYY-MM',
+          data: {},
+        })
+      }
+      periodValue = periodStr
+    }
+
     const pageNum = Math.max(1, parseInt(String(page ?? '1'), 10) || 1)
 
     const query: DriverListQuery = {
       search: search !== undefined ? String(search) : undefined,
       status: status !== undefined ? String(status) : undefined,
       paymentMode: paymentMode !== undefined ? String(paymentMode) : undefined,
+      paymentStatus: paymentStatusValue,
+      period: periodValue,
       inactiveDays: inactiveDays !== undefined ? Number(inactiveDays) : undefined,
       sort: sort !== undefined ? String(sort) : undefined,
       page: pageNum,

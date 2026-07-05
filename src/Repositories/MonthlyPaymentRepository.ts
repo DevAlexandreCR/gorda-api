@@ -143,6 +143,23 @@ class MonthlyPaymentRepository {
     return drivers.map((d) => d.id)
   }
 
+  buildPaymentStatusClause(
+    status: 'paid' | 'pending',
+    period: string
+  ): { literal: string; replacements: Record<string, any> } {
+    const existsClause = `EXISTS (
+      SELECT 1 FROM driver_monthly_payments dmp
+      WHERE dmp.driver_id = "DriverRecord"."id"
+      AND dmp.period = :period
+      AND dmp.status = 'active'
+    )`
+
+    return {
+      literal: status === 'paid' ? existsClause : `NOT ${existsClause}`,
+      replacements: { period },
+    }
+  }
+
   private mapPayment(p: MonthlyPaymentRecord): MonthlyPaymentInterface {
     const plain = p.get({ plain: true }) as any
     return {
