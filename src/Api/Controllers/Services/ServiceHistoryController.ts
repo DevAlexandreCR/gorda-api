@@ -19,6 +19,8 @@ controller.get('/history', async (req: Request, res: Response) => {
       typeof req.query.cursorId === 'string' && req.query.cursorId.length > 0
         ? req.query.cursorId
         : undefined
+    const routeIntegrity: 'flagged' | undefined =
+      req.query.routeIntegrity === 'flagged' ? 'flagged' : undefined
 
     if (!Number.isFinite(from) || !Number.isFinite(to)) {
       return res.status(400).json({
@@ -43,6 +45,7 @@ controller.get('/history', async (req: Request, res: Response) => {
         direction,
         cursorCreated,
         cursorId,
+        routeIntegrity,
       }),
       repository.count(filters),
       repository.count({
@@ -66,6 +69,38 @@ controller.get('/history', async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('Error fetching service history:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: {},
+    })
+  }
+})
+
+controller.get('/route-integrity', async (req: Request, res: Response) => {
+  try {
+    const from = Number(req.query.from)
+    const to = Number(req.query.to)
+
+    if (!Number.isFinite(from) || !Number.isFinite(to)) {
+      return res.status(400).json({
+        success: false,
+        message: 'from and to are required numeric unix timestamps',
+        data: {},
+      })
+    }
+
+    const driverId = typeof req.query.driverId === 'string' ? req.query.driverId : undefined
+
+    const repository = Container.getServiceHistoryRepository()
+    const rows = await repository.aggregateRouteIntegrity({ from, to, driverId })
+
+    return res.status(200).json({
+      success: true,
+      data: { rows },
+    })
+  } catch (error) {
+    console.error('Error fetching route integrity report:', error)
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
