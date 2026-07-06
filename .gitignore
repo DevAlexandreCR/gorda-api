@@ -16,3 +16,5 @@ firebaseAccount.json
 ./ecosystem.config.js
 /src/Database/Seeders/Dump/**.json
 /docs/
+.claude/agent-memory/
+
