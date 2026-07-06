@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.9(2026-07-03)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.9...2.0.8)
+## [2.0.10(2026-07-05)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.10...2.0.9)
+
+### Added
+
+- Support payment filtering on the drivers list (`GET /drivers`): filter by `paymentMode` (monthly/percentage) and by `paymentStatus` (paid/pending) for a given `period` (`YYYY-MM`, defaulting to the current Bogota period), joining active monthly payments to resolve paid/pending status.
+- Add a route integrity audit endpoint (`GET /services/route-integrity`) that aggregates per-driver metrics (total trips, flagged trips, flagged ratio) over a date range, plus a `routeIntegrity=flagged` filter on `GET /services/history`. A single canonical rule flags terminated trips that went through the trip flow but have no usable route capture or a non-positive trip distance.
 
 ### Added
 
