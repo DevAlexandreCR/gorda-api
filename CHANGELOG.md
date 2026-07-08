@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.11(2026-07-08)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.11...2.0.10)
+
+### Added
+
+- Add `GET /metrics/revenue` returning per-month commission earned, active monthly-fee income (excluding voided), paying-driver counts, and recharge totals.
+- Add a `commission_sum` rollup column to `service_metrics_daily`, incrementally maintained on finalize and backfilled via `rebuildAllMetrics()`, so revenue reads never scan `service_history`.
+- Expose a monthly frequency for the top-drivers metric.
+
 ## [2.0.10(2026-07-05)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.10...2.0.9)
 
 ### Added
