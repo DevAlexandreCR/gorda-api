@@ -81,7 +81,7 @@ class ServiceHistoryMigrationService {
     const start = dayjs.tz(`${metricDate} 00:00:00`, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').unix()
     const end = dayjs.tz(`${metricDate} 23:59:59`, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').unix()
     const rows = await ServiceHistoryRecord.findAll({
-      attributes: ['status'],
+      attributes: ['status', 'deducted_value'],
       where: {
         created_at: {
           [Op.gte]: start,
@@ -95,11 +95,17 @@ class ServiceHistoryMigrationService {
     })
 
     const counts = new Map<string, number>()
-    FINAL_STATUSES.forEach((status) => counts.set(status, 0))
+    const commissionSums = new Map<string, number>()
+    FINAL_STATUSES.forEach((status) => {
+      counts.set(status, 0)
+      commissionSums.set(status, 0)
+    })
 
     rows.forEach((row: any) => {
       const status = row.status as string
+      const deductedValue = Number(row.deducted_value) || 0
       counts.set(status, (counts.get(status) ?? 0) + 1)
+      commissionSums.set(status, (commissionSums.get(status) ?? 0) + deductedValue)
     })
 
     for (const status of FINAL_STATUSES) {
@@ -113,13 +119,14 @@ class ServiceHistoryMigrationService {
         date: metricDate,
         status,
         count,
+        commission_sum: commissionSums.get(status) ?? 0,
       })
     }
   }
 
   async rebuildAllMetrics(): Promise<number> {
     const rows = await ServiceHistoryRecord.findAll({
-      attributes: ['created_at', 'status'],
+      attributes: ['created_at', 'status', 'deducted_value'],
       where: {
         status: {
           [Op.in]: FINAL_STATUSES,
@@ -133,11 +140,14 @@ class ServiceHistoryMigrationService {
     })
 
     const grouped = new Map<string, number>()
+    const groupedCommissionSums = new Map<string, number>()
 
     rows.forEach((row: any) => {
       const date = this.getMetricDate(Number(row.created_at))
       const key = `${date}:${row.status}`
+      const deductedValue = Number(row.deducted_value) || 0
       grouped.set(key, (grouped.get(key) ?? 0) + 1)
+      groupedCommissionSums.set(key, (groupedCommissionSums.get(key) ?? 0) + deductedValue)
     })
 
     const metrics = Array.from(grouped.entries()).map(([key, count]) => {
@@ -146,6 +156,7 @@ class ServiceHistoryMigrationService {
         date,
         status,
         count,
+        commission_sum: groupedCommissionSums.get(key) ?? 0,
       }
     })
 

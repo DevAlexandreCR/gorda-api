@@ -1,4 +1,4 @@
-import { Op } from 'sequelize'
+import { Op, fn, col } from 'sequelize'
 import ServiceMetricDailyRecord from '../Models/ServiceMetricDailyRecord'
 import { ServiceMetricDailyInterface } from '../Interfaces/ServiceMetricDailyInterface'
 import { MetricType } from '../Types/MetricType'
@@ -33,6 +33,39 @@ class ServiceMetricsDailyRepository {
     }
 
     return metrics.length
+  }
+
+  /**
+   * `commission_sum` grouped by calendar month of `date` (already a Bogota-day
+   * DATEONLY column, so no timezone conversion is needed) within the given
+   * date range, filtered to a single `status`. The endpoint (task 2.2) is
+   * responsible for passing `'terminated'` so income excludes canceled rides.
+   */
+  async getCommissionByMonth(
+    startDate: string,
+    endDate: string,
+    status: string
+  ): Promise<Array<{ period: string; commissionSum: number }>> {
+    const rows = await ServiceMetricDailyRecord.findAll({
+      attributes: [
+        [fn('to_char', col('date'), 'YYYY-MM'), 'period'],
+        [fn('SUM', col('commission_sum')), 'commissionSum'],
+      ],
+      where: {
+        status,
+        date: {
+          [Op.gte]: startDate,
+          [Op.lte]: endDate,
+        },
+      },
+      group: ['period'],
+      raw: true,
+    })
+
+    return rows.map((row: any) => ({
+      period: row.period,
+      commissionSum: Number(row.commissionSum ?? 0),
+    }))
   }
 
   async listGlobal(startDate: string, endDate: string): Promise<GlobalMetric[]> {

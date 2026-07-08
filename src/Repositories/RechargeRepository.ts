@@ -1,9 +1,11 @@
+import { Op, fn, col } from 'sequelize'
 import sequelize from '../Database/sequelize'
 import RechargeRecord from '../Models/RechargeRecord'
 import DriverRecord from '../Models/DriverRecord'
 import { RechargeInterface } from '../Interfaces/RechargeInterface'
 import { DriverInterface } from '../Interfaces/DriverInterface'
 import { buildDriverAvailability } from '../Services/drivers/DriverAvailability'
+import { BOGOTA_TIMEZONE, periodStart, periodEnd } from '../Services/time/BogotaTime'
 
 class RechargeRepository {
   async create({
@@ -76,6 +78,50 @@ class RechargeRepository {
     })
 
     return { rows: rows.map((r) => this.mapRecharge(r)), total: count }
+  }
+
+  /**
+   * Per-month SUM(amount) and COUNT(*), grouped by the Bogota-month of the
+   * BIGINT unix `created_at` (converted in SQL via `to_timestamp` + `timezone`,
+   * matching the rollup's day convention). `from`/`to` are `YYYY-MM` period
+   * strings; the query is bounded to their Bogota month-start/end unix
+   * boundaries so it never scans rows outside the requested range.
+   */
+  async getRevenueByPeriodRange(
+    from: string,
+    to: string
+  ): Promise<Array<{ period: string; amount: number; count: number }>> {
+    const startUnix = periodStart(from)
+    const endUnix = periodEnd(to)
+
+    const rows = await RechargeRecord.findAll({
+      attributes: [
+        [
+          fn(
+            'to_char',
+            fn('timezone', BOGOTA_TIMEZONE, fn('to_timestamp', col('created_at'))),
+            'YYYY-MM'
+          ),
+          'period',
+        ],
+        [fn('SUM', col('amount')), 'amount'],
+        [fn('COUNT', col('id')), 'count'],
+      ],
+      where: {
+        created_at: {
+          [Op.gte]: startUnix,
+          [Op.lte]: endUnix,
+        },
+      },
+      group: ['period'],
+      raw: true,
+    })
+
+    return rows.map((row: any) => ({
+      period: row.period,
+      amount: Number(row.amount ?? 0),
+      count: Number(row.count ?? 0),
+    }))
   }
 
   private mapRecharge(r: RechargeRecord): RechargeInterface {

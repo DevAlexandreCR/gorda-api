@@ -17,6 +17,10 @@ export function currentDayOfMonth(): number {
   return dayjs().tz(BOGOTA_TIMEZONE).date()
 }
 
+export function periodStart(period: string): number {
+  return dayjs.tz(period, BOGOTA_TIMEZONE).startOf('month').unix()
+}
+
 export function periodEnd(period: string): number {
   return dayjs.tz(period, BOGOTA_TIMEZONE).endOf('month').unix()
 }

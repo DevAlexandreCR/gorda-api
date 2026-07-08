@@ -4,7 +4,7 @@ import { ServiceMetricDailyInterface } from '../Interfaces/ServiceMetricDailyInt
 
 type ServiceMetricDailyCreationAttributes = Optional<
   ServiceMetricDailyInterface,
-  'created_at' | 'updated_at'
+  'commission_sum' | 'created_at' | 'updated_at'
 >
 
 class ServiceMetricDailyRecord
@@ -14,6 +14,7 @@ class ServiceMetricDailyRecord
   public date!: string
   public status!: string
   public count!: number
+  public commission_sum!: number
   public readonly created_at!: Date
   public readonly updated_at!: Date
 }
@@ -32,6 +33,11 @@ ServiceMetricDailyRecord.init(
     },
     count: {
       type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    commission_sum: {
+      type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0,
     },

@@ -1,4 +1,4 @@
-import { Op, literal } from 'sequelize'
+import { Op, literal, fn, col } from 'sequelize'
 import sequelize from '../Database/sequelize'
 import MonthlyPaymentRecord from '../Models/MonthlyPaymentRecord'
 import DriverRecord from '../Models/DriverRecord'
@@ -120,6 +120,36 @@ class MonthlyPaymentRepository {
     })
 
     return count > 0
+  }
+
+  /**
+   * Per-period SUM(amount) and COUNT(DISTINCT driver_id) for active payments,
+   * bounded to the requested `YYYY-MM` period range (inclusive). `period` is a
+   * zero-padded `YYYY-MM` string column, so a lexical BETWEEN is safe.
+   */
+  async getRevenueByPeriodRange(
+    from: string,
+    to: string
+  ): Promise<Array<{ period: string; amount: number; payingDriverCount: number }>> {
+    const rows = await MonthlyPaymentRecord.findAll({
+      attributes: [
+        'period',
+        [fn('SUM', col('amount')), 'amount'],
+        [fn('COUNT', fn('DISTINCT', col('driver_id'))), 'payingDriverCount'],
+      ],
+      where: {
+        status: 'active',
+        period: { [Op.between]: [from, to] },
+      },
+      group: ['period'],
+      raw: true,
+    })
+
+    return rows.map((row: any) => ({
+      period: row.period,
+      amount: Number(row.amount ?? 0),
+      payingDriverCount: Number(row.payingDriverCount ?? 0),
+    }))
   }
 
   async findUnpaidMonthlyDriverIds(period: string): Promise<string[]> {
