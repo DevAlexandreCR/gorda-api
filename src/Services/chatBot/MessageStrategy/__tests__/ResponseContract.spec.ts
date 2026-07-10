@@ -33,7 +33,9 @@ jest.mock('../../../../Repositories/ServiceRepository', () => ({
 
 jest.mock('../../../../Services/store/Store', () => ({
   Store: {
-    getInstance: jest.fn().mockReturnValue({}),
+    getInstance: jest.fn().mockReturnValue({
+      findCountryByCity: jest.fn().mockReturnValue('colombia'),
+    }),
   },
 }))
 
@@ -122,6 +124,8 @@ describe('ResponseContract.createService', () => {
 
     const capturedService = (ServiceRepository.create as jest.Mock).mock.calls[0][0]
     expect(capturedService.client_id).toBe('573001234567')
+    expect(capturedService.start_loc.city).toBe('popayan')
+    expect(capturedService.start_loc.country).toBe('colombia')
   })
 
   it('persists client_completed_services_count with the value returned by the repo (happy path)', async () => {

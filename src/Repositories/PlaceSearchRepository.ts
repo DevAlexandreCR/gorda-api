@@ -62,7 +62,7 @@ class PlaceSearchRepository {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
-      SELECT id, name, lat, lng, city_id, 1.0 as score
+      SELECT id, name, lat, lng, city_id AS "cityId", 1.0 as score
       FROM "places"
       WHERE LOWER(name) = LOWER(:query)
       ${whereClause}
@@ -87,7 +87,7 @@ class PlaceSearchRepository {
       .join(' OR ')
 
     const sql = `
-      SELECT id, name, lat, lng, city_id, 
+      SELECT id, name, lat, lng, city_id AS "cityId",
              :keywordScore as score
       FROM "places"
       WHERE (${keywordConditions})
@@ -115,7 +115,7 @@ class PlaceSearchRepository {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
-      SELECT id, name, lat, lng, city_id, similarity(name, :query) AS score
+      SELECT id, name, lat, lng, city_id AS "cityId", similarity(name, :query) AS score
       FROM "places"
       WHERE name % :query
       ${whereClause}
@@ -140,8 +140,8 @@ class PlaceSearchRepository {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
-      SELECT id, name, lat, lng, city_id, 
-             CASE 
+      SELECT id, name, lat, lng, city_id AS "cityId",
+             CASE
                WHEN LOWER(name) LIKE LOWER(:exactQuery) THEN 0.9
                WHEN LOWER(name) LIKE LOWER(:startQuery) THEN 0.7
                WHEN LOWER(name) LIKE LOWER(:containsQuery) THEN 0.5

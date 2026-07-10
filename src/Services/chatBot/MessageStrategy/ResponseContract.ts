@@ -69,7 +69,12 @@ export abstract class ResponseContract {
     const service = new Service()
     service.wp_client_id = this.getWpClientId()
     service.client_id = ChatIdHelper.toCanonicalClientId(this.session.chat_id)
-    service.start_loc = place
+    const cityId = place.cityId || 'popayan'
+    service.start_loc = {
+      ...place,
+      city: cityId,
+      country: this.store.findCountryByCity(cityId),
+    }
     service.phone = this.currentClient.phone
     service.name = this.currentClient.name
     if (comment) service.comment = comment

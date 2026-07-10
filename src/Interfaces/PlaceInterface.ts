@@ -5,6 +5,8 @@ export interface PlaceInterface {
   lng: number
   location: any
   cityId: string
+  city?: string
+  country?: string
   createdAt?: Date
   updatedAt?: Date
 }

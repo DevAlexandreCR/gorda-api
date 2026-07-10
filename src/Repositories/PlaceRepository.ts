@@ -87,7 +87,7 @@ class PlaceRepository {
     const replacements: any = { name, cityId }
 
     let sql = `
-    SELECT id, name, lat, lng, city_id, similarity(name, :name) AS score
+    SELECT id, name, lat, lng, city_id AS "cityId", similarity(name, :name) AS score
     FROM "places"
     WHERE name % :name
     `
