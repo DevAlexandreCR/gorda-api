@@ -96,9 +96,23 @@ jest.mock('../../../../Repositories/DriverVehicleRepository', () => ({
 // DatabaseService — firebase RTDB singleton
 const mockRtdbChildSet = jest.fn()
 const mockRtdbChildRemove = jest.fn()
+// The heartbeat handler uses Reference.transaction(): the mock invokes the
+// update function synchronously against `mockRtdbCurrentValue` (the node
+// state the test wants to simulate) and records what it returned so tests
+// can assert abort-vs-commit — `undefined` means "abort, do not write".
+let mockRtdbCurrentValue: any = null
+let mockRtdbTransactionUpdateResult: any
+const mockRtdbChildTransaction = jest.fn((updateFn: (current: any) => any) => {
+  mockRtdbTransactionUpdateResult = updateFn(mockRtdbCurrentValue)
+  return Promise.resolve({
+    committed: mockRtdbTransactionUpdateResult !== undefined,
+    snapshot: { val: () => mockRtdbTransactionUpdateResult },
+  })
+})
 const mockRtdbChild = jest.fn(() => ({
   set: mockRtdbChildSet,
   remove: mockRtdbChildRemove,
+  transaction: mockRtdbChildTransaction,
 }))
 jest.mock('../../../../Services/firebase/Database', () => ({
   __esModule: true,
@@ -119,6 +133,10 @@ const mockTransaction = { commit: mockTransactionCommit, rollback: mockTransacti
 // Container is required after mocks so spyOn works correctly
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Container = require('../../../../Container/Container').default
+
+const MockedAuth = jest.requireMock('../../../../Middlewares/Authorization') as {
+  requireDriverAuth: jest.Mock
+}
 
 // ---------------------------------------------------------------------------
 // HTTP helpers
@@ -279,9 +297,12 @@ beforeEach(() => {
   mockRtdbChild.mockReturnValue({
     set: mockRtdbChildSet,
     remove: mockRtdbChildRemove,
+    transaction: mockRtdbChildTransaction,
   })
   mockRtdbChildSet.mockResolvedValue(undefined)
   mockRtdbChildRemove.mockResolvedValue(undefined)
+  mockRtdbCurrentValue = null
+  mockRtdbTransactionUpdateResult = undefined
   mockDriverRecordUpdate.mockReset()
   mockActiveVehicleAssignmentTryAcquire.mockReset()
   mockActiveVehicleAssignmentFindByDriver.mockReset()
@@ -739,5 +760,141 @@ describe('GET /driver-app/me/vehicles (DriverAppController)', () => {
         is_active: true,
       },
     ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PUT /driver-app/me/location — test cases
+// ---------------------------------------------------------------------------
+
+function makeOnlineDriverNode(overrides: Record<string, any> = {}) {
+  return {
+    id: DRIVER_UID,
+    vehicle_id: VEHICLE_ID,
+    vehicle_plate: 'ABC123',
+    session_id: 'sess-current',
+    location: { lat: 4.0, lng: -74.0 },
+    last_seen_at: 1_700_000_000_000,
+    ...overrides,
+  }
+}
+
+describe('PUT /driver-app/me/location (DriverAppController)', () => {
+  describe('200: happy path refresh', () => {
+    it('merges location and last_seen_at, keeping vehicle_id/vehicle_plate/session_id unchanged', async () => {
+      mockRtdbCurrentValue = makeOnlineDriverNode({ session_id: 'sess-abc' })
+
+      const { status, body } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-abc',
+        location: { lat: 4.6, lng: -74.1 },
+      })
+
+      expect(status).toBe(200)
+      expect(body.success).toBe(true)
+      expect(mockRtdbChild).toHaveBeenCalledWith(DRIVER_UID)
+      expect(mockRtdbChildTransaction).toHaveBeenCalledTimes(1)
+      expect(mockRtdbTransactionUpdateResult).toEqual(
+        expect.objectContaining({
+          id: DRIVER_UID,
+          vehicle_id: VEHICLE_ID,
+          vehicle_plate: 'ABC123',
+          session_id: 'sess-abc',
+          location: { lat: 4.6, lng: -74.1 },
+        })
+      )
+      expect(typeof mockRtdbTransactionUpdateResult.last_seen_at).toBe('number')
+    })
+  })
+
+  describe('410: absent node never recreates presence', () => {
+    it('returns 410 not_connected and aborts the transaction without writing', async () => {
+      mockRtdbCurrentValue = null
+
+      const { status, body } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-abc',
+        location: { lat: 4.6, lng: -74.1 },
+      })
+
+      expect(status).toBe(410)
+      expect(body).toEqual({ error: 'not_connected' })
+      expect(mockRtdbChildTransaction).toHaveBeenCalledTimes(1)
+      // The update function must return undefined to abort — no node is created.
+      expect(mockRtdbTransactionUpdateResult).toBeUndefined()
+    })
+  })
+
+  describe('409: stale session cannot overwrite a newer connection', () => {
+    it('returns 409 session_superseded and aborts the transaction without writing', async () => {
+      mockRtdbCurrentValue = makeOnlineDriverNode({ session_id: 'sess-newer' })
+
+      const { status, body } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-stale',
+        location: { lat: 4.6, lng: -74.1 },
+      })
+
+      expect(status).toBe(409)
+      expect(body).toEqual({ error: 'session_superseded' })
+      expect(mockRtdbChildTransaction).toHaveBeenCalledTimes(1)
+      expect(mockRtdbTransactionUpdateResult).toBeUndefined()
+    })
+  })
+
+  describe('400: invalid body', () => {
+    it('returns 400 when session_id is missing', async () => {
+      const { status, body } = await put(server, '/driver-app/me/location', {
+        location: { lat: 4.6, lng: -74.1 },
+      })
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockRtdbChildTransaction).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when location is missing', async () => {
+      const { status, body } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-abc',
+      })
+
+      expect(status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(mockRtdbChildTransaction).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when location.lat is not a finite number', async () => {
+      const { status } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-abc',
+        location: { lat: 'not-a-number', lng: -74.1 },
+      })
+
+      expect(status).toBe(400)
+      expect(mockRtdbChildTransaction).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when location.lng is Infinity', async () => {
+      const { status } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-abc',
+        location: { lat: 4.6, lng: Infinity },
+      })
+
+      expect(status).toBe(400)
+      expect(mockRtdbChildTransaction).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('401: unauthenticated', () => {
+    it('returns 401 when the request carries no driverUid', async () => {
+      MockedAuth.requireDriverAuth.mockImplementationOnce((_req: any, _res: any, next: any) =>
+        next()
+      )
+
+      const { status, body } = await put(server, '/driver-app/me/location', {
+        session_id: 'sess-abc',
+        location: { lat: 4.6, lng: -74.1 },
+      })
+
+      expect(status).toBe(401)
+      expect(body.success).toBe(false)
+      expect(mockRtdbChildTransaction).not.toHaveBeenCalled()
+    })
   })
 })

@@ -25,7 +25,19 @@ module.exports = {
       "CHROMIUM_PATH": "/usr/bin/chromium-browser",
       "CANCEL_TIMEOUT": 480000,
       "DISCONNECT_TIMEOUT": 900000,
-      "DRIVER_STALE_SECONDS": 180,
+      // Presence rollout guard (fix-driver-presence-realtime): deploy with
+      // DRIVER_STALE_SECONDS high (e.g. 86400) so old driver-app builds that don't
+      // yet send the location heartbeat aren't evicted 180s after connecting.
+      // Sequence: 1) deploy api with this high value, 2) ship the admin DriverMap
+      // fix, 3) release the driver app build with the heartbeat and raise
+      // DRIVER_MIN_VERSION_CODE below (enforced at connect time only — drivers
+      // already connected on an old build keep a frozen marker until they
+      // reconnect), 4) once adoption is confirmed, lower DRIVER_STALE_SECONDS to
+      // 180 (steady-state default, see api/config.js and api/agents.md).
+      "DRIVER_STALE_SECONDS": 86400,
+      "PRESENCE_SWEEP_INTERVAL_MS": 60000,
+      // Raise only after step 3 above (driver app release) ships; connect-time gate only.
+      "DRIVER_MIN_VERSION_CODE": 72,
       "INBOUND_MESSAGE_MAX_AGE_MINUTES": 120,
       "INBOUND_MESSAGE_DEDUP_TTL_SECONDS": 21600,
       "INBOUND_MESSAGE_METRICS_FLUSH_SECONDS": 60,

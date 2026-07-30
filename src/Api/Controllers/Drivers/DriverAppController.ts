@@ -391,6 +391,69 @@ controller.post('/me/disconnect', async (req: Request, res: Response) => {
   }
 })
 
+controller.put('/me/location', async (req: Request, res: Response) => {
+  const { driverUid } = req as DriverAuthenticatedRequest
+
+  if (!driverUid) {
+    return res
+      .status(401)
+      .json({ success: false, message: 'Driver authentication required', data: {} })
+  }
+
+  const { session_id, location } = req.body
+  const requestedSessionId = session_id ? String(session_id) : null
+  const lat = location?.lat
+  const lng = location?.lng
+
+  if (!requestedSessionId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({
+      success: false,
+      message: 'session_id and location.lat/lng are required',
+      data: {},
+    })
+  }
+
+  // A heartbeat must never create or resurrect a presence node: absent node → 410,
+  // mismatched session (stale app instance) → 409, otherwise merge location + last_seen_at.
+  let outcome: 'not_connected' | 'session_superseded' | 'updated' = 'not_connected'
+
+  try {
+    await DatabaseService.dbConnectedDrivers()
+      .child(driverUid)
+      .transaction((current) => {
+        if (!current) {
+          outcome = 'not_connected'
+          return undefined
+        }
+
+        if (current.session_id !== requestedSessionId) {
+          outcome = 'session_superseded'
+          return undefined
+        }
+
+        outcome = 'updated'
+        return {
+          ...current,
+          location: { lat, lng },
+          last_seen_at: Date.now(),
+        }
+      })
+  } catch (error) {
+    console.error('Error during driver location heartbeat:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+
+  if (outcome === 'not_connected') {
+    return res.status(410).json({ error: 'not_connected' })
+  }
+
+  if (outcome === 'session_superseded') {
+    return res.status(409).json({ error: 'session_superseded' })
+  }
+
+  return res.status(200).json({ success: true, data: {} })
+})
+
 controller.get('/me/vehicles', async (req: Request, res: Response) => {
   const { driverUid } = req as DriverAuthenticatedRequest
 

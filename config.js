@@ -43,5 +43,10 @@ module.exports = {
   CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS || '',
   ADMIN_MIN_VERSION: process.env.ADMIN_MIN_VERSION || '2.0.0',
   DRIVER_MIN_VERSION_CODE: Number.parseInt(process.env.DRIVER_MIN_VERSION_CODE || '72', 10) || 72,
-  DRIVER_STALE_SECONDS: Number.parseInt(process.env.DRIVER_STALE_SECONDS || '180', 10) || 180
+  DRIVER_STALE_SECONDS: Number.parseInt(process.env.DRIVER_STALE_SECONDS || '180', 10) || 180,
+  // Drives RemoveConnectedDrivers' sweep cadence — decoupled from DISCONNECT_TIMEOUT
+  // (900000 ms), which is too coarse for a 180s DRIVER_STALE_SECONDS threshold.
+  // Rollout guard: deploy with DRIVER_STALE_SECONDS high (e.g. 86400) until the
+  // driver-app heartbeat release is adopted, then lower it to 180.
+  PRESENCE_SWEEP_INTERVAL_MS: Number.parseInt(process.env.PRESENCE_SWEEP_INTERVAL_MS || '60000', 10) || 60000
 }
