@@ -113,6 +113,7 @@ docker compose restart api
 - **Necessary Comments**: When comments are needed (complex business logic, non-obvious behavior, or API quirks), write them in English.
 - **Language**: All code, variable names, function names, and documentation must be in English for consistency across the codebase.
 - **Documentation & Plans**: All planning documents, technical specifications, and implementation plans must be written in English and stored in the `/docs` directory. Plans should include problem description, proposed solution, implementation steps, test cases, and rollback procedures.
+- **Changelog**: When a change (OpenSpec or otherwise) affecting `api` is completed, add a short entry to `CHANGELOG.md` under `## [Unreleased]`, matching the file's current Keep a Changelog format — never add a new version heading.
 
 ## 9. Adding a New Agent
 

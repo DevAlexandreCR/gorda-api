@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add an authenticated heartbeat endpoint `PUT /driver-app/me/location` that refreshes `location` and `last_seen_at` on `online_drivers/{id}` via an RTDB transaction: aborts with `410 not_connected` without ever recreating a removed presence node, and aborts with `409 session_superseded` to protect a newer session from being overwritten by a stale one.
+- Add an optional `PRESENCE_SWEEP_INTERVAL_MS` env var (default 60000) driving the stale-presence sweep interval, decoupled from `DISCONNECT_TIMEOUT`.
+
+### Fixed
+
+- Fix stale-presence eviction in `RemoveConnectedDrivers`, which never fired due to a milliseconds-vs-seconds units mismatch between `last_seen_at` and the configured threshold. Eviction is now silent (no force-disconnect FCM push), releases the driver's vehicle assignment, and is immune to phantom staleness via a tracker purge on node removal plus a remove-if-stale RTDB transaction safe under concurrent sweeps.
+
 ## [2.0.11(2026-07-08)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.11...2.0.10)
 
 ### Added
