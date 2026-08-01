@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.12(2026-08-01)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.12...2.0.11)
+
 ### Added
 
 - Add an authenticated heartbeat endpoint `PUT /driver-app/me/location` that refreshes `location` and `last_seen_at` on `online_drivers/{id}` via an RTDB transaction: aborts with `410 not_connected` without ever recreating a removed presence node, and aborts with `409 session_superseded` to protect a newer session from being overwritten by a stale one.
