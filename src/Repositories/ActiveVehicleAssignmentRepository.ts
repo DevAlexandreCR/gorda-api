@@ -25,8 +25,8 @@ class ActiveVehicleAssignmentRepository {
     txn: Transaction
   ): Promise<boolean> {
     const [rows] = (await sequelize.query(
-      `INSERT INTO active_vehicle_assignments (vehicle_id, driver_id, session_id)
-       VALUES (:vehicleId, :driverId, :sessionId)
+      `INSERT INTO active_vehicle_assignments (vehicle_id, driver_id, session_id, acquired_at)
+       VALUES (:vehicleId, :driverId, :sessionId, NOW())
        ON CONFLICT DO NOTHING
        RETURNING vehicle_id`,
       {

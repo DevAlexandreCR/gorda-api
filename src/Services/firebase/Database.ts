@@ -32,6 +32,14 @@ class DatabaseService {
     return this.db.ref('online_drivers/')
   }
 
+  public dbDriversAssigned(): Reference {
+    return this.db.ref('drivers_assigned/')
+  }
+
+  public dbServiceConnections(): Reference {
+    return this.db.ref('service_connections/')
+  }
+
   public dbPlaces(): Reference {
     return this.db.ref('places/')
   }

@@ -238,6 +238,27 @@ export class Store {
     return this.cities.get(cityId)
   }
 
+  getDefaultBranchCity(): { branchId: string; cityId: string } {
+    const branches = Array.from(this.branches.values())
+
+    if (branches.length === 0) {
+      throw new Error('No branch configured for self-service default')
+    }
+    if (branches.length > 1) {
+      throw new Error('Multiple branches configured, default branch is ambiguous')
+    }
+
+    const [branch] = branches
+    if (branch.cities.length === 0) {
+      throw new Error('No city configured for self-service default')
+    }
+    if (branch.cities.length > 1) {
+      throw new Error('Multiple cities configured, default city is ambiguous')
+    }
+
+    return { branchId: branch.id, cityId: branch.cities[0].id }
+  }
+
   findCountryByCity(cityId: string): string {
     let country = ''
     this.branches.forEach((branch) => {

@@ -16,5 +16,6 @@ export type RideFeeInterface = {
   timeout_to_complete: number
   timeout_to_connection: number
   fee_multiplier: number
+  self_service_cancel_window: number
   dynamic_multipliers: DynamicMultiplier[]
 }

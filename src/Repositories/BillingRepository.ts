@@ -6,6 +6,7 @@ import utc from 'dayjs/plugin/utc'
 import sequelize from '../Database/sequelize'
 import BillingLineChargeRecord from '../Models/BillingLineChargeRecord'
 import BillingSettingRecord from '../Models/BillingSettingRecord'
+import Service from '../Models/Service'
 import {
   BillingConfigResponse,
   BillingLineCharge,
@@ -24,6 +25,7 @@ type ServiceSourceRow = {
   total_services: string | number | null
   admin_services: string | number | null
   bot_services: string | number | null
+  driver_services: string | number | null
   unidentified_services: string | number | null
 }
 
@@ -100,11 +102,13 @@ class BillingRepository {
     const totalServices = toNumber(sourceRow?.total_services)
     const adminServices = toNumber(sourceRow?.admin_services)
     const botServices = toNumber(sourceRow?.bot_services)
+    const driverServices = toNumber(sourceRow?.driver_services)
     const unidentifiedServices = toNumber(sourceRow?.unidentified_services)
 
     const serviceSources: BillingSummarySource[] = [
       { key: 'admin', label: 'Panel admin', count: adminServices },
       { key: 'bot', label: 'Bot WhatsApp', count: botServices },
+      { key: 'driver', label: 'Conductor', count: driverServices },
     ]
 
     if (unidentifiedServices > 0) {
@@ -147,19 +151,25 @@ class BillingRepository {
     const rows = await sequelize.query<ServiceSourceRow>(
       `SELECT
         COUNT(*) AS total_services,
-        COUNT(*) FILTER (WHERE NULLIF(BTRIM(created_by), '') IS NOT NULL) AS admin_services,
         COUNT(*) FILTER (
-          WHERE NULLIF(BTRIM(created_by), '') IS NULL
+          WHERE origin IS DISTINCT FROM :driverOrigin
+            AND NULLIF(BTRIM(created_by), '') IS NOT NULL
+        ) AS admin_services,
+        COUNT(*) FILTER (
+          WHERE origin IS DISTINCT FROM :driverOrigin
+            AND NULLIF(BTRIM(created_by), '') IS NULL
             AND NULLIF(BTRIM(wp_client_id), '') IS NOT NULL
         ) AS bot_services,
+        COUNT(*) FILTER (WHERE origin = :driverOrigin) AS driver_services,
         COUNT(*) FILTER (
-          WHERE NULLIF(BTRIM(created_by), '') IS NULL
+          WHERE origin IS DISTINCT FROM :driverOrigin
+            AND NULLIF(BTRIM(created_by), '') IS NULL
             AND NULLIF(BTRIM(wp_client_id), '') IS NULL
         ) AS unidentified_services
       FROM service_history
       WHERE created_at BETWEEN :startUnix AND :endUnix`,
       {
-        replacements: { startUnix, endUnix },
+        replacements: { startUnix, endUnix, driverOrigin: Service.ORIGIN_DRIVER },
         type: QueryTypes.SELECT,
       }
     )

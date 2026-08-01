@@ -206,3 +206,50 @@ describe('GET /services/clients/:clientId/completed-count', () => {
     })
   })
 })
+
+describe('GET /services/history origin filter', () => {
+  const mockListPage = jest.fn()
+  const mockHistoryCount = jest.fn()
+
+  beforeEach(() => {
+    mockListPage.mockReset()
+    mockHistoryCount.mockReset()
+    mockListPage.mockResolvedValue([])
+    mockHistoryCount.mockResolvedValue(0)
+    jest.spyOn(Container, 'getServiceHistoryRepository').mockReturnValue({
+      listPage: mockListPage,
+      count: mockHistoryCount,
+    })
+  })
+
+  it('forwards a valid origin value ("driver") to listPage and count filters', async () => {
+    const { status } = await get(
+      server,
+      '/services/history?from=1&to=2&origin=driver',
+      VALID_AUTH_HEADERS
+    )
+
+    expect(status).toBe(200)
+    expect(mockListPage).toHaveBeenCalledWith(expect.objectContaining({ origin: 'driver' }))
+    expect(mockHistoryCount).toHaveBeenCalledWith(expect.objectContaining({ origin: 'driver' }))
+  })
+
+  it('ignores an unknown origin value, passing origin: undefined downstream', async () => {
+    const { status } = await get(
+      server,
+      '/services/history?from=1&to=2&origin=bogus',
+      VALID_AUTH_HEADERS
+    )
+
+    expect(status).toBe(200)
+    expect(mockListPage).toHaveBeenCalledWith(expect.objectContaining({ origin: undefined }))
+    expect(mockHistoryCount).toHaveBeenCalledWith(expect.objectContaining({ origin: undefined }))
+  })
+
+  it('defaults origin to undefined when the param is absent', async () => {
+    const { status } = await get(server, '/services/history?from=1&to=2', VALID_AUTH_HEADERS)
+
+    expect(status).toBe(200)
+    expect(mockListPage).toHaveBeenCalledWith(expect.objectContaining({ origin: undefined }))
+  })
+})

@@ -11,12 +11,21 @@ import ActiveVehicleAssignmentRepository from '../../../Repositories/ActiveVehic
 import DriverVehicleRepository from '../../../Repositories/DriverVehicleRepository'
 import DatabaseService from '../../../Services/firebase/Database'
 import sequelize from '../../../Database/sequelize'
+import { Store } from '../../../Services/store/Store'
+import Service from '../../../Models/Service'
+import ServiceRepository from '../../../Repositories/ServiceRepository'
+import ChatIdHelper from '../../../Helpers/ChatIdHelper'
+import { resolveDriverCurrentVehicle } from '../../../Services/drivers/DriverVehicleResolver'
+import { ServiceInterface } from '../../../Interfaces/ServiceInterface'
+import { PlaceInterface } from '../../../Interfaces/PlaceInterface'
+import { Metadata } from '../../../Interfaces/Metadata'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 const controller = Router()
 const driverVehicleRepo = new DriverVehicleRepository()
+const store = Store.getInstance()
 
 controller.use(requireDriverAuth)
 
@@ -387,6 +396,441 @@ controller.post('/me/disconnect', async (req: Request, res: Response) => {
     return res.status(200).json({ success: true, data: {} })
   } catch (error) {
     console.error('Error during driver disconnect:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+})
+
+// A deferred payload carries the app-reported clock for a self-service trip that already
+// finished offline (see design.md D5): `created_at`/`start_trip_at` are always required,
+// plus either termination fields (status='terminated') or nothing else (status='canceled').
+// Bounds: no reported timestamp may exceed the sync request's arrival time, and ordering
+// must be created_at <= start_trip_at < end_trip_at. Violations are rejected, nothing written.
+type DeferredPlan = {
+  createdAt: number
+  startTripAt: number
+  status: string
+  endTripAt?: number
+  tripFee?: number
+  tripDistance?: number
+  route?: string | null
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function validateDeferredPayload(
+  body: any,
+  requestReceivedAt: number
+): { ok: true; plan: DeferredPlan } | { ok: false; reason: string } {
+  const createdAt = Number(body?.created_at)
+  const startTripAt = Number(body?.start_trip_at)
+  const status = body?.status
+
+  if (!isFiniteNumber(createdAt) || createdAt <= 0) {
+    return { ok: false, reason: 'invalid_created_at' }
+  }
+  if (!isFiniteNumber(startTripAt) || startTripAt <= 0) {
+    return { ok: false, reason: 'invalid_start_trip_at' }
+  }
+  if (status !== Service.STATUS_TERMINATED && status !== Service.STATUS_CANCELED) {
+    return { ok: false, reason: 'invalid_status' }
+  }
+  if (createdAt > requestReceivedAt || startTripAt > requestReceivedAt) {
+    return { ok: false, reason: 'timestamp_exceeds_arrival_time' }
+  }
+  if (createdAt > startTripAt) {
+    return { ok: false, reason: 'invalid_timestamp_order' }
+  }
+
+  if (status === Service.STATUS_CANCELED) {
+    return { ok: true, plan: { createdAt, startTripAt, status } }
+  }
+
+  const endTripAt = Number(body?.end_trip_at)
+  const tripFee = Number(body?.trip_fee)
+  const tripDistance = Number(body?.trip_distance)
+  const route = body?.route != null ? String(body.route) : null
+
+  if (!isFiniteNumber(endTripAt) || endTripAt <= 0) {
+    return { ok: false, reason: 'invalid_end_trip_at' }
+  }
+  if (endTripAt > requestReceivedAt) {
+    return { ok: false, reason: 'timestamp_exceeds_arrival_time' }
+  }
+  if (startTripAt >= endTripAt) {
+    return { ok: false, reason: 'invalid_timestamp_order' }
+  }
+  if (!isFiniteNumber(tripFee) || tripFee < 0) {
+    return { ok: false, reason: 'invalid_trip_fee' }
+  }
+  if (!isFiniteNumber(tripDistance) || tripDistance < 0) {
+    return { ok: false, reason: 'invalid_trip_distance' }
+  }
+
+  return {
+    ok: true,
+    plan: { createdAt, startTripAt, status, endTripAt, tripFee, tripDistance, route },
+  }
+}
+
+controller.post('/me/services', async (req: Request, res: Response) => {
+  const { driverUid } = req as DriverAuthenticatedRequest
+
+  if (!driverUid) {
+    return res
+      .status(401)
+      .json({ success: false, message: 'Driver authentication required', data: {} })
+  }
+
+  const requestReceivedAt = dayjs().unix()
+  const { location, trip_multiplier } = req.body
+  const isDeferred = req.body?.deferred === true
+  const lat = location?.lat
+  const lng = location?.lng
+  const tripMultiplier = Number(trip_multiplier)
+
+  if (
+    !Number.isFinite(lat) ||
+    lat < -90 ||
+    lat > 90 ||
+    !Number.isFinite(lng) ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'location.lat/lng are required and must be valid coordinates',
+      data: {},
+    })
+  }
+
+  if (!Number.isFinite(tripMultiplier) || tripMultiplier < 1.0) {
+    return res.status(400).json({
+      success: false,
+      message: 'trip_multiplier is required and must be a number >= 1.0',
+      data: {},
+    })
+  }
+
+  // Deferred payloads describe a trip that already ran (and possibly finished) offline: they
+  // skip presence/availability/busy checks entirely — the ride happened regardless of the
+  // driver's current state — and are validated/rejected before anything else runs.
+  let deferredPlan: DeferredPlan | null = null
+  if (isDeferred) {
+    const validation = validateDeferredPayload(req.body, requestReceivedAt)
+    if (!validation.ok) {
+      console.log(
+        JSON.stringify({
+          metric: 'self_service.rejected.malformed_deferred_payload',
+          driverId: driverUid,
+          reason: validation.reason,
+        })
+      )
+      return res
+        .status(400)
+        .json({ error: 'malformed_deferred_payload', reason: validation.reason })
+    }
+    deferredPlan = validation.plan
+  }
+
+  // Step 1 — driver must be currently connected (presence) — online creations only
+  if (!isDeferred) {
+    const presenceSnapshot = await DatabaseService.dbConnectedDrivers().child(driverUid).get()
+    if (!presenceSnapshot.exists()) {
+      console.log(
+        JSON.stringify({
+          metric: 'self_service.rejected.driver_not_connected',
+          driverId: driverUid,
+        })
+      )
+      return res.status(403).json({ error: 'driver_not_connected' })
+    }
+  }
+
+  // Step 2 — load the driver record (name/phone are needed for the record in both modes;
+  // the enabled check below only applies to online creations)
+  const driver = await DriverRecord.findByPk(driverUid)
+  if (!driver) {
+    return res.status(404).json({ success: false, message: 'Driver not found', data: {} })
+  }
+  const driverPlain = driver.get({ plain: true }) as any
+
+  if (!isDeferred) {
+    if (!driverPlain.enabled_at || Number(driverPlain.enabled_at) <= 0) {
+      console.log(
+        JSON.stringify({ metric: 'self_service.rejected.driver_disabled', driverId: driverUid })
+      )
+      return res.status(403).json({ error: 'driver_disabled' })
+    }
+
+    // Step 3 — monthly drivers always pass, percentage drivers need a positive balance
+    const paymentMode = driverPlain.paymentMode ?? 'monthly'
+    const balance = Number(driverPlain.balance ?? 0)
+    if (paymentMode === 'percentage' && balance <= 0) {
+      console.log(
+        JSON.stringify({
+          metric: 'self_service.rejected.negative_balance_percentage',
+          driverId: driverUid,
+        })
+      )
+      return res.status(403).json({ error: 'negative_balance_percentage' })
+    }
+
+    // Step 4 — driver must not already be busy with a current or queued service
+    const [assignedSnapshot, connectionSnapshot] = await Promise.all([
+      DatabaseService.dbDriversAssigned().child(driverUid).get(),
+      DatabaseService.dbServiceConnections().child(driverUid).get(),
+    ])
+    if (assignedSnapshot.exists() || connectionSnapshot.exists()) {
+      console.log(
+        JSON.stringify({
+          metric: 'self_service.rejected.driver_already_in_service',
+          driverId: driverUid,
+        })
+      )
+      return res.status(409).json({ error: 'driver_already_in_service' })
+    }
+  }
+
+  // Step 5 — resolve the default branch/city for start_loc
+  let branchCity: { branchId: string; cityId: string }
+  try {
+    branchCity = store.getDefaultBranchCity()
+  } catch (error) {
+    console.error('Error resolving default branch/city for self-service trip:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'No default branch/city configured for self-service trips',
+      data: {},
+    })
+  }
+
+  // Step 6 — build and write the service record, pointer (online only), and vehicle snapshot
+  try {
+    const clientId = ChatIdHelper.toCanonicalClientId(driverPlain.phone)
+
+    // service_history.client_id is a foreign key into clients — for admin/bot services that
+    // row already exists (created when the customer first messaged the bot or was registered
+    // in the panel). A self-service trip has no such customer, so it must upsert the driver's
+    // own pseudo-client row here or the eventual history finalize will fail with an FK violation.
+    await Container.getClientRepository().store({
+      id: clientId,
+      name: driverPlain.name,
+      phone: driverPlain.phone,
+    })
+
+    const startLoc: PlaceInterface = {
+      id: '',
+      name: 'Self service trip',
+      lat,
+      lng,
+      location: null,
+      cityId: branchCity.cityId,
+      city: branchCity.cityId,
+      country: branchCity.branchId,
+    }
+
+    // Online creations are server-stamped (the API controls the moment of creation);
+    // deferred payloads carry the app-reported clock so history reflects when the ride
+    // actually happened (design.md D5).
+    const createdAt = isDeferred ? (deferredPlan as DeferredPlan).createdAt : requestReceivedAt
+    const startTripAt = isDeferred ? (deferredPlan as DeferredPlan).startTripAt : requestReceivedAt
+
+    const initialMetadata: Metadata = {
+      start_trip_at: startTripAt,
+      trip_multiplier: tripMultiplier,
+    }
+
+    const service: ServiceInterface = {
+      id: null,
+      status: Service.STATUS_IN_PROGRESS,
+      start_loc: startLoc,
+      end_loc: null,
+      phone: driverPlain.phone,
+      name: driverPlain.name,
+      comment: '',
+      amount: null,
+      metadata: initialMetadata,
+      driver_id: driverUid,
+      client_id: clientId,
+      wp_client_id: Service.WP_CLIENT_ID_DRIVER_APP,
+      created_at: createdAt,
+      origin: Service.ORIGIN_DRIVER,
+      directed_to: driverUid,
+    }
+
+    const created = await ServiceRepository.create(service)
+    const serviceId = created.id as string
+
+    // Deferred syncs of already-finished trips skip the drivers_assigned pointer entirely
+    // (design.md D2) — the trip is not "current" for anyone by the time it syncs.
+    if (!isDeferred) {
+      await DatabaseService.dbDriversAssigned().child(driverUid).set(serviceId)
+    }
+
+    try {
+      const vehicle = await resolveDriverCurrentVehicle(driverUid)
+      if (vehicle) {
+        await DatabaseService.dbServices()
+          .child(serviceId)
+          .child('vehicle')
+          .set({
+            plate: vehicle.plate,
+            brand: vehicle.brand ?? null,
+            model: vehicle.model ?? null,
+            color: vehicle.color ?? null,
+          })
+      }
+    } catch (vehicleError) {
+      console.error('Error writing vehicle snapshot for self-service trip:', vehicleError)
+    }
+
+    if (isDeferred) {
+      const plan = deferredPlan as DeferredPlan
+
+      // Applied as a single second write (after the in_progress create above) so the
+      // existing services/{id}/status onUpdate trigger fires normally — settlement, history
+      // finalize, and pointer cleanup. Creating the record directly in a terminal state
+      // would silently skip all of that (design.md D5).
+      let finalMetadata: Metadata
+      if (plan.status === Service.STATUS_TERMINATED) {
+        // Mirrors exactly what the driver app writes on a normal termination:
+        // metadata{end_trip_at, route, trip_distance, trip_fee, trip_multiplier}.
+        finalMetadata = {
+          ...initialMetadata,
+          end_trip_at: plan.endTripAt,
+          route: plan.route ?? null,
+          trip_distance: Math.round(plan.tripDistance as number),
+          trip_fee: plan.tripFee === 0 ? null : plan.tripFee,
+          trip_multiplier: tripMultiplier,
+        }
+      } else {
+        finalMetadata = { ...initialMetadata, deferred: true }
+      }
+
+      await DatabaseService.dbServices().child(serviceId).update({
+        metadata: finalMetadata,
+        status: plan.status,
+      })
+
+      created.status = plan.status
+      created.metadata = finalMetadata
+
+      console.log(
+        JSON.stringify({
+          metric: `self_service.deferred_${plan.status}`,
+          driverId: driverUid,
+          serviceId,
+        })
+      )
+    } else {
+      console.log(
+        JSON.stringify({ metric: 'self_service.created', driverId: driverUid, serviceId })
+      )
+    }
+
+    return res.status(200).json({ success: true, data: { service: created } })
+  } catch (error) {
+    console.error('Error creating self-service trip:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+})
+
+controller.post('/me/services/:id/cancel', async (req: Request, res: Response) => {
+  const { driverUid } = req as DriverAuthenticatedRequest
+
+  if (!driverUid) {
+    return res
+      .status(401)
+      .json({ success: false, message: 'Driver authentication required', data: {} })
+  }
+
+  const serviceId = req.params.id
+
+  let service: ServiceInterface
+  try {
+    service = await ServiceRepository.findServiceById(serviceId)
+  } catch (error) {
+    return res.status(404).json({ error: 'service_not_found' })
+  }
+
+  if (service.origin !== Service.ORIGIN_DRIVER) {
+    console.log(
+      JSON.stringify({
+        metric: 'self_service.cancel.rejected.not_self_service',
+        driverId: driverUid,
+        serviceId,
+      })
+    )
+    return res.status(403).json({ error: 'not_self_service' })
+  }
+
+  if (service.driver_id !== driverUid) {
+    console.log(
+      JSON.stringify({
+        metric: 'self_service.cancel.rejected.not_owner',
+        driverId: driverUid,
+        serviceId,
+      })
+    )
+    return res.status(403).json({ error: 'not_owner' })
+  }
+
+  if (service.status !== Service.STATUS_IN_PROGRESS) {
+    console.log(
+      JSON.stringify({
+        metric: 'self_service.cancel.rejected.invalid_status',
+        driverId: driverUid,
+        serviceId,
+        status: service.status,
+      })
+    )
+    return res.status(409).json({ error: 'invalid_status' })
+  }
+
+  const startTripAt = Number(service.metadata?.start_trip_at)
+  if (!Number.isFinite(startTripAt) || startTripAt <= 0) {
+    console.error('Self-service cancel: service missing metadata.start_trip_at', { serviceId })
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+
+  // Same accessor the public ride-fees snapshot uses, so the app-visible window and the
+  // server-enforced one always agree (design.md D6) — never hardcode the window here.
+  let cancelWindow: number
+  try {
+    const rideFees = await Container.getMasterDataRepository().buildPricingSnapshot()
+    cancelWindow = Number(rideFees.self_service_cancel_window)
+  } catch (error) {
+    console.error('Error resolving self-service cancel window:', error)
+    return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
+  }
+
+  const now = dayjs().unix()
+  if (now - startTripAt > cancelWindow) {
+    console.log(
+      JSON.stringify({
+        metric: 'self_service.cancel.rejected.cancel_window_elapsed',
+        driverId: driverUid,
+        serviceId,
+        elapsed: now - startTripAt,
+        cancelWindow,
+      })
+    )
+    return res.status(409).json({ error: 'cancel_window_elapsed' })
+  }
+
+  try {
+    // Reuses the existing status-update path so the services/{id}/status onUpdate trigger
+    // fires normally (pointer cleanup, no charge) — do not stamp metadata.deferred here,
+    // that flag is exclusive to the deferred-sync path (design.md D5).
+    await ServiceRepository.updateStatus(serviceId, Service.STATUS_CANCELED)
+    console.log(
+      JSON.stringify({ metric: 'self_service.cancel.success', driverId: driverUid, serviceId })
+    )
+    return res.status(200).json({ success: true, data: {} })
+  } catch (error) {
+    console.error('Error canceling self-service trip:', error)
     return res.status(500).json({ success: false, message: 'Internal server error', data: {} })
   }
 })

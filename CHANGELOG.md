@@ -12,14 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an authenticated heartbeat endpoint `PUT /driver-app/me/location` that refreshes `location` and `last_seen_at` on `online_drivers/{id}` via an RTDB transaction: aborts with `410 not_connected` without ever recreating a removed presence node, and aborts with `409 session_superseded` to protect a newer session from being overwritten by a stale one.
 - Add an optional `PRESENCE_SWEEP_INTERVAL_MS` env var (default 60000) driving the stale-presence sweep interval, decoupled from `DISCONNECT_TIMEOUT`.
 - Add `directed_to` to the RTDB service interface and an `ORIGIN_TEST` constant for directed test services.
+- Add `POST /driver-app/me/services`, letting a connected driver create a metered "self-service" trip (`origin='driver'`): online mode enforces eligibility (connected, enabled, monthly-or-positive-balance, not already busy) with typed rejection reasons; a `deferred: true` mode accepts app-reported timestamps and terminal data for trips completed offline, applying the terminal status as a second write so settlement and history triggers fire.
+- Add `POST /driver-app/me/services/:id/cancel` for windowed driver cancellation of self-service trips, backed by a new `self_service_cancel_window` ride-fee setting (default 120s) delivered via the ride-fees snapshot.
+- Add a `driver` ("Conductor") bucket to the billing service-source summary, excluded from the `admin`/`bot` buckets.
+- Add an `origin` query param to `GET /services/history`.
 
 ### Changed
 
 - Exclude `origin = 'test'` history rows from the `service_metrics_daily` rebuild (both `rebuildMetricsForDate` and `rebuildAllMetrics`), using a NULL-safe predicate, so directed test services no longer inflate operational counts or commission revenue.
+- Exclude `origin = 'driver'` services from client-scoped completed-service counts.
 
 ### Fixed
 
 - Fix stale-presence eviction in `RemoveConnectedDrivers`, which never fired due to a milliseconds-vs-seconds units mismatch between `last_seen_at` and the configured threshold. Eviction is now silent (no force-disconnect FCM push), releases the driver's vehicle assignment, and is immune to phantom staleness via a tracker purge on node removal plus a remove-if-stale RTDB transaction safe under concurrent sweeps.
+- Fix self-service creation not upserting the `clients` row for the driver-derived `client_id`, which caused an FK violation when finalizing `service_history`.
 
 ## [2.0.11(2026-07-08)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.11...2.0.10)
 

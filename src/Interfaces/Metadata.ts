@@ -7,4 +7,5 @@ export type Metadata = {
   discount?: number | null
   trip_distance?: number | null
   trip_multiplier?: number | null
+  deferred?: boolean | null
 }

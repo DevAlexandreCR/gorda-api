@@ -73,6 +73,50 @@ describe('ServiceHistoryRepository filter normalization', () => {
     })
   })
 
+  describe('Case F: origin filter narrows the where clause', () => {
+    it('count({ origin: "driver" }) queries with an origin equality filter', async () => {
+      ;(ServiceHistoryRecord.count as jest.Mock).mockResolvedValue(2)
+
+      const result = await repository.count({ origin: 'driver' })
+
+      expect(result).toBe(2)
+      const callArg = (ServiceHistoryRecord.count as jest.Mock).mock.calls[0][0]
+      expect(callArg.where).toEqual({ origin: 'driver' })
+    })
+
+    it('listPage({ origin: "driver" }) passes an origin equality filter to findAll', async () => {
+      ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValue([])
+
+      await repository.listPage({ origin: 'driver' })
+
+      const callArg = (ServiceHistoryRecord.findAll as jest.Mock).mock.calls[0][0]
+      expect(callArg.where).toEqual({ origin: 'driver' })
+    })
+
+    it('omits the origin condition entirely when origin is not provided', async () => {
+      ;(ServiceHistoryRecord.count as jest.Mock).mockResolvedValue(9)
+
+      await repository.count({})
+
+      const callArg = (ServiceHistoryRecord.count as jest.Mock).mock.calls[0][0]
+      expect(callArg.where).toEqual({})
+    })
+
+    it('combines origin with other filters under Op.and', async () => {
+      ;(ServiceHistoryRecord.count as jest.Mock).mockResolvedValue(1)
+
+      await repository.count({ origin: 'driver', status: 'terminated' })
+
+      const callArg = (ServiceHistoryRecord.count as jest.Mock).mock.calls[0][0]
+      const { Op } = require('sequelize')
+      const conditions: object[] = callArg.where[Op.and] ?? [callArg.where]
+      const conditionsString = JSON.stringify(conditions)
+
+      expect(conditionsString).toContain('"origin":"driver"')
+      expect(conditionsString).toContain('"status":"terminated"')
+    })
+  })
+
   describe('Case D: clientId filter is canonicalized before querying', () => {
     it('count() strips @c.us suffix from clientId and queries with digits-only client_id', async () => {
       ;(ServiceHistoryRecord.count as jest.Mock).mockResolvedValue(3)

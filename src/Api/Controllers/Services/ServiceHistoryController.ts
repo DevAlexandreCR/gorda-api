@@ -3,10 +3,18 @@ import * as Sentry from '@sentry/node'
 import Container from '../../../Container/Container'
 import { requireAuth } from '../../../Middlewares/Authorization'
 import ChatIdHelper from '../../../Helpers/ChatIdHelper'
+import Service from '../../../Models/Service'
 
 const controller = Router()
 
 controller.use(requireAuth)
+
+const VALID_ORIGINS: string[] = [
+  Service.ORIGIN_ADMIN,
+  Service.ORIGIN_BOT,
+  Service.ORIGIN_TEST,
+  Service.ORIGIN_DRIVER,
+]
 
 controller.get('/history', async (req: Request, res: Response) => {
   try {
@@ -21,6 +29,10 @@ controller.get('/history', async (req: Request, res: Response) => {
         : undefined
     const routeIntegrity: 'flagged' | undefined =
       req.query.routeIntegrity === 'flagged' ? 'flagged' : undefined
+    const origin =
+      typeof req.query.origin === 'string' && VALID_ORIGINS.includes(req.query.origin)
+        ? req.query.origin
+        : undefined
 
     if (!Number.isFinite(from) || !Number.isFinite(to)) {
       return res.status(400).json({
@@ -36,6 +48,7 @@ controller.get('/history', async (req: Request, res: Response) => {
       to,
       clientId: typeof req.query.clientId === 'string' ? req.query.clientId : undefined,
       driverId: typeof req.query.driverId === 'string' ? req.query.driverId : undefined,
+      origin,
     }
 
     const [services, totalCount, terminatedCount, canceledCount] = await Promise.all([
@@ -115,6 +128,7 @@ controller.get('/clients/:clientId/completed-count', async (req: Request, res: R
     let completedServicesCount = await Container.getServiceHistoryRepository().count({
       clientId: req.params.clientId,
       status: 'terminated',
+      excludeDriverOrigin: true,
     })
     if (completedServicesCount < 0) {
       Sentry.captureException(

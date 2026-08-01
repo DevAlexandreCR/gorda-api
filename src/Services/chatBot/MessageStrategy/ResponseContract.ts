@@ -84,6 +84,7 @@ export abstract class ResponseContract {
         {
           clientId: canonicalClientId,
           status: 'terminated',
+          excludeDriverOrigin: true,
         }
       )
     } catch (error) {

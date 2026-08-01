@@ -3,6 +3,7 @@ import ServiceHistoryRecord from '../Models/ServiceHistoryRecord'
 import { ServiceInterface } from '../Interfaces/ServiceInterface'
 import ChatIdHelper from '../Helpers/ChatIdHelper'
 import VehicleRepository from './VehicleRepository'
+import Service from '../Models/Service'
 
 const vehicleRepo = new VehicleRepository()
 
@@ -46,11 +47,25 @@ type HistoryFilters = {
   clientId?: string
   driverId?: string
   status?: string
+  /**
+   * Generic origin equality filter for the admin history view/API (one of
+   * Service.ORIGIN_*). Distinct from `excludeDriverOrigin`, which is a
+   * driver-only exclusion used by client-scoped trust-signal counts.
+   */
+  origin?: string
   perPage?: number
   direction?: 'next' | 'prev'
   cursorCreated?: number
   cursorId?: string
   routeIntegrity?: 'flagged'
+  /**
+   * Client-scoped completed-service counts (trust signal endpoints) must
+   * exclude `origin='driver'` so a self-service trip, keyed by the driver's
+   * own phone as client_id, never accumulates client trust signals
+   * (design.md D8). Not applied to general/admin history counts, which
+   * still include driver-origin trips as real services.
+   */
+  excludeDriverOrigin?: boolean
 }
 
 type TopDriverMetric = {
@@ -240,8 +255,20 @@ class ServiceHistoryRepository {
       andWhere.push({ status: filters.status })
     }
 
+    if (filters.origin) {
+      andWhere.push({ origin: filters.origin })
+    }
+
     if (filters.routeIntegrity === 'flagged') {
       andWhere.push(this.routeFlaggedCondition() as unknown as WhereOptions<any>)
+    }
+
+    if (filters.excludeDriverOrigin) {
+      andWhere.push({
+        origin: {
+          [Op.or]: [{ [Op.ne]: Service.ORIGIN_DRIVER }, { [Op.is]: null }],
+        },
+      })
     }
 
     if (excludeEmptyDriver) {

@@ -18,6 +18,7 @@ class RideFeeSettingRecord extends Model {
   public timeout_to_complete!: number
   public timeout_to_connection!: number
   public fee_multiplier!: number
+  public self_service_cancel_window!: number
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
@@ -104,6 +105,11 @@ RideFeeSettingRecord.init(
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 1,
+    },
+    self_service_cancel_window: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 120,
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -14,13 +14,7 @@ import RideFeeDynamicMultiplierRecord from '../Models/RideFeeDynamicMultiplierRe
 import { RideFeeInterface } from '../Types/RideFeeInterface'
 
 type Dataset =
-  | 'users'
-  | 'drivers'
-  | 'wp_clients'
-  | 'ride_fees'
-  | 'chatbot_messages'
-  | 'branches'
-  | 'all'
+  'users' | 'drivers' | 'wp_clients' | 'ride_fees' | 'chatbot_messages' | 'branches' | 'all'
 
 async function logValidationOutputs(): Promise<void> {
   const masterDataRepository = Container.getMasterDataRepository()
@@ -241,6 +235,7 @@ async function backfillRideFees(): Promise<void> {
     timeout_to_complete: Number((value as any).timeout_to_complete ?? 240),
     timeout_to_connection: Number((value as any).timeout_to_connection ?? 120),
     fee_multiplier: Number(value.fee_multiplier ?? 1),
+    self_service_cancel_window: Number((value as any).self_service_cancel_window ?? 120),
     dynamic_multipliers: value.dynamic_multipliers ?? [],
   })
 
