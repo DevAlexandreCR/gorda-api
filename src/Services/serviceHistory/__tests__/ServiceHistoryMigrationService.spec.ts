@@ -1,5 +1,7 @@
+import { Op } from 'sequelize'
 import ServiceHistoryMigrationService from '../ServiceHistoryMigrationService'
 import ServiceHistoryRecord from '../../../Models/ServiceHistoryRecord'
+import Service from '../../../Models/Service'
 import { ServiceInterface } from '../../../Interfaces/ServiceInterface'
 
 jest.mock('../../../Models/ServiceHistoryRecord', () => ({
@@ -7,11 +9,15 @@ jest.mock('../../../Models/ServiceHistoryRecord', () => ({
   findAll: jest.fn().mockResolvedValue([]),
 }))
 
+const mockMetricsUpsert = jest.fn().mockResolvedValue(undefined)
+const mockMetricsDelete = jest.fn().mockResolvedValue(undefined)
+const mockMetricsRebuildAll = jest.fn().mockResolvedValue(0)
+
 jest.mock('../../../Repositories/ServiceMetricsDailyRepository', () => {
   return jest.fn().mockImplementation(() => ({
-    upsert: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
-    rebuildAll: jest.fn().mockResolvedValue(0),
+    upsert: mockMetricsUpsert,
+    delete: mockMetricsDelete,
+    rebuildAll: mockMetricsRebuildAll,
   }))
 })
 
@@ -122,6 +128,79 @@ describe('ServiceHistoryMigrationService.upsertHistoryRecord', () => {
 
       const capturedArg = (ServiceHistoryRecord.upsert as jest.Mock).mock.calls[0][0]
       expect(capturedArg.deducted_value).toBe(0)
+    })
+  })
+})
+
+describe('ServiceHistoryMigrationService.rebuildMetricsForDate', () => {
+  let service: ServiceHistoryMigrationService
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    service = new ServiceHistoryMigrationService()
+  })
+
+  describe('Case F: excludes origin=test rows from count and commission_sum', () => {
+    it('counts only real rows and sums commission excluding the test row', async () => {
+      ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValueOnce([
+        { status: Service.STATUS_TERMINATED, deducted_value: 1000 },
+        { status: Service.STATUS_TERMINATED, deducted_value: 500 },
+      ])
+
+      await service.rebuildMetricsForDate('2026-01-15')
+
+      expect(mockMetricsUpsert).toHaveBeenCalledWith({
+        date: '2026-01-15',
+        status: Service.STATUS_TERMINATED,
+        count: 2,
+        commission_sum: 1500,
+      })
+    })
+
+    it('builds a NULL-safe origin exclusion filter that excludes "test" but keeps NULL origin', async () => {
+      ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValueOnce([])
+
+      await service.rebuildMetricsForDate('2026-01-15')
+
+      const callArgs = (ServiceHistoryRecord.findAll as jest.Mock).mock.calls[0][0]
+      const originClause = callArgs.where.origin
+
+      expect(originClause[Op.or]).toEqual([{ [Op.ne]: Service.ORIGIN_TEST }, { [Op.is]: null }])
+    })
+  })
+
+  describe('Case G: a day whose only terminated rows are test-origin keeps no rollup row', () => {
+    it('deletes the terminated rollup row instead of upserting it', async () => {
+      ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValueOnce([])
+
+      await service.rebuildMetricsForDate('2026-01-16')
+
+      expect(mockMetricsDelete).toHaveBeenCalledWith('2026-01-16', Service.STATUS_TERMINATED)
+      expect(mockMetricsUpsert).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: Service.STATUS_TERMINATED })
+      )
+    })
+  })
+})
+
+describe('ServiceHistoryMigrationService.rebuildAllMetrics', () => {
+  let service: ServiceHistoryMigrationService
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    service = new ServiceHistoryMigrationService()
+  })
+
+  describe('Case H: builds the same NULL-safe origin exclusion filter as rebuildMetricsForDate', () => {
+    it('excludes origin="test" but keeps NULL origin rows in the backfill query', async () => {
+      ;(ServiceHistoryRecord.findAll as jest.Mock).mockResolvedValueOnce([])
+
+      await service.rebuildAllMetrics()
+
+      const callArgs = (ServiceHistoryRecord.findAll as jest.Mock).mock.calls[0][0]
+      const originClause = callArgs.where.origin
+
+      expect(originClause[Op.or]).toEqual([{ [Op.ne]: Service.ORIGIN_TEST }, { [Op.is]: null }])
     })
   })
 })

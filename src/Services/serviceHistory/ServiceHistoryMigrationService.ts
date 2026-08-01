@@ -90,6 +90,9 @@ class ServiceHistoryMigrationService {
         status: {
           [Op.in]: FINAL_STATUSES,
         },
+        origin: {
+          [Op.or]: [{ [Op.ne]: Service.ORIGIN_TEST }, { [Op.is]: null }],
+        },
       },
       raw: true,
     })
@@ -130,6 +133,9 @@ class ServiceHistoryMigrationService {
       where: {
         status: {
           [Op.in]: FINAL_STATUSES,
+        },
+        origin: {
+          [Op.or]: [{ [Op.ne]: Service.ORIGIN_TEST }, { [Op.is]: null }],
         },
       },
       raw: true,

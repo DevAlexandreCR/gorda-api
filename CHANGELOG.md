@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add an authenticated heartbeat endpoint `PUT /driver-app/me/location` that refreshes `location` and `last_seen_at` on `online_drivers/{id}` via an RTDB transaction: aborts with `410 not_connected` without ever recreating a removed presence node, and aborts with `409 session_superseded` to protect a newer session from being overwritten by a stale one.
 - Add an optional `PRESENCE_SWEEP_INTERVAL_MS` env var (default 60000) driving the stale-presence sweep interval, decoupled from `DISCONNECT_TIMEOUT`.
+- Add `directed_to` to the RTDB service interface and an `ORIGIN_TEST` constant for directed test services.
+
+### Changed
+
+- Exclude `origin = 'test'` history rows from the `service_metrics_daily` rebuild (both `rebuildMetricsForDate` and `rebuildAllMetrics`), using a NULL-safe predicate, so directed test services no longer inflate operational counts or commission revenue.
 
 ### Fixed
 
