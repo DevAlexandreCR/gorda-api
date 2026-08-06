@@ -49,11 +49,11 @@ This document explains the agents (long-running services, jobs, and helper modul
 
 **RemoveConnectedDrivers sweep cadence**: its `setInterval` is driven by `PRESENCE_SWEEP_INTERVAL_MS` (default 60000 ms), not `DISCONNECT_TIMEOUT`. It evicts any `online_drivers/{id}` whose `last_seen_at` is older than `DRIVER_STALE_SECONDS` (default 180s), releasing the vehicle mutex silently (no FCM). Rollout guard: after deploying this fix, keep `DRIVER_STALE_SECONDS` high (e.g. 86400) until the driver-app heartbeat release is adopted, then lower it to 180.
 
-**Presence rollout runbook** (`fix-driver-presence-realtime`, production is PM2-managed — see `ecosystem.config.example.js`, which already sets `DRIVER_STALE_SECONDS=86400` as the rollout-guard starting value):
-1. Deploy `api` (this fix: heartbeat endpoint, units fix, silent eviction, sweep interval) with `DRIVER_STALE_SECONDS=86400` in the real `ecosystem.config.js`.
+**Presence rollout runbook** (`fix-driver-presence-realtime`, production is PM2-managed — see `ecosystem.config.example.js`; env vars, including the rollout-guard starting value `DRIVER_STALE_SECONDS=86400`, live in the `.env` file at the PM2 `cwd`, not in the ecosystem file):
+1. Deploy `api` (this fix: heartbeat endpoint, units fix, silent eviction, sweep interval) with `DRIVER_STALE_SECONDS=86400` in the `.env` file at the PM2 `cwd` (the app root).
 2. Ship the `admin` `DriverMap.vue` fix — independent of the driver app, can go out any time.
 3. Release the driver-app build with the location heartbeat, then raise `DRIVER_MIN_VERSION_CODE` (served as `versionPolicy.driver.minVersionCode`). This gate is enforced **at connect time only** (`precheckDriverConnectEligibility`) — drivers already connected on an old build keep a frozen marker until their next reconnect, which is exactly why step 1's high threshold must stay in place until adoption is confirmed.
-4. Once adoption is confirmed, lower `DRIVER_STALE_SECONDS` to 180 (steady state) in `ecosystem.config.js`.
+4. Once adoption is confirmed, lower `DRIVER_STALE_SECONDS` to 180 (steady state) in that same `.env` file.
 
 Rollback: raising `DRIVER_STALE_SECONDS` back up disables eviction; the heartbeat endpoint is harmless with no callers; the admin fix is standalone and needs no rollback coordination.
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix production `.env` being silently ignored: `config.js` resolved it against the compiled `build/` directory (via `__dirname`), which never receives a copy of `.env`. Config now loads `.env` from the process working directory, and the PM2 ecosystem example drops its duplicated `env` block in favor of setting `cwd` so the app's own `.env` load is authoritative.
+
 ## [2.0.12(2026-08-01)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.12...2.0.11)
 
 ### Added
