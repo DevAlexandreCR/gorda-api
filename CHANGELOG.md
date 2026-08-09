@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Chatbot place resolution now auto-accepts a "strong candidate" search result — a dominant top score, or a sole full-coverage keyword match — instead of always asking for confirmation on non-literal matches; ambiguous results still go through the existing confirmation/suggestion flow. Keyword search scoring is now coverage-sensitive (score reflects the fraction of the query's keywords matched), so partial coincidental matches can no longer reach the auto-accept threshold.
+
 ### Fixed
 
 - Fix production `.env` being silently ignored: `config.js` resolved it against the compiled `build/` directory (via `__dirname`), which never receives a copy of `.env`. Config now loads `.env` from the process working directory, and the PM2 ecosystem example drops its duplicated `env` block in favor of setting `cwd` so the app's own `.env` load is authoritative.

@@ -5,6 +5,7 @@ import Place from '../Models/Place'
 interface SearchResult extends PlaceInterface {
   score: number
   search_type: string
+  fullKeywordCoverage?: boolean
 }
 
 interface SearchOptions {
@@ -14,6 +15,10 @@ interface SearchOptions {
 }
 
 class PlaceSearchRepository {
+  private static readonly STRONG_MIN_SCORE = 1.1
+  private static readonly STRONG_DOMINANCE_RATIO = 1.5
+  private static readonly STRONG_SOLE_RESULT_MIN_SCORE = 1.5
+
   private sequelize: Sequelize
 
   constructor(sequelizeInstance: Sequelize) {
@@ -85,10 +90,14 @@ class PlaceSearchRepository {
     const keywordConditions = keywords
       .map((_, i) => `LOWER(name) LIKE LOWER(:keyword${i})`)
       .join(' OR ')
+    const matchedKeywordsExpr = keywords
+      .map((_, i) => `CASE WHEN LOWER(name) LIKE LOWER(:keyword${i}) THEN 1 ELSE 0 END`)
+      .join(' + ')
 
     const sql = `
       SELECT id, name, lat, lng, city_id AS "cityId",
-             :keywordScore as score
+             (${matchedKeywordsExpr})::float / :totalKeywords as score,
+             (${matchedKeywordsExpr}) = :totalKeywords as "fullKeywordCoverage"
       FROM "places"
       WHERE (${keywordConditions})
       ${whereClause}
@@ -96,7 +105,7 @@ class PlaceSearchRepository {
 
     const replacements: any = {
       cityId,
-      keywordScore: keywords.length > 0 ? 1.0 / keywords.length : 0.5,
+      totalKeywords: keywords.length,
     }
     keywords.forEach((keyword, i) => {
       replacements[`keyword${i}`] = `%${keyword}%`
@@ -217,18 +226,70 @@ class PlaceSearchRepository {
   ): Promise<{
     results: SearchResult[]
     suggestions: Array<{ id: string; name: string }>
-    hasExactMatch: boolean
+    hasStrongCandidate: boolean
   }> {
     const results = await this.smartSearch(query, options)
     const hasExactMatch = results.some((r) => r.search_type === 'exact')
+    const { hasStrongCandidate, keywordEvidenceOk } = this.computeHasStrongCandidate(
+      results,
+      hasExactMatch
+    )
 
-    const suggestions = hasExactMatch ? [] : await this.generateSuggestions(query, options.cityId)
+    const suggestions = hasStrongCandidate
+      ? []
+      : await this.generateSuggestions(query, options.cityId)
+
+    console.log(
+      JSON.stringify({
+        event: 'place_search_verdict',
+        query: query.slice(0, 60),
+        topScore: results[0]?.score ?? null,
+        secondScore: results[1]?.score ?? null,
+        resultCount: results.length,
+        keywordEvidenceOk,
+        hasStrongCandidate,
+      })
+    )
 
     return {
       results,
       suggestions,
-      hasExactMatch,
+      hasStrongCandidate,
     }
+  }
+
+  /**
+   * Strong-candidate verdict (design D1): a keyword-sourced top result only
+   * qualifies when its coverage is full; fuzzy/content/exact tops are exempt
+   * from that gate since their score already measures whole-string evidence.
+   */
+  private computeHasStrongCandidate(
+    results: SearchResult[],
+    hasExactMatch: boolean
+  ): { hasStrongCandidate: boolean; keywordEvidenceOk: boolean } {
+    const top = results[0]
+
+    if (hasExactMatch) return { hasStrongCandidate: true, keywordEvidenceOk: true }
+    if (!top) return { hasStrongCandidate: false, keywordEvidenceOk: false }
+
+    const keywordEvidenceOk = top.search_type !== 'keyword' || !!top.fullKeywordCoverage
+
+    if (results.length >= 2) {
+      const second = results[1]
+      const hasStrongCandidate =
+        keywordEvidenceOk &&
+        top.score >= PlaceSearchRepository.STRONG_MIN_SCORE &&
+        top.score >= PlaceSearchRepository.STRONG_DOMINANCE_RATIO * second.score
+      return { hasStrongCandidate, keywordEvidenceOk }
+    }
+
+    if (results.length === 1) {
+      const hasStrongCandidate =
+        keywordEvidenceOk && top.score >= PlaceSearchRepository.STRONG_SOLE_RESULT_MIN_SCORE
+      return { hasStrongCandidate, keywordEvidenceOk }
+    }
+
+    return { hasStrongCandidate: false, keywordEvidenceOk }
   }
 
   /**

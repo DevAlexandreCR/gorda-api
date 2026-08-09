@@ -65,14 +65,14 @@ export class Created extends ResponseContract {
       if (response.place) {
         const searchResult = await this.store.findPlacesWithSuggestions(response.place)
 
-        if (searchResult.place && searchResult.hasExactMatch) {
+        if (searchResult.place && searchResult.hasStrongCandidate) {
           await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(
             async () => {
               await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
               await this.session.setPlace(searchResult.place!)
             }
           )
-        } else if (searchResult.place && !searchResult.hasExactMatch) {
+        } else if (searchResult.place) {
           const wpClient = this.store.wpClients[this.session.wp_client_id]
           const confirmationMessage = PlaceSuggestionHelper.createConfirmationMessage(
             searchResult.place.name,

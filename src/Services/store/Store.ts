@@ -285,7 +285,7 @@ export class Store {
   ): Promise<{
     place: PlaceInterface | null
     suggestions: Array<{ id: string; name: string }>
-    hasExactMatch: boolean
+    hasStrongCandidate: boolean
   }> {
     const searchResult = await this.placeSearchRepository.searchWithSuggestions(placeName, {
       cityId: cityId || 'popayan',
@@ -296,7 +296,7 @@ export class Store {
     return {
       place: searchResult.results[0] || null,
       suggestions: searchResult.suggestions,
-      hasExactMatch: searchResult.hasExactMatch,
+      hasStrongCandidate: searchResult.hasStrongCandidate,
     }
   }
 
