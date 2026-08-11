@@ -8,6 +8,7 @@ import axios, { AxiosResponse } from 'axios'
 import config from '../../../../../config'
 import { AIResponse } from '../Interfaces/AIResponse'
 import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
+import { AIRequestContext } from '../Interfaces/AIRequestContext'
 
 export class GordaChatBot implements MessageHandlerInterface {
   private apiURL: string
@@ -23,9 +24,10 @@ export class GordaChatBot implements MessageHandlerInterface {
 
   async handleMessage(
     message: string,
-    sessionStatus: SessionStatuses
+    sessionStatus: SessionStatuses,
+    context: AIRequestContext
   ): Promise<AIResponseInterface> {
-    const data = await this.requestAIService(message, sessionStatus)
+    const data = await this.requestAIService(message, sessionStatus, context)
 
     console.log('AI service response data:', data.data) // Debug log
 
@@ -40,6 +42,7 @@ export class GordaChatBot implements MessageHandlerInterface {
     }
 
     const response: AIResponseInterface = {
+      intent: data.data.intent,
       name: data.data.name,
       message: responseMessage,
       sessionStatus: data.data.session_status,
@@ -51,13 +54,16 @@ export class GordaChatBot implements MessageHandlerInterface {
 
   private requestAIService(
     message: string,
-    sessionStatus: SessionStatuses
+    sessionStatus: SessionStatuses,
+    context: AIRequestContext
   ): Promise<AxiosResponse<AIResponse>> {
     return axios.post(
       this.apiURL + '/chat/messages',
       {
-        content: message,
+        user_message: message,
         session_status: sessionStatus,
+        known: context.known,
+        history: context.history,
       },
       {
         headers: {

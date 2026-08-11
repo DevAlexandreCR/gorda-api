@@ -39,10 +39,12 @@ jest.mock('../../../../../Repositories/SessionRepository', () => ({
 }))
 
 const mockFindPlacesWithSuggestions = jest.fn()
+const mockCreateClient = jest.fn()
 jest.mock('../../../../../Services/store/Store', () => ({
   Store: {
     getInstance: jest.fn(() => ({
       findPlacesWithSuggestions: mockFindPlacesWithSuggestions,
+      createClient: mockCreateClient,
       wpClients: { 'wp-client-1': { service: 'wa-web' } },
       findCountryByCity: jest.fn().mockReturnValue('colombia'),
     })),
@@ -76,8 +78,33 @@ const mockRequestingService = jest.fn((placeName: string) => ({
   enabled: true,
   interactive: null,
 }))
+const mockGreetingNews = jest.fn(() => ({
+  id: 'greeting-news',
+  name: 'Greeting News',
+  description: '',
+  message: 'greeting-news',
+  enabled: true,
+  interactive: null,
+}))
 jest.mock('../../../Messages', () => ({
   requestingService: (placeName: string) => mockRequestingService(placeName),
+  greetingNews: () => mockGreetingNews(),
+  newClientAskPlaceName: jest.fn(() => ({
+    id: 'ask-place-name',
+    name: 'Ask Place Name',
+    description: '',
+    message: 'ask-place-name',
+    enabled: true,
+    interactive: null,
+  })),
+  newClientAskForComment: jest.fn(() => ({
+    id: 'ask-for-comment',
+    name: 'Ask For Comment',
+    description: '',
+    message: 'ask-for-comment',
+    enabled: true,
+    interactive: null,
+  })),
   getSingleMessage: jest.fn(() => ({
     id: 'generic',
     name: 'Generic',
@@ -111,7 +138,7 @@ jest.mock('../../../PlaceSuggestionHelper', () => ({
   },
 }))
 
-import { AskingForPlace } from '../AskingForPlace'
+import { AskingForName } from '../AskingForName'
 import { WpMessage } from '../../../../../Types/WpMessage'
 import { MessageTypes } from '../../../../whatsapp/constants/MessageTypes'
 import { SessionStatuses } from '../../../../../Types/SessionStatuses'
@@ -125,6 +152,11 @@ function buildMockSession() {
     wp_client_id: 'wp-client-1',
     place: null as PlaceInterface | null,
     messages: new Map<string, WpMessage>(),
+    chat: {
+      getContact: jest
+        .fn()
+        .mockResolvedValue({ pushname: '', phone: '573001234567', photoUrl: '' }),
+    },
     setStatus: jest.fn().mockResolvedValue(undefined),
     setPlace: jest.fn().mockResolvedValue(undefined),
     setPlaceOptions: jest.fn().mockResolvedValue(undefined),
@@ -155,24 +187,17 @@ const strongPlace: PlaceInterface = {
   cityId: 'popayan',
 }
 
-const candidatePlace: PlaceInterface = {
-  id: 'place-candidate',
-  name: 'Estación Norte',
-  lat: 2.45,
-  lng: -76.61,
-  location: null,
-  cityId: 'popayan',
-}
-
-const suggestionOne = { id: 'sugg-1', name: 'Estación Sur' }
-const suggestionTwo = { id: 'sugg-2', name: 'Mall Libertadores' }
-
-describe('AskingForPlace.processMessage - place resolution tiers', () => {
+describe('AskingForName.processMessage - intent dispatch', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockCreateClient.mockResolvedValue({ id: 'client-1', name: 'Juan', phone: '573001234567' })
+  })
+
+  it('name and place captured in one turn: creates the client and runs the place flow immediately, without re-asking', async () => {
     mockHandleMessage.mockResolvedValue({
-      intent: Intent.PROVIDE_PLACE,
-      place: 'unicentro',
+      intent: Intent.PROVIDE_NAME,
+      name: 'Juan',
+      place: 'Campanario',
       message: {
         id: 'ai-1',
         created_at: Date.now(),
@@ -184,9 +209,6 @@ describe('AskingForPlace.processMessage - place resolution tiers', () => {
       },
       sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
     })
-  })
-
-  it('auto-accepts a strong candidate: no confirmation, place set, status ASKING_FOR_COMMENT', async () => {
     mockFindPlacesWithSuggestions.mockResolvedValue({
       place: strongPlace,
       suggestions: [],
@@ -194,166 +216,27 @@ describe('AskingForPlace.processMessage - place resolution tiers', () => {
     })
 
     const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('unicentro'))
+    const strategy = new AskingForName(session as any)
+    await strategy.processMessage(buildTextMessage('Soy Juan, estoy en Campanario'))
 
-    expect(mockRequestingService).toHaveBeenCalledWith(strongPlace.name)
-    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+    expect(mockCreateClient).toHaveBeenCalledTimes(1)
+    expect(mockFindPlacesWithSuggestions).toHaveBeenCalledWith('Campanario')
     expect(session.setPlace).toHaveBeenCalledWith(strongPlace)
     expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.ASKING_FOR_COMMENT)
 
-    expect(mockCreateConfirmationMessage).not.toHaveBeenCalled()
-    expect(mockCreateSuggestionMessage).not.toHaveBeenCalled()
-    expect(session.setPlaceOptions).not.toHaveBeenCalled()
-  })
-
-  it('asks for confirmation when a candidate exists but is not a strong match', async () => {
-    mockFindPlacesWithSuggestions.mockResolvedValue({
-      place: candidatePlace,
-      suggestions: [suggestionOne],
-      hasStrongCandidate: false,
-    })
-
-    const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('estación'))
-
-    expect(mockCreateConfirmationMessage).toHaveBeenCalledWith(candidatePlace.name, 'wa-web', {
-      id: session.id,
-    })
+    // Never re-asks for the location: no greeting/ask-place-name message sent.
+    expect(mockGreetingNews).not.toHaveBeenCalled()
     expect(session.sendMessage).toHaveBeenCalledTimes(1)
-    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.CHOOSING_PLACE)
-    expect(session.setPlaceOptions).toHaveBeenCalledWith([
-      { option: 0, placeId: `confirm:${candidatePlace.id}` },
-      { option: 1, placeId: suggestionOne.id },
-    ])
-
-    expect(mockRequestingService).not.toHaveBeenCalled()
-    expect(session.setPlace).not.toHaveBeenCalled()
-    expect(mockCreateSuggestionMessage).not.toHaveBeenCalled()
+    expect(mockRequestingService).toHaveBeenCalledWith(strongPlace.name)
   })
 
-  it('sends a numbered suggestion list when there is no candidate, only suggestions', async () => {
-    mockFindPlacesWithSuggestions.mockResolvedValue({
-      place: null,
-      suggestions: [suggestionOne, suggestionTwo],
-      hasStrongCandidate: false,
-    })
-
-    const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('parque libertad'))
-
-    expect(mockCreateSuggestionMessage).toHaveBeenCalledWith(
-      [
-        { option: 1, placeId: suggestionOne.id, placeName: suggestionOne.name },
-        { option: 2, placeId: suggestionTwo.id, placeName: suggestionTwo.name },
-      ],
-      'unicentro',
-      'wa-web',
-      { id: session.id }
-    )
-    expect(session.sendMessage).toHaveBeenCalledTimes(1)
-    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.CHOOSING_PLACE)
-    expect(session.setPlaceOptions).toHaveBeenCalledWith([
-      { option: 1, placeId: suggestionOne.id },
-      { option: 2, placeId: suggestionTwo.id },
-    ])
-
-    expect(mockRequestingService).not.toHaveBeenCalled()
-    expect(mockCreateConfirmationMessage).not.toHaveBeenCalled()
-    expect(session.setPlace).not.toHaveBeenCalled()
-  })
-})
-
-describe('AskingForPlace.processMessage - intent dispatch', () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
-  it('SUPPORT takes precedence over an extracted place: moves to SUPPORT and skips place search', async () => {
+  it('name only: creates the client and asks for the location as before (no session place yet)', async () => {
     mockHandleMessage.mockResolvedValue({
-      intent: Intent.SUPPORT,
-      place: 'La Esmeralda',
-      message: {
-        id: 'ai-support',
-        created_at: Date.now(),
-        type: MessageTypes.TEXT,
-        body: 'Cuesta entre $6.000 y $8.000',
-        fromMe: true,
-        interactive: null,
-        interactiveReply: null,
-      },
-      sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
-    })
-
-    const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('¿cuánto cuesta desde La Esmeralda?'))
-
-    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
-    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.SUPPORT)
-    expect(session.sendMessage).toHaveBeenCalledTimes(1)
-    expect(session.setPlace).not.toHaveBeenCalled()
-  })
-
-  it('REFUSAL sends the AI clarification message and stays in ASKING_FOR_PLACE', async () => {
-    mockHandleMessage.mockResolvedValue({
-      intent: Intent.REFUSAL,
-      place: undefined,
-      message: {
-        id: 'ai-refusal',
-        created_at: Date.now(),
-        type: MessageTypes.TEXT,
-        body: 'Entiendo, ¿me confirmas el barrio o dirección?',
-        fromMe: true,
-        interactive: null,
-        interactiveReply: null,
-      },
-      sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
-    })
-
-    const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('no quiero decirte'))
-
-    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
-    expect(session.setStatus).not.toHaveBeenCalled()
-    expect(session.sendMessage).toHaveBeenCalledTimes(1)
-  })
-
-  it('AMBIGUOUS sends the AI clarification message and stays in ASKING_FOR_PLACE', async () => {
-    mockHandleMessage.mockResolvedValue({
-      intent: Intent.AMBIGUOUS,
-      place: undefined,
-      message: {
-        id: 'ai-ambiguous',
-        created_at: Date.now(),
-        type: MessageTypes.TEXT,
-        body: '¿Puedes darme el nombre del barrio o una dirección más exacta?',
-        fromMe: true,
-        interactive: null,
-        interactiveReply: null,
-      },
-      sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
-    })
-
-    const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('por ahí cerca'))
-
-    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
-    expect(session.setStatus).not.toHaveBeenCalled()
-    expect(session.sendMessage).toHaveBeenCalledTimes(1)
-  })
-
-  it('discards an extracted name and still runs the place search when intent is PROVIDE_PLACE', async () => {
-    mockHandleMessage.mockResolvedValue({
-      intent: Intent.PROVIDE_PLACE,
+      intent: Intent.PROVIDE_NAME,
       name: 'Juan',
-      place: 'unicentro',
+      place: undefined,
       message: {
-        id: 'ai-name-and-place',
+        id: 'ai-2',
         created_at: Date.now(),
         type: MessageTypes.TEXT,
         body: '',
@@ -363,42 +246,116 @@ describe('AskingForPlace.processMessage - intent dispatch', () => {
       },
       sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
     })
-    mockFindPlacesWithSuggestions.mockResolvedValue({
-      place: strongPlace,
-      suggestions: [],
-      hasStrongCandidate: true,
-    })
 
     const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('Soy Juan, estoy en unicentro'))
+    const strategy = new AskingForName(session as any)
+    await strategy.processMessage(buildTextMessage('Me llamo Juan'))
 
-    expect(mockFindPlacesWithSuggestions).toHaveBeenCalledWith('unicentro')
-    expect(session.setPlace).toHaveBeenCalledWith(strongPlace)
-    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.ASKING_FOR_COMMENT)
+    expect(mockCreateClient).toHaveBeenCalledTimes(1)
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.ASKING_FOR_PLACE)
+    expect(mockGreetingNews).toHaveBeenCalledTimes(1)
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
   })
 
-  it('falls back to a re-ask when intent is PROVIDE_NAME (out of the acceptance matrix for this state)', async () => {
+  it('SUPPORT takes precedence over an extracted name/place: moves to SUPPORT without creating a client', async () => {
     mockHandleMessage.mockResolvedValue({
-      intent: Intent.PROVIDE_NAME,
+      intent: Intent.SUPPORT,
       name: 'Juan',
-      place: undefined,
+      place: 'Campanario',
       message: {
-        id: 'ai-name-only',
+        id: 'ai-support',
         created_at: Date.now(),
         type: MessageTypes.TEXT,
-        body: 'Necesito el barrio o dirección para continuar',
+        body: 'Cuesta entre $6.000 y $8.000',
         fromMe: true,
         interactive: null,
         interactiveReply: null,
       },
-      sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
+      sessionStatus: SessionStatuses.ASKING_FOR_NAME,
     })
 
     const session = buildMockSession()
-    const strategy = new AskingForPlace(session as any)
-    await strategy.processMessage(buildTextMessage('me llamo Juan'))
+    const strategy = new AskingForName(session as any)
+    await strategy.processMessage(buildTextMessage('¿cuánto cuesta desde Campanario?'))
 
+    expect(mockCreateClient).not.toHaveBeenCalled()
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.SUPPORT)
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('REFUSAL re-asks within the same state without creating a client', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.REFUSAL,
+      place: undefined,
+      message: {
+        id: 'ai-refusal',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: 'Entiendo, ¿me confirmas tu nombre?',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.ASKING_FOR_NAME,
+    })
+
+    const session = buildMockSession()
+    const strategy = new AskingForName(session as any)
+    await strategy.processMessage(buildTextMessage('no quiero decirte'))
+
+    expect(mockCreateClient).not.toHaveBeenCalled()
+    expect(session.setStatus).not.toHaveBeenCalled()
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('AMBIGUOUS re-asks within the same state without creating a client', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.AMBIGUOUS,
+      place: undefined,
+      message: {
+        id: 'ai-ambiguous',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: '¿Puedes darme tu nombre?',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.ASKING_FOR_NAME,
+    })
+
+    const session = buildMockSession()
+    const strategy = new AskingForName(session as any)
+    await strategy.processMessage(buildTextMessage('no sé'))
+
+    expect(mockCreateClient).not.toHaveBeenCalled()
+    expect(session.setStatus).not.toHaveBeenCalled()
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to a re-ask when intent is PROVIDE_PLACE without a name (out of the acceptance matrix here)', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.PROVIDE_PLACE,
+      place: 'Campanario',
+      message: {
+        id: 'ai-place-only',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: 'Necesito tu nombre para continuar',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.ASKING_FOR_NAME,
+    })
+
+    const session = buildMockSession()
+    const strategy = new AskingForName(session as any)
+    await strategy.processMessage(buildTextMessage('estoy en Campanario'))
+
+    expect(mockCreateClient).not.toHaveBeenCalled()
     expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
     expect(session.setStatus).not.toHaveBeenCalled()
     expect(session.sendMessage).toHaveBeenCalledTimes(1)

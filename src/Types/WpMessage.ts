@@ -12,4 +12,5 @@ export type WpMessage = {
   location: WpLocation | null
   interactiveReply: InteractiveReply | null
   interactive: Interactive | null
+  fromMe: boolean
 }

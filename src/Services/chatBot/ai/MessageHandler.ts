@@ -2,22 +2,25 @@ import { MessageHandlerInterface } from './Interfaces/MessageHandlerInterface'
 import { AIResponseInterface } from './Interfaces/AIResponseInterface'
 import { Message } from '../../../Interfaces/Message'
 import { SessionStatuses } from '../../../Types/SessionStatuses'
+import { Intent } from '../../../Types/Intent'
 import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { AxiosDefaults, AxiosError, AxiosResponse } from 'axios'
+import { AIRequestContext } from './Interfaces/AIRequestContext'
 
 export class MessageHandler {
   constructor(private client: MessageHandlerInterface) {}
 
   async handleMessage(
     message: string,
-    sessionStatus: SessionStatuses
+    sessionStatus: SessionStatuses,
+    context: AIRequestContext
   ): Promise<AIResponseInterface> {
     const maxRetries = 3
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await this.client.handleMessage(message, sessionStatus)
+        return await this.client.handleMessage(message, sessionStatus, context)
       } catch (error) {
         lastError = error as Error
         console.warn(
@@ -53,6 +56,7 @@ export class MessageHandler {
     }
 
     return {
+      intent: Intent.SUPPORT,
       name: 'Sistema',
       message: defaultMessage,
       sessionStatus: SessionStatuses.SUPPORT,

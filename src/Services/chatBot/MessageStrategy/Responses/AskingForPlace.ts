@@ -7,8 +7,7 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 import { SessionStatuses } from '../../../../Types/SessionStatuses'
 import { MessageHandler } from '../../ai/MessageHandler'
 import { GordaChatBot } from '../../ai/Services/GordaChatBot'
-import { PlaceSuggestionHelper } from '../../PlaceSuggestionHelper'
-import { PlaceOption } from '../../../../Interfaces/PlaceOption'
+import { Intent } from '../../../../Types/Intent'
 
 export class AskingForPlace extends ResponseContract {
   public messageSupported: Array<string> = [
@@ -36,75 +35,34 @@ export class AskingForPlace extends ResponseContract {
           })
         }
       } else {
-        const response = await ia.handleMessage(message.msg, SessionStatuses.ASKING_FOR_PLACE)
-        if (response.place) {
-          const searchResult = await this.store.findPlacesWithSuggestions(response.place)
-
-          if (searchResult.place && searchResult.hasStrongCandidate) {
-            await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(
-              async () => {
-                await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
-                await this.session.setPlace(searchResult.place!)
-              }
-            )
-          } else if (searchResult.place) {
-            const wpClient = this.store.wpClients[this.session.wp_client_id]
-            const confirmationMessage = PlaceSuggestionHelper.createConfirmationMessage(
-              searchResult.place.name,
-              wpClient?.service,
-              { id: this.session.id }
-            )
-            await this.sendMessage(confirmationMessage).then(async () => {
-              await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
-
-              // Store candidate place as option 0 (special case for confirmation)
-              const placeOptions: PlaceOption[] = [
-                { option: 0, placeId: `confirm:${searchResult.place!.id}` },
-              ]
-
-              // Add suggestions as additional options if available
-              if (searchResult.suggestions && searchResult.suggestions.length > 0) {
-                searchResult.suggestions.forEach((suggestion, index) => {
-                  placeOptions.push({ option: index + 1, placeId: suggestion.id })
-                })
-              }
-
-              await this.session.setPlaceOptions(placeOptions)
-            })
-          } else if (searchResult.suggestions.length > 0) {
-            const wpClient = this.store.wpClients[this.session.wp_client_id]
-            const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
-              searchResult.suggestions.map((suggestion, index) => ({
-                option: index + 1,
-                placeId: suggestion.id,
-                placeName: suggestion.name,
-              })),
-              response.place,
-              wpClient?.service,
-              { id: this.session.id }
-            )
-            await this.sendMessage(suggestionMessage).then(async () => {
-              await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
-
-              // Store each suggestion as a separate PlaceOption
-              const placeOptions: PlaceOption[] = searchResult.suggestions.map(
-                (suggestion, index) => ({
-                  option: index + 1,
-                  placeId: suggestion.id,
-                })
-              )
-
-              await this.session.setPlaceOptions(placeOptions)
-            })
-          } else {
-            const msg = Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND)
-            await this.sendMessage(msg)
-          }
-        } else if (response.sessionStatus === SessionStatuses.SUPPORT) {
-          await this.sendAIMessage(MessagesEnum.DEFAULT_MESSAGE, response.message.body)
-          await this.session.setStatus(SessionStatuses.SUPPORT)
-        } else {
-          await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
+        const context = this.buildAIContext(message)
+        const response = await ia.handleMessage(
+          message.msg,
+          SessionStatuses.ASKING_FOR_PLACE,
+          context
+        )
+        // ASKING_FOR_PLACE only accepts `place`; any `name` the AI extracts is discarded.
+        // SUPPORT is checked first, before any place handling, regardless of extracted fields.
+        switch (response.intent) {
+          case Intent.SUPPORT:
+            await this.sendAIMessage(MessagesEnum.DEFAULT_MESSAGE, response.message.body)
+            await this.session.setStatus(SessionStatuses.SUPPORT)
+            break
+          case Intent.PROVIDE_PLACE:
+            if (response.place) {
+              await this.runPlaceSearchFlow(response.place)
+            } else {
+              await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
+            }
+            break
+          case Intent.REFUSAL:
+          case Intent.AMBIGUOUS:
+          case Intent.PROVIDE_NAME:
+          default:
+            // REFUSAL/AMBIGUOUS re-ask within the same state; PROVIDE_NAME is out of the
+            // acceptance matrix here and falls back to the same re-ask behavior.
+            await this.sendAIMessage(MessagesEnum.ASK_FOR_LOCATION, response.message.body)
+            break
         }
       }
     } else if (this.session.place.name === MessageHelper.LOCATION_NO_NAME && this.isChat(message)) {

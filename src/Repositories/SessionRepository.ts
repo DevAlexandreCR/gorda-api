@@ -66,6 +66,7 @@ class SessionRepository {
         location: record.location ?? null,
         interactiveReply: record.interactiveReply ?? null,
         interactive: record.interactive ?? null,
+        fromMe: Boolean(record.fromMe),
       })
     })
 
@@ -217,12 +218,15 @@ class SessionRepository {
 
   public async addMsg(
     sessionId: string,
-    msg: WpMessage
+    msg: WpMessage,
+    fromMe = false
   ): Promise<{ created: boolean; id: string }> {
     const sessionRecord = await ChatSessionRecord.findByPk(sessionId)
     if (!sessionRecord) {
       throw new Error(`Session ${sessionId} not found`)
     }
+
+    const processed = fromMe ? true : msg.processed
 
     const [messageRecord, created] = await WhatsappMessageRecord.findOrCreate({
       where: {
@@ -237,8 +241,8 @@ class SessionRepository {
         created_at: msg.created_at,
         type: msg.type,
         body: msg.msg,
-        fromMe: false,
-        processed: msg.processed,
+        fromMe,
+        processed,
         location: msg.location,
         interactive: msg.interactive,
         interactiveReply: msg.interactiveReply,
@@ -252,7 +256,7 @@ class SessionRepository {
     messageRecord.created_at = msg.created_at
     messageRecord.type = msg.type
     messageRecord.body = msg.msg
-    messageRecord.processed = msg.processed
+    messageRecord.processed = processed
     messageRecord.location = msg.location
     messageRecord.interactive = msg.interactive
     messageRecord.interactiveReply = msg.interactiveReply

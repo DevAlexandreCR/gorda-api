@@ -78,6 +78,7 @@ export default class Session implements SessionInterface {
       processed: false,
       interactiveReply: msg.interactiveReply,
       interactive: null,
+      fromMe: false,
     }
 
     if (msg.location) {
@@ -132,6 +133,7 @@ export default class Session implements SessionInterface {
           processed: false,
           interactiveReply: unprocessedMessagesArray[indexLast].interactiveReply,
           interactive: null,
+          fromMe: false,
         }
 
         unprocessedMessagesArray.forEach((msg) => {

@@ -31,6 +31,13 @@ jest.mock('../../../../../Repositories/ServiceRepository', () => ({
   create: jest.fn(),
 }))
 
+jest.mock('../../../../../Repositories/SessionRepository', () => ({
+  __esModule: true,
+  default: {
+    addMsg: jest.fn().mockResolvedValue({ created: true, id: 'mock-outbound-id' }),
+  },
+}))
+
 const mockFindPlacesWithSuggestions = jest.fn()
 jest.mock('../../../../../Services/store/Store', () => ({
   Store: {
@@ -113,10 +120,12 @@ jest.mock('../../../PlaceSuggestionHelper', () => ({
 }))
 
 import { Created } from '../Created'
+import Session from '../../../../../Models/Session'
 import { WpMessage } from '../../../../../Types/WpMessage'
 import { MessageTypes } from '../../../../whatsapp/constants/MessageTypes'
 import { SessionStatuses } from '../../../../../Types/SessionStatuses'
 import { PlaceInterface } from '../../../../../Interfaces/PlaceInterface'
+import { Intent } from '../../../../../Types/Intent'
 
 function buildMockSession() {
   return {
@@ -125,9 +134,11 @@ function buildMockSession() {
     wp_client_id: 'wp-client-1',
     place: null as PlaceInterface | null,
     notifications: { greeting: true },
+    messages: new Map<string, WpMessage>(),
     setStatus: jest.fn().mockResolvedValue(undefined),
     setPlace: jest.fn().mockResolvedValue(undefined),
     setPlaceOptions: jest.fn().mockResolvedValue(undefined),
+    setNotification: jest.fn().mockResolvedValue(undefined),
     sendMessage: jest.fn().mockResolvedValue(undefined),
   }
 }
@@ -142,6 +153,7 @@ function buildTextMessage(msg: string): WpMessage {
     location: null,
     interactiveReply: null,
     interactive: null,
+    fromMe: false,
   }
 }
 
@@ -170,9 +182,18 @@ describe('Created.validateKey - place resolution tiers', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockHandleMessage.mockResolvedValue({
+      intent: Intent.PROVIDE_PLACE,
       place: 'unicentro',
-      message: { id: 'ai-1', created_at: Date.now(), type: MessageTypes.TEXT, body: '', fromMe: true, interactive: null, interactiveReply: null },
-      sessionStatus: SessionStatuses.ASKING_FOR_PLACE,
+      message: {
+        id: 'ai-1',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: '',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
     })
   })
 
@@ -253,5 +274,204 @@ describe('Created.validateKey - place resolution tiers', () => {
     expect(mockRequestingService).not.toHaveBeenCalled()
     expect(mockCreateConfirmationMessage).not.toHaveBeenCalled()
     expect(session.setPlace).not.toHaveBeenCalled()
+  })
+})
+
+describe('Created.validateKey - intent dispatch', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('sends the real CREATED session status to the AI (not a hardcoded ASKING_FOR_PLACE)', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.PROVIDE_PLACE,
+      place: 'unicentro',
+      message: {
+        id: 'ai-1',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: '',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+    mockFindPlacesWithSuggestions.mockResolvedValue({
+      place: strongPlace,
+      suggestions: [],
+      hasStrongCandidate: true,
+    })
+
+    const session = buildMockSession()
+    const strategy = new Created(session as any)
+    await strategy.validateKey(buildTextMessage('unicentro'))
+
+    expect(mockHandleMessage).toHaveBeenCalledWith(
+      'unicentro',
+      SessionStatuses.CREATED,
+      expect.anything()
+    )
+  })
+
+  it('SUPPORT takes precedence over an extracted place: moves to SUPPORT and skips place search', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.SUPPORT,
+      place: 'La Esmeralda',
+      message: {
+        id: 'ai-support',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: 'Cuesta entre $6.000 y $8.000',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+
+    const session = buildMockSession()
+    const strategy = new Created(session as any)
+    await strategy.validateKey(buildTextMessage('¿cuánto cuesta desde La Esmeralda?'))
+
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.SUPPORT)
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+    expect(session.setPlace).not.toHaveBeenCalled()
+  })
+
+  it('discards an extracted name (client already exists) and still runs the place search when intent is PROVIDE_PLACE', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.PROVIDE_PLACE,
+      name: 'Juan',
+      place: 'unicentro',
+      message: {
+        id: 'ai-name-and-place',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: '',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+    mockFindPlacesWithSuggestions.mockResolvedValue({
+      place: strongPlace,
+      suggestions: [],
+      hasStrongCandidate: true,
+    })
+
+    const session = buildMockSession()
+    const strategy = new Created(session as any)
+    await strategy.validateKey(buildTextMessage('Soy Juan, estoy en unicentro'))
+
+    expect(mockFindPlacesWithSuggestions).toHaveBeenCalledWith('unicentro')
+    expect(session.setPlace).toHaveBeenCalledWith(strongPlace)
+    expect(session.setStatus).toHaveBeenCalledWith(SessionStatuses.ASKING_FOR_COMMENT)
+  })
+
+  it('REFUSAL re-asks with the AI clarification message when the greeting was already sent', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.REFUSAL,
+      place: undefined,
+      message: {
+        id: 'ai-refusal',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: 'Entiendo, ¿me confirmas el barrio o dirección?',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+
+    const session = buildMockSession()
+    const strategy = new Created(session as any)
+    await strategy.validateKey(buildTextMessage('no quiero decirte'))
+
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).not.toHaveBeenCalled()
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('AMBIGUOUS re-asks with the AI clarification message when the greeting was already sent', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.AMBIGUOUS,
+      place: undefined,
+      message: {
+        id: 'ai-ambiguous',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: '¿Puedes darme el nombre del barrio o una dirección más exacta?',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+
+    const session = buildMockSession()
+    const strategy = new Created(session as any)
+    await strategy.validateKey(buildTextMessage('por ahí cerca'))
+
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).not.toHaveBeenCalled()
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('PROVIDE_NAME is out of the acceptance matrix for CREATED and falls back to the re-ask', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.PROVIDE_NAME,
+      name: 'Juan',
+      place: undefined,
+      message: {
+        id: 'ai-name-only',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: 'Necesito el barrio o dirección para continuar',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+
+    const session = buildMockSession()
+    const strategy = new Created(session as any)
+    await strategy.validateKey(buildTextMessage('me llamo Juan'))
+
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).not.toHaveBeenCalled()
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends the first-contact greeting instead of the AI message when the greeting has not been sent yet', async () => {
+    mockHandleMessage.mockResolvedValue({
+      intent: Intent.AMBIGUOUS,
+      place: undefined,
+      message: {
+        id: 'ai-ambiguous-2',
+        created_at: Date.now(),
+        type: MessageTypes.TEXT,
+        body: '¿Puedes darme el nombre del barrio o una dirección más exacta?',
+        fromMe: true,
+        interactive: null,
+        interactiveReply: null,
+      },
+      sessionStatus: SessionStatuses.CREATED,
+    })
+
+    const session = buildMockSession()
+    session.notifications.greeting = false
+    const strategy = new Created(session as any)
+    ;(strategy as any).currentClient = { id: 'client-1', name: 'Ana', phone: '', photoUrl: '' }
+    await strategy.validateKey(buildTextMessage('hola'))
+
+    expect(mockFindPlacesWithSuggestions).not.toHaveBeenCalled()
+    expect(session.setStatus).toHaveBeenCalledWith(Session.STATUS_ASKING_FOR_PLACE)
+    expect(session.setNotification).toHaveBeenCalled()
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
   })
 })

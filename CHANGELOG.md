@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Persist bot replies to `whatsapp_messages` (`fromMe: true`, marked processed) so conversation history includes both sides of the chat; persistence failure is logged and never blocks sending the reply.
+
 ### Changed
 
 - Chatbot place resolution now auto-accepts a "strong candidate" search result — a dominant top score, or a sole full-coverage keyword match — instead of always asking for confirmation on non-literal matches; ambiguous results still go through the existing confirmation/suggestion flow. Keyword search scoring is now coverage-sensitive (score reflects the fraction of the query's keywords matched), so partial coincidental matches can no longer reach the auto-accept threshold.
+- **Breaking (`ia-app` request contract):** AI requests now carry full session context instead of a bare message and status — the real session status (including `CREATED`, previously hardcoded to `ASKING_FOR_PLACE`), known data (client name, session place), and the last 10 conversation turns from both directions. Deploy together with the matching `ia-app` release.
+- The AI response now carries a required `intent` classification (`PROVIDE_NAME`, `PROVIDE_PLACE`, `SUPPORT`, `REFUSAL`, `AMBIGUOUS`); the `Created`, `AskingForName`, and `AskingForPlace` chatbot strategies branch on it instead of only inspecting the extracted `place`/`session_status`. Name and place provided in a single message during name capture are both captured now — the place flow runs immediately instead of re-asking for the location.
 
 ### Fixed
+
+- Fix SUPPORT messages that mention a place (e.g. "¿cuánto cuesta un viaje desde La Esmeralda?") being misread as a ride request — SUPPORT classification now takes precedence over an extracted `place` in the `AskingForPlace` and `Created` strategies.
 
 - Fix production `.env` being silently ignored: `config.js` resolved it against the compiled `build/` directory (via `__dirname`), which never receives a copy of `.env`. Config now loads `.env` from the process working directory, and the PM2 ecosystem example drops its duplicated `env` block in favor of setting `cwd` so the app's own `.env` load is authoritative.
 

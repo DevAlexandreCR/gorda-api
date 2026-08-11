@@ -1,7 +1,9 @@
+import { randomUUID } from 'crypto'
 import Session from '../../../Models/Session'
 import { Store } from '../../store/Store'
 import Service from '../../../Models/Service'
 import ServiceRepository from '../../../Repositories/ServiceRepository'
+import SessionRepository from '../../../Repositories/SessionRepository'
 import * as Messages from '../Messages'
 import MessageHelper from '../../../Helpers/MessageHelper'
 import * as Sentry from '@sentry/node'
@@ -17,6 +19,10 @@ import { PlaceInterface } from '../../../Interfaces/PlaceInterface'
 import { ClientInterface } from '../../../Interfaces/ClientInterface'
 import Container from '../../../Container/Container'
 import ChatIdHelper from '../../../Helpers/ChatIdHelper'
+import { AIRequestContext } from '../ai/Interfaces/AIRequestContext'
+import { SessionStatuses } from '../../../Types/SessionStatuses'
+import { PlaceSuggestionHelper } from '../PlaceSuggestionHelper'
+import { PlaceOption } from '../../../Interfaces/PlaceOption'
 
 export abstract class ResponseContract {
   protected currentClient: ClientInterface
@@ -45,8 +51,134 @@ export abstract class ResponseContract {
         Sentry.captureException(e)
         exit(1)
       })
+      await this.recordOutboundMessage(message)
     } else {
       return Promise.resolve()
+    }
+  }
+
+  private async recordOutboundMessage(message: ChatBotMessage): Promise<void> {
+    const wpMessage: WpMessage = {
+      created_at: Date.now(),
+      id: randomUUID(),
+      type: MessageTypes.TEXT,
+      msg: message.message,
+      processed: true,
+      location: null,
+      interactiveReply: null,
+      interactive: null,
+      fromMe: true,
+    }
+
+    this.session.messages.set(wpMessage.id, wpMessage)
+
+    try {
+      await SessionRepository.addMsg(this.session.id, wpMessage, true)
+    } catch (e) {
+      const error = e as Error
+      console.error(
+        'error persisting outbound message',
+        this.session.id,
+        error.message,
+        error.stack
+      )
+    }
+  }
+
+  buildAIContext(currentMessage: WpMessage): AIRequestContext {
+    const history = Array.from(this.session.messages.values())
+      .filter((msg) => msg.id !== currentMessage.id)
+      .sort((a, b) => a.created_at - b.created_at)
+      .slice(-10)
+      .map((msg) => ({
+        role: msg.fromMe ? ('assistant' as const) : ('user' as const),
+        text: this.renderHistoryMessage(msg),
+      }))
+
+    return {
+      known: {
+        name: this.currentClient?.name ?? null,
+        place: this.session.place?.name ?? null,
+      },
+      history,
+    }
+  }
+
+  private renderHistoryMessage(msg: WpMessage): string {
+    if (msg.location) {
+      return '[ubicación compartida]'
+    }
+
+    if (!msg.fromMe && msg.type === MessageTypes.INTERACTIVE) {
+      return `[opción elegida: ${msg.msg}]`
+    }
+
+    return msg.msg
+  }
+
+  /**
+   * Shared place-resolution flow used by every strategy that accepts an AI-extracted
+   * `place`: strong-candidate auto-accept, confirmation for a single weaker candidate,
+   * a numbered suggestion list, or a "not found" message when the search yields nothing.
+   */
+  protected async runPlaceSearchFlow(place: string): Promise<void> {
+    const searchResult = await this.store.findPlacesWithSuggestions(place)
+
+    if (searchResult.place && searchResult.hasStrongCandidate) {
+      await this.sendMessage(Messages.requestingService(searchResult.place.name)).then(async () => {
+        await this.session.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
+        await this.session.setPlace(searchResult.place!)
+      })
+    } else if (searchResult.place) {
+      const wpClient = this.store.wpClients[this.session.wp_client_id]
+      const confirmationMessage = PlaceSuggestionHelper.createConfirmationMessage(
+        searchResult.place.name,
+        wpClient?.service,
+        { id: this.session.id }
+      )
+      await this.sendMessage(confirmationMessage).then(async () => {
+        await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
+
+        // Store candidate place as option 0 (special case for confirmation)
+        const placeOptions: PlaceOption[] = [
+          { option: 0, placeId: `confirm:${searchResult.place!.id}` },
+        ]
+
+        // Add suggestions as additional options if available
+        if (searchResult.suggestions && searchResult.suggestions.length > 0) {
+          searchResult.suggestions.forEach((suggestion, index) => {
+            placeOptions.push({ option: index + 1, placeId: suggestion.id })
+          })
+        }
+
+        await this.session.setPlaceOptions(placeOptions)
+      })
+    } else if (searchResult.suggestions.length > 0) {
+      const wpClient = this.store.wpClients[this.session.wp_client_id]
+      const suggestionMessage = PlaceSuggestionHelper.createSuggestionMessage(
+        searchResult.suggestions.map((suggestion, index) => ({
+          option: index + 1,
+          placeId: suggestion.id,
+          placeName: suggestion.name,
+        })),
+        place,
+        wpClient?.service,
+        { id: this.session.id }
+      )
+      await this.sendMessage(suggestionMessage).then(async () => {
+        await this.session.setStatus(SessionStatuses.CHOOSING_PLACE)
+
+        // Store each suggestion as a separate PlaceOption
+        const placeOptions: PlaceOption[] = searchResult.suggestions.map((suggestion, index) => ({
+          option: index + 1,
+          placeId: suggestion.id,
+        }))
+
+        await this.session.setPlaceOptions(placeOptions)
+      })
+    } else {
+      const msg = Messages.getSingleMessage(MessagesEnum.NO_LOCATION_NAME_FOUND)
+      await this.sendMessage(msg)
     }
   }
 
