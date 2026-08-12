@@ -6,6 +6,7 @@ import ServiceRepository from '../../../Repositories/ServiceRepository'
 import SessionRepository from '../../../Repositories/SessionRepository'
 import * as Messages from '../Messages'
 import MessageHelper from '../../../Helpers/MessageHelper'
+import DateHelper from '../../../Helpers/DateHelper'
 import * as Sentry from '@sentry/node'
 import { WpMessage } from '../../../Types/WpMessage'
 import { WpLocation } from '../../../Types/WpLocation'
@@ -68,7 +69,7 @@ export abstract class ResponseContract {
 
   private async recordOutboundMessage(message: ChatBotMessage): Promise<void> {
     const wpMessage: WpMessage = {
-      created_at: Date.now(),
+      created_at: DateHelper.unix(),
       id: randomUUID(),
       type: MessageTypes.TEXT,
       msg: message.message,

@@ -31,6 +31,20 @@ jest.mock('../../../../Repositories/ServiceRepository', () => ({
   create: jest.fn(),
 }))
 
+jest.mock('../../../../Repositories/SessionRepository', () => ({
+  __esModule: true,
+  default: {
+    addMsg: jest.fn().mockResolvedValue({ created: true, id: 'mock-outbound-id' }),
+  },
+}))
+
+jest.mock('../../../../Helpers/DateHelper', () => ({
+  __esModule: true,
+  default: {
+    unix: jest.fn().mockReturnValue(1700000000),
+  },
+}))
+
 jest.mock('../../../../Services/store/Store', () => ({
   Store: {
     getInstance: jest.fn().mockReturnValue({
@@ -53,6 +67,8 @@ jest.mock('../../../../Container/Container', () => ({
 
 import { ResponseContract } from '../ResponseContract'
 import ServiceRepository from '../../../../Repositories/ServiceRepository'
+import SessionRepository from '../../../../Repositories/SessionRepository'
+import DateHelper from '../../../../Helpers/DateHelper'
 import { PlaceInterface } from '../../../../Interfaces/PlaceInterface'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { ClientInterface } from '../../../../Interfaces/ClientInterface'
@@ -83,9 +99,11 @@ const mockClient: ClientInterface = {
 
 function buildMockSession(chatId: string) {
   return {
+    id: 'session-1',
     chat_id: chatId,
     wp_client_id: 'wp-client-1',
     service_id: null as string | null,
+    messages: { set: jest.fn() },
     setService: jest.fn().mockResolvedValue(undefined),
     setStatus: jest.fn().mockResolvedValue(undefined),
     setPlace: jest.fn().mockResolvedValue(undefined),
@@ -176,6 +194,35 @@ describe('ResponseContract.sendMessage turn gate', () => {
     expect(mockSession.setStatus).not.toHaveBeenCalled()
     expect(mockSession.setPlace).not.toHaveBeenCalled()
     expect(mockSession.setPlaceOptions).not.toHaveBeenCalled()
+  })
+})
+
+describe('ResponseContract.sendMessage recordOutboundMessage (happy path)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(DateHelper.unix as jest.Mock).mockReturnValue(1700000000)
+  })
+
+  it('records the outbound message with a unix-seconds created_at, not milliseconds', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const contract = new ConcreteResponseContract(mockSession as any)
+
+    await contract.sendMessage(buildOutboundMessage())
+
+    expect(mockSession.sendMessage).toHaveBeenCalledTimes(1)
+    expect(SessionRepository.addMsg).toHaveBeenCalledTimes(1)
+
+    const [sessionId, persistedMessage, isOutbound] = (SessionRepository.addMsg as jest.Mock).mock
+      .calls[0]
+    expect(sessionId).toBe(mockSession.id)
+    expect(isOutbound).toBe(true)
+    expect(persistedMessage.created_at).toBe(1700000000)
+    // Guards the regression: a millisecond timestamp is always >= 1e11 while a
+    // unix-seconds timestamp for any real-world date stays well below it.
+    expect(persistedMessage.created_at).toBeLessThan(1e11)
+
+    expect(mockSession.messages.set).toHaveBeenCalledTimes(1)
+    expect(mockSession.messages.set).toHaveBeenCalledWith(persistedMessage.id, persistedMessage)
   })
 })
 
