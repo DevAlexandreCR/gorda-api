@@ -29,8 +29,13 @@ export default class ChatBot {
 
         this.wpClient.getChatById(providerChatId).then((chat) => {
           session.setChat(chat)
-          session.syncMessages(true).then(() => {
+          session.syncMessages().then(async () => {
             this.sessions.set(session.id, session)
+            // Boot-time restart sweep (design D8): replaces the old
+            // syncMessages(true) reprocessing path. enqueueBootSweepTurn never
+            // throws, so one session's failure never aborts the sweep over
+            // the rest of the forEach.
+            await session.enqueueBootSweepTurn()
           })
         })
       })
@@ -112,6 +117,15 @@ export default class ChatBot {
   async createSession(session: Session): Promise<Session> {
     const sessionDB = await SessionRepository.create(session)
     return Object.assign(session, sessionDB)
+  }
+
+  // Public lookup by session id for the conversation-turn processor (task 3.6).
+  // Unlike findSessionByChatId, this does not filter by isSessionActive: a turn
+  // whose session already flipped to COMPLETED/SUPPORT must still resolve so
+  // Session.assertTurnStillValid can discard it properly (design D3), instead of
+  // the processor mistaking a status change for an unresolvable session.
+  getSessionById(sessionId: string): Session | undefined {
+    return this.sessions.get(sessionId)
   }
 
   findSessionByChatId(chatId: string): Session | null {

@@ -13,6 +13,7 @@ import MessageRepository from '../../../../Repositories/MessageRepository'
 import { MessageTypes } from '../../constants/MessageTypes'
 import DateHelper from '../../../../Helpers/DateHelper'
 import { ApiMessage } from './Constants/ApiMessage'
+import { TypingIndicatorMessage } from './Constants/TypingIndicatorMessage'
 import { Interactive } from './Constants/Interactive'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
@@ -119,6 +120,29 @@ export class OfficialClient implements WPClientInterface {
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
     this.msgQueue.add(this.QUEUE_NAME, { phoneNumber, message })
+  }
+
+  async sendTypingIndicator(chatId: string, inboundMessageId: string): Promise<void> {
+    const data: TypingIndicatorMessage = {
+      messaging_product: this.config.messagingProduct,
+      status: 'read',
+      message_id: inboundMessageId,
+      typing_indicator: {
+        type: 'text',
+      },
+    }
+
+    try {
+      await axios.post(this.config.apiUrl, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        timeout: 3000,
+      })
+    } catch (error: any) {
+      console.warn('Failed to send typing indicator:', error.response?.data ?? error.message)
+    }
   }
 
   async text(phoneNumber: string, message: ChatBotMessage): Promise<void> {

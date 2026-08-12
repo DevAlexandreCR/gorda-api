@@ -24,7 +24,8 @@ module.exports = {
   GORDA_API_FUNCTIONS: process.env.GORDA_API_FUNCTIONS || 'http://127.0.0.1:5001/gorda-driver/us-central1/api',
   ENTITY_MODEL_NAME: process.env.ENTITY_MODEL_NAME || undefined,
   HUGGINGFACE_TOKEN: process.env.HUGGINGFACE_TOKEN || 'api-token',
-  MESSAGE_TIMEOUT: process.env.MESSAGE_TIMEOUT || 5000,
+  // Chatbot inbound buffering delay (conversation-turn debounce).
+  CHATBOT_DEBOUNCE_MS: Number.parseInt(process.env.CHATBOT_DEBOUNCE_MS || '5000', 10) || 5000,
   ARCHIVE_CHAT_TIMEOUT: process.env.ARCHIVE_CHAT_TIMEOUT || 2000,
   INBOUND_MESSAGE_MAX_AGE_MINUTES: process.env.INBOUND_MESSAGE_MAX_AGE_MINUTES || 1440,
   INBOUND_MESSAGE_DEDUP_TTL_SECONDS: process.env.INBOUND_MESSAGE_DEDUP_TTL_SECONDS || 259200,

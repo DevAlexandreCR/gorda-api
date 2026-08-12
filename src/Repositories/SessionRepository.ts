@@ -73,6 +73,25 @@ class SessionRepository {
     return messages
   }
 
+  public async getNewestUnprocessedMessageId(sessionId: string): Promise<string | null> {
+    // Only the customer's own messages matter for the supersede check; outbound
+    // (fromMe) messages are always saved as processed by addMsg, so this filter
+    // is defensive rather than load-bearing on that invariant.
+    const record = await WhatsappMessageRecord.findOne({
+      where: {
+        chatSessionId: sessionId,
+        processed: false,
+        fromMe: false,
+      },
+      order: [
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
+      ],
+    })
+
+    return record ? record.messageId : null
+  }
+
   public async updateStatus(session: SessionInterface): Promise<SessionInterface> {
     const sessionRecord = await ChatSessionRecord.findByPk(session.id)
     if (!sessionRecord) {

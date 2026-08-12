@@ -68,6 +68,12 @@ export class BaileysClient implements WPClientInterface {
     this.msgQueue.add(this.QUEUE_NAME, { phoneNumber, message })
   }
 
+  // No-op: typing indicator is only implemented for the Official transport (design D7).
+  async sendTypingIndicator(chatId: string, inboundMessageId: string): Promise<void> {
+    this.logger.debug({ chatId, inboundMessageId }, 'sendTypingIndicator is a no-op on Baileys')
+    return Promise.resolve()
+  }
+
   on(event: WpEvents, callback: (...arg: any) => void): void {
     if (!this.eventCallbacks[event]) {
       this.eventCallbacks[event] = []

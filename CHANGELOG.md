@@ -5,11 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.13(2026-08-11)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.13...2.0.12)
 
 ### Added
 
 - Persist bot replies to `whatsapp_messages` (`fromMe: true`, marked processed) so conversation history includes both sides of the chat; persistence failure is logged and never blocks sending the reply.
+- Replace the chatbot's in-memory message buffering with a sliding-window debounce backed by delayed BullMQ jobs (one conversation-turn job per inbound message, on a per-WpClient queue, concurrency 1, survives process restarts): the bot now replies after the customer's *last* message instead of a fixed window from their first. Stale turns (a newer message arrived, or the session reached `COMPLETED`/`SUPPORT`) are discarded silently, before the AI call when possible and before any send or service-creation side effect otherwise, with no error-fallback message sent to the customer. New env var `CHATBOT_DEBOUNCE_MS` (default 5000) configures the debounce window. **Behavior change:** interactive button replies now process immediately instead of being buffered with text.
+- Show a read receipt and "typing…" indicator to the customer on the Official (Meta Cloud API) transport while a debounce window and AI processing run; no-op on Baileys/WWebClient.
+- Emit a structured per-turn outcome log (`completed | superseded_pre_ai | discarded_post_ai | error`) for the new conversation-turn processor.
 
 ### Changed
 

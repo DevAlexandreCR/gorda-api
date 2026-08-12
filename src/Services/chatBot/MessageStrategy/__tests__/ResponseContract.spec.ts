@@ -57,6 +57,9 @@ import { PlaceInterface } from '../../../../Interfaces/PlaceInterface'
 import { WpMessage } from '../../../../Types/WpMessage'
 import { ClientInterface } from '../../../../Interfaces/ClientInterface'
 import * as Sentry from '@sentry/node'
+import { DiscardedTurnError } from '../../turns/DiscardedTurnError'
+import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
+import { SessionStatuses } from '../../../../Types/SessionStatuses'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const MockedContainer = require('../../../../Container/Container').default
@@ -85,7 +88,10 @@ function buildMockSession(chatId: string) {
     service_id: null as string | null,
     setService: jest.fn().mockResolvedValue(undefined),
     setStatus: jest.fn().mockResolvedValue(undefined),
+    setPlace: jest.fn().mockResolvedValue(undefined),
+    setPlaceOptions: jest.fn().mockResolvedValue(undefined),
     sendMessage: jest.fn().mockResolvedValue(undefined),
+    assertTurnStillValid: jest.fn().mockResolvedValue(undefined),
   }
 }
 
@@ -93,6 +99,85 @@ class ConcreteResponseContract extends ResponseContract {
   messageSupported = ['text']
   async processMessage(_message: WpMessage): Promise<void> {}
 }
+
+function buildOutboundMessage(overrides: Partial<ChatBotMessage> = {}): ChatBotMessage {
+  return {
+    id: 'msg-1',
+    name: 'Test Message',
+    description: '',
+    message: 'hola',
+    enabled: true,
+    interactive: null,
+    ...overrides,
+  }
+}
+
+// design D3: sendMessage() is the single outbound funnel, and its turn-gate
+// check (session.assertTurnStillValid()) MUST run before the
+// retryPromise(...).catch(Sentry.captureException + exit(1)) block, throwing
+// (not silently resolving) so any .then()-chained mutation a strategy makes
+// after a send never executes for a stale turn.
+describe('ResponseContract.sendMessage turn gate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('rejects with DiscardedTurnError and never sends when the turn is stale', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    mockSession.assertTurnStillValid = jest.fn().mockRejectedValue(new DiscardedTurnError('superseded'))
+    const contract = new ConcreteResponseContract(mockSession as any)
+
+    await expect(contract.sendMessage(buildOutboundMessage())).rejects.toBeInstanceOf(
+      DiscardedTurnError
+    )
+
+    expect(mockSession.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('never reaches the retryPromise/catch block: process.exit and Sentry.captureException are NOT invoked on a benign discard', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    mockSession.assertTurnStillValid = jest.fn().mockRejectedValue(new DiscardedTurnError('superseded'))
+    const contract = new ConcreteResponseContract(mockSession as any)
+
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    const sentrySpy = jest.spyOn(Sentry, 'captureException')
+
+    await expect(contract.sendMessage(buildOutboundMessage())).rejects.toBeInstanceOf(
+      DiscardedTurnError
+    )
+
+    // A regression here (assertTurnStillValid moved past the retryPromise/catch,
+    // or the check turned into a no-op resolve) would crash the process via
+    // exit(1) on every benign discard — see design.md D3's placement hazard.
+    expect(exitSpy).not.toHaveBeenCalled()
+    expect(sentrySpy).not.toHaveBeenCalled()
+
+    exitSpy.mockRestore()
+  })
+
+  it('does not run .then()-chained session mutations after a blocked send (the exact hazard design D3 exists to prevent)', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    mockSession.assertTurnStillValid = jest.fn().mockRejectedValue(new DiscardedTurnError('superseded'))
+    const contract = new ConcreteResponseContract(mockSession as any)
+
+    // Mirrors the exact chained-mutation pattern real strategies use after a
+    // send (e.g. AskingForPlace/runPlaceSearchFlow:
+    // sendMessage(...).then(async () => { setStatus(); setPlace(); setPlaceOptions() })).
+    // If sendMessage silently resolved instead of throwing on a stale turn,
+    // this .then() callback would run and leak a stale mutation.
+    const chain = contract.sendMessage(buildOutboundMessage()).then(async () => {
+      await mockSession.setStatus(SessionStatuses.ASKING_FOR_COMMENT)
+      await mockSession.setPlace(mockPlace)
+      await mockSession.setPlaceOptions([])
+    })
+
+    await expect(chain).rejects.toBeInstanceOf(DiscardedTurnError)
+
+    expect(mockSession.setStatus).not.toHaveBeenCalled()
+    expect(mockSession.setPlace).not.toHaveBeenCalled()
+    expect(mockSession.setPlaceOptions).not.toHaveBeenCalled()
+  })
+})
 
 describe('ResponseContract.createService', () => {
   beforeEach(() => {
@@ -187,5 +272,27 @@ describe('ResponseContract.createService', () => {
 
     expect(sentrySpy).toHaveBeenCalledTimes(1)
     expect(sentrySpy).toHaveBeenCalledWith(repoError)
+  })
+
+  // spec scenario: "Stale turn does not create a service" (ASKING_FOR_COMMENT
+  // path) — createService()'s success path never calls sendMessage, so the
+  // assertTurnStillValid() gate immediately before ServiceRepository.create
+  // (design D3 point 2) is the *only* thing protecting this write from a
+  // superseded/COMPLETED/SUPPORT turn.
+  it('does not create a service when the turn is stale (gate immediately before ServiceRepository.create)', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    mockSession.assertTurnStillValid = jest
+      .fn()
+      .mockRejectedValue(new DiscardedTurnError('superseded'))
+    mockCountFn.mockResolvedValue(3)
+    MockedContainer.getServiceHistoryRepository.mockReturnValue({ count: mockCountFn })
+
+    const contract = new ConcreteResponseContract(mockSession as any)
+    contract['currentClient'] = mockClient
+
+    await expect(contract.createService(mockPlace)).rejects.toBeInstanceOf(DiscardedTurnError)
+
+    expect(ServiceRepository.create).not.toHaveBeenCalled()
+    expect(mockSession.setService).not.toHaveBeenCalled()
   })
 })

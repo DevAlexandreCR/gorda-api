@@ -31,6 +31,12 @@ import DateHelper from '../../Helpers/DateHelper'
 import InboundMessageMetrics from './monitoring/InboundMessageMetrics'
 import { InboundMessagePolicy } from './policies/InboundMessagePolicy'
 import InboundMessageDedupCache from './policies/InboundMessageDedupCache'
+import { isDebounceableMsg } from './policies/DebounceableMessagePolicy'
+import {
+  getConversationTurnQueueName,
+  registerConversationTurnQueue,
+} from '../chatBot/turns/ConversationTurnQueue'
+import { processConversationTurn } from '../chatBot/turns/ConversationTurnProcessor'
 import IgnoredInboundMessageAuditRepository from '../../Repositories/IgnoredInboundMessageAuditRepository'
 import ChatIdHelper from '../../Helpers/ChatIdHelper'
 import MessageRepository from '../../Repositories/MessageRepository'
@@ -89,9 +95,27 @@ export class WhatsAppClient {
     return this.socket !== null
   }
 
+  // Public accessor so the conversation-turn processor (task 3.6), which runs
+  // outside this class, can reach the live ChatBot/Session for a queued turn's
+  // wpClientId (design D6: the worker needs the in-process ChatBot.sessions map).
+  getChatBot(): ChatBot {
+    return this.chatBot
+  }
+
   onReady = (): void => {
     WpNotificationRepository.offNotifications(this.wpClient.id)
     this.chatBot = new ChatBot(this.client, this.wpClient.id)
+    // Register the per-WpClient conversation-turn queue + worker right after ChatBot
+    // construction (design D6): the turn processor resolves this.chatBot through
+    // Store when a queued job wakes up, so it must already exist. onReady re-fires
+    // on reconnect/restartChromium; registerConversationTurnQueue is idempotent
+    // (task 1.2/3.1), so this never registers a second worker on the same queue.
+    registerConversationTurnQueue(this.wpClient.id, processConversationTurn)
+    console.log(
+      'conversation-turn worker registered',
+      this.wpClient.alias,
+      getConversationTurnQueueName(this.wpClient.id)
+    )
     this.chatBot.sync()
     WpNotificationRepository.onServiceAssigned(this.wpClient.id, this.serviceAssigned)
     WpNotificationRepository.onDriverArrived(this.wpClient.id, this.driverArrived)
@@ -171,6 +195,11 @@ export class WhatsAppClient {
       }
 
       if (this.isProcessableMsg(msg)) {
+        if (isDebounceableMsg(msg)) {
+          this.client
+            .sendTypingIndicator(msg.from, msg.id)
+            .catch((e) => console.warn('sendTypingIndicator error', this.wpClient.alias, e.message))
+        }
         await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
       }
     }

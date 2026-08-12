@@ -68,6 +68,12 @@ export class WWebClient implements WPClientInterface {
       })
   }
 
+  // No-op: typing indicator is only implemented for the Official transport (design D7).
+  async sendTypingIndicator(chatId: string, inboundMessageId: string): Promise<void> {
+    console.debug('sendTypingIndicator is a no-op on WWebClient', { chatId, inboundMessageId })
+    return Promise.resolve()
+  }
+
   on(event: WpEvents, callback: (...args: any) => void): void {
     if (event === WpEvents.MESSAGE_RECEIVED) {
       this.client.on(WpEvents.MESSAGE_RECEIVED, (message: Message) => {

@@ -9,6 +9,8 @@ export interface WPClientInterface {
 
   sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void>
 
+  sendTypingIndicator(chatId: string, inboundMessageId: string): Promise<void>
+
   on(event: WpEvents, callback: (...arg: any) => void): void
 
   getWWebVersion(): Promise<string>

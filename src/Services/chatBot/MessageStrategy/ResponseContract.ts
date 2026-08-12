@@ -47,6 +47,15 @@ export abstract class ResponseContract {
 
   async sendMessage(message: ChatBotMessage): Promise<void> {
     if (message.enabled) {
+      // Turn gate (design D3) — MUST run before the retryPromise/catch below.
+      // A DiscardedTurnError thrown here propagates to the caller untouched
+      // (Session.processMessage's catch special-cases it, task 3.5). If this
+      // check were moved past the retryPromise block instead, a benign discard
+      // would be caught by that block's `.catch` and crash the process via
+      // Sentry.captureException + exit(1) on every stale turn. Do not move this
+      // below the retryPromise call.
+      await this.session.assertTurnStillValid()
+
       await this.retryPromise<void>(this.session.sendMessage(message), 3).catch((e) => {
         Sentry.captureException(e)
         exit(1)
@@ -223,6 +232,9 @@ export abstract class ResponseContract {
       service.client_completed_services_count = 0
       Sentry.captureException(error)
     }
+    // Turn gate (design D3): AskingForComment's success path never calls sendMessage,
+    // so this is the only gate point protecting the service-booking write itself.
+    await this.session.assertTurnStillValid()
     const dbService = await ServiceRepository.create(service)
     this.session.service_id = dbService.id
     if (this.session.service_id)

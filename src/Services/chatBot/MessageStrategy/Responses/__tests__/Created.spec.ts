@@ -140,6 +140,7 @@ function buildMockSession() {
     setPlaceOptions: jest.fn().mockResolvedValue(undefined),
     setNotification: jest.fn().mockResolvedValue(undefined),
     sendMessage: jest.fn().mockResolvedValue(undefined),
+    assertTurnStillValid: jest.fn().mockResolvedValue(undefined),
   }
 }
 
