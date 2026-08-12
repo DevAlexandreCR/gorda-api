@@ -63,6 +63,21 @@ export async function processConversationTurn(payload: ConversationTurnPayload):
       return
     }
 
+    // Defensive guard: buildMergedUnprocessedMessage has no empty-array contract
+    // and throws if the in-memory session has zero unprocessed messages. The gate
+    // above reads freshness from the DB while the merge below reads memory, so a
+    // memory/DB desync (DB has an unprocessed row, in-memory messages map empty)
+    // can pass the gate and crash. Not `superseded_pre_ai` — that outcome is for
+    // benign supersedes, and a desync here is a real anomaly worth surfacing.
+    if (session.getUnprocessedMessagesArray().length === 0) {
+      console.warn(
+        'conversation turn: in-memory session has no unprocessed messages (memory/DB desync)',
+        payload
+      )
+      logOutcome(payload, 'error')
+      return
+    }
+
     session.beginTurn(payload.messageId)
     turnStarted = true
 

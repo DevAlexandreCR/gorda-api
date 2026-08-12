@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
 import { SessionInterface } from '../../Interfaces/SessionInterface'
@@ -47,6 +48,11 @@ export default class ChatBot {
       SessionRepository.sessionActiveListener(this.wpClientId, async (type, session) => {
         switch (type) {
           case 'added':
+            // findOrCreateSession already registers a brand-new session in
+            // this.sessions before persisting it, so the 'added' event fired
+            // synchronously by that same create call must not overwrite it
+            // with a second, empty instance here.
+            if (this.sessions.has(session.id)) break
             const providerChatId = ChatIdHelper.toProviderChatId(
               session.chat_id,
               this.wpClient.serviceName as WpClients
@@ -95,12 +101,24 @@ export default class ChatBot {
     if (!session) {
       const newSession = new Session(normalizedChatId)
       newSession.setWpClientId(this.wpClientId)
+      newSession.id = randomUUID()
       // if (this.isAgreement(message.body)) {
       //   newSession.status = Session.STATUS_AGREEMENT // TODO: Handle agreement status
       // }
-      session = await this.createSession(newSession)
       const chat = await message.getChat()
-      session.setChat(chat)
+      newSession.setChat(chat)
+      // Register before persisting: SessionRepository.create emits the 'added'
+      // realtime event synchronously, and sync()'s listener only skips sessions
+      // already present in the map. Registering first (with chat already set)
+      // guarantees that emit finds this fully-initialized instance instead of
+      // sync() building and installing a second, empty one.
+      this.sessions.set(newSession.id, newSession)
+      try {
+        session = await this.createSession(newSession)
+      } catch (e) {
+        this.sessions.delete(newSession.id)
+        throw e
+      }
     }
 
     return session

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Fix a race in new-session registration that made the first message of any brand-new chat session fail the conversation turn (`Cannot read properties of undefined (reading 'created_at')`), plus a defensive guard in the conversation-turn processor that logs and discards a turn instead of crashing if it ever finds the in-memory session desynced from the database.
+
 ## [2.0.13(2026-08-11)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.13...2.0.12)
 
 ### Added

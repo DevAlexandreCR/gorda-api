@@ -117,6 +117,27 @@ describe('processConversationTurn', () => {
     )
   })
 
+  it('exits with error and never starts a turn when the in-memory session has no unprocessed messages (memory/DB desync)', async () => {
+    const session = buildFakeSession()
+    session.getUnprocessedMessagesArray.mockReturnValue([])
+    mockResolvedWhatsappClient(session)
+    const payload = buildPayload()
+
+    await expect(processConversationTurn(payload)).resolves.toBeUndefined()
+
+    expect(session.beginTurn).not.toHaveBeenCalled()
+    expect(session.buildMergedUnprocessedMessage).not.toHaveBeenCalled()
+    expect(session.processMessage).not.toHaveBeenCalled()
+    expect(session.endTurn).not.toHaveBeenCalled()
+    expect(consoleWarnSpy).toHaveBeenCalled()
+    expect(consoleLogSpy).toHaveBeenCalledWith('info: conversation turn outcome', {
+      wpClientId: payload.wpClientId,
+      sessionId: payload.sessionId,
+      messageId: payload.messageId,
+      outcome: 'error',
+    })
+  })
+
   it('happy path: wraps beginTurn/endTurn, merges and processes the message, logs completed', async () => {
     const processMessage = jest.fn().mockResolvedValue('completed')
     const session = buildFakeSession({ processMessage })
