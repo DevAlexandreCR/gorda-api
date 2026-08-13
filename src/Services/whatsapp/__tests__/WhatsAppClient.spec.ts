@@ -78,6 +78,8 @@ jest.mock('../../../Models/ChatSessionRecord', () => ({
 
 jest.mock('../../../Models/WhatsappMessageRecord', () => ({
   findOrCreate: jest.fn(),
+  update: jest.fn(),
+  findOne: jest.fn(),
 }))
 
 import { Worker } from 'bullmq'
@@ -351,9 +353,13 @@ describe('WhatsAppClient.initClient() over the OfficialClient singleton (spec: w
 // What is mocked: ChatBot itself (replaced with a minimal stand-in exposing
 // findSessionByChatId/processMessage, as the rest of this file already does) so the test
 // doesn't need ChatBot's sync/session-map machinery or Firebase-backed chat lookups; the
-// Sequelize model layer (ChatSessionRecord.findByPk, WhatsappMessageRecord.findOrCreate) via
-// an in-memory fake shared "DB", the same way SessionRepository.spec.ts tests D3 in isolation;
-// and QueueService.add (spied, no-op) to count enqueued turns without touching Redis/BullMQ.
+// Sequelize model layer (ChatSessionRecord.findByPk, WhatsappMessageRecord.findOrCreate/
+// update/findOne) via an in-memory fake shared "DB", the same way SessionRepository.spec.ts
+// tests D3 in isolation; and QueueService.add (spied, no-op) to count enqueued turns without
+// touching Redis/BullMQ. The fake DB seeds the inbound row with chatSessionId: null before the
+// event fires, mirroring the real precondition (MessageController.ts / WhatsAppClient.ts
+// pre-persist inbound rows with chatSessionId: null ahead of the chatbot run) that the old
+// re-parenting bug misread as a cross-session duplicate and silently dropped.
 describe('Combined failure chain: two WhatsAppClient generations over one OfficialClient singleton (design D1+D3, spec: wp-inbound-single-processing, task 2.4)', () => {
   const wpClientId = 'wp-client-official-combined-chain'
 
@@ -397,7 +403,7 @@ describe('Combined failure chain: two WhatsAppClient generations over one Offici
     ;(wrapperA.client as OfficialClient).on(WpEvents.MESSAGE_RECEIVED, wrapperB.onMessageReceived)
 
     // Shared in-memory "DB": both generations' SessionRepository.addMsg calls look up the
-    // same wpClientId/messageId row, so the second call finds the row the first one created.
+    // same wpClientId/messageId row.
     const sessionRecords: Record<string, { id: string; wpClientId: string; chatId: string }> = {
       'session-gen-A': { id: 'session-gen-A', wpClientId, chatId: 'chat-1' },
       'session-gen-B': { id: 'session-gen-B', wpClientId, chatId: 'chat-1' },
@@ -406,12 +412,42 @@ describe('Combined failure chain: two WhatsAppClient generations over one Offici
       async (id: string) => sessionRecords[id]
     )
 
-    const messageRecords: Array<Record<string, unknown>> = []
+    const msg = buildMsg({
+      id: 'wamid.combined-1',
+      type: MessageTypes.TEXT,
+      from: '573001234567@c.us',
+      body: 'Hola',
+    })
+
+    // Reproduce the real precondition: the webhook pre-persists the inbound row with
+    // chatSessionId: null before either chatbot generation ever calls addMsg.
+    const messageRecords: Array<Record<string, unknown>> = [
+      {
+        wpClientId,
+        messageId: msg.id,
+        chatId: 'chat-1',
+        chatSessionId: null,
+        created_at: msg.timestamp,
+        type: MessageTypes.TEXT,
+        body: msg.body,
+        fromMe: false,
+        processed: false,
+        location: null,
+        interactive: null,
+        interactiveReply: null,
+        save: jest.fn().mockResolvedValue(undefined),
+      },
+    ]
+
+    function findRecord(wpClientIdArg: string, messageId: string) {
+      return messageRecords.find(
+        (r) => r.wpClientId === wpClientIdArg && r.messageId === messageId
+      )
+    }
+
     ;(WhatsappMessageRecord.findOrCreate as jest.Mock).mockImplementation(
       async ({ where, defaults }: { where: any; defaults: any }) => {
-        const existing = messageRecords.find(
-          (r) => r.wpClientId === where.wpClientId && r.messageId === where.messageId
-        )
+        const existing = findRecord(where.wpClientId, where.messageId)
         if (existing) return [existing, false]
         const record = { ...defaults, save: jest.fn().mockResolvedValue(undefined) }
         messageRecords.push(record)
@@ -419,14 +455,22 @@ describe('Combined failure chain: two WhatsAppClient generations over one Offici
       }
     )
 
-    const addSpy = jest.spyOn(QueueService.getInstance(), 'add').mockImplementation(() => {})
+    ;(WhatsappMessageRecord.update as jest.Mock).mockImplementation(
+      async (values: Record<string, unknown>, { where }: { where: any }) => {
+        const record = findRecord(where.wpClientId, where.messageId)
+        if (!record || record.chatSessionId !== where.chatSessionId) {
+          return [0]
+        }
+        Object.assign(record, values)
+        return [1]
+      }
+    )
 
-    const msg = buildMsg({
-      id: 'wamid.combined-1',
-      type: MessageTypes.TEXT,
-      from: '573001234567@c.us',
-      body: 'Hola',
-    })
+    ;(WhatsappMessageRecord.findOne as jest.Mock).mockImplementation(
+      async ({ where }: { where: any }) => findRecord(where.wpClientId, where.messageId) ?? null
+    )
+
+    const addSpy = jest.spyOn(QueueService.getInstance(), 'add').mockImplementation(() => {})
 
     ;(wrapperA.client as OfficialClient).triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
     await flushMicrotasks()
@@ -437,8 +481,11 @@ describe('Combined failure chain: two WhatsAppClient generations over one Offici
     expect(spyA).toHaveBeenCalledTimes(1)
     expect(spyB).toHaveBeenCalledTimes(1)
 
-    // ...yet D3's cross-session dedup means only one row was ever persisted...
+    // ...yet D3's null-session adoption + cross-session dedup means the row was only ever
+    // adopted by one of the two sessions...
     expect(messageRecords).toHaveLength(1)
+    expect(messageRecords[0].chatSessionId).not.toBeNull()
+    expect(['session-gen-A', 'session-gen-B']).toContain(messageRecords[0].chatSessionId)
 
     // ...and therefore only one conversation-turn job was enqueued.
     expect(addSpy).toHaveBeenCalledTimes(1)

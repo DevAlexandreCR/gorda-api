@@ -275,37 +275,84 @@ class SessionRepository {
       }
     }
 
-    if (messageRecord.chatSessionId !== sessionId) {
+    let currentRecord = messageRecord
+
+    if (currentRecord.chatSessionId === null) {
+      // The inbound row is pre-persisted with chatSessionId=null before the chatbot
+      // runs; the null-guarded WHERE ensures only one concurrent caller wins adoption.
+      const [adopted] = await WhatsappMessageRecord.update(
+        {
+          chatId: sessionRecord.chatId,
+          chatSessionId: sessionId,
+          created_at: msg.created_at,
+          type: msg.type,
+          body: msg.msg,
+          processed: currentRecord.processed || processed,
+          location: msg.location,
+          interactive: msg.interactive,
+          interactiveReply: msg.interactiveReply,
+        },
+        {
+          where: {
+            wpClientId: sessionRecord.wpClientId,
+            messageId: msg.id,
+            chatSessionId: null,
+          },
+        }
+      )
+
+      if (adopted === 1) {
+        return {
+          created: true,
+          id: currentRecord.messageId,
+        }
+      }
+
+      const refetched = await WhatsappMessageRecord.findOne({
+        where: {
+          wpClientId: sessionRecord.wpClientId,
+          messageId: msg.id,
+        },
+      })
+
+      if (!refetched) {
+        throw new Error(`Message ${msg.id} not found after concurrent adoption`)
+      }
+
+      currentRecord = refetched
+    }
+
+    if (currentRecord.chatSessionId !== sessionId) {
       console.warn(
         '[SessionAddMsgCrossSessionDuplicate]',
         JSON.stringify({
           wpClientId: sessionRecord.wpClientId,
           messageId: msg.id,
-          owningSessionId: messageRecord.chatSessionId,
+          owningSessionId: currentRecord.chatSessionId,
           callingSessionId: sessionId,
           at: new Date().toISOString(),
         })
       )
       return {
         created: false,
-        id: messageRecord.messageId,
+        id: currentRecord.messageId,
       }
     }
 
-    messageRecord.chatId = sessionRecord.chatId
-    messageRecord.chatSessionId = sessionId
-    messageRecord.created_at = msg.created_at
-    messageRecord.type = msg.type
-    messageRecord.body = msg.msg
-    messageRecord.processed = messageRecord.processed || processed
-    messageRecord.location = msg.location
-    messageRecord.interactive = msg.interactive
-    messageRecord.interactiveReply = msg.interactiveReply
-    await messageRecord.save()
+    currentRecord.chatId = sessionRecord.chatId
+    currentRecord.chatSessionId = sessionId
+    currentRecord.created_at = msg.created_at
+    currentRecord.type = msg.type
+    currentRecord.body = msg.msg
+    currentRecord.processed = currentRecord.processed || processed
+    currentRecord.location = msg.location
+    currentRecord.interactive = msg.interactive
+    currentRecord.interactiveReply = msg.interactiveReply
+    await currentRecord.save()
 
     return {
       created: false,
-      id: messageRecord.messageId,
+      id: currentRecord.messageId,
     }
   }
 

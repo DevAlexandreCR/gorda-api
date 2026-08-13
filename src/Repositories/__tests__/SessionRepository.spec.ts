@@ -223,6 +223,63 @@ describe('SessionRepository.addMsg', () => {
     expect(created.save).not.toHaveBeenCalled()
   })
 
+  it('adopts a pre-persisted null-session row via the conditional update and returns created: true', async () => {
+    const existing = mockMessageRecord({
+      messageId: 'wamid-1',
+      chatSessionId: null,
+      body: 'old body',
+      processed: false,
+    })
+    ;(WhatsappMessageRecord.findOrCreate as jest.Mock).mockResolvedValue([existing, false])
+    ;(WhatsappMessageRecord.update as jest.Mock).mockResolvedValue([1])
+
+    const result = await SessionRepository.addMsg(
+      'session-A',
+      mockWpMessage('wamid-1', { msg: 'new body', processed: true })
+    )
+
+    expect(result).toEqual({ created: true, id: 'wamid-1' })
+    expect(WhatsappMessageRecord.update).toHaveBeenCalledWith(
+      expect.objectContaining({ chatSessionId: 'session-A' }),
+      expect.objectContaining({
+        where: expect.objectContaining({ messageId: 'wamid-1', chatSessionId: null }),
+      })
+    )
+    expect(existing.save).not.toHaveBeenCalled()
+  })
+
+  it('falls back to cross-session dedup, with a warning, when the conditional adoption of a null-session row loses the race to another session', async () => {
+    const existing = mockMessageRecord({
+      messageId: 'wamid-1',
+      chatSessionId: null,
+    })
+    const adoptedByOther = mockMessageRecord({
+      messageId: 'wamid-1',
+      chatSessionId: 'session-B',
+      body: 'winner body',
+      processed: true,
+    })
+    ;(WhatsappMessageRecord.findOrCreate as jest.Mock).mockResolvedValue([existing, false])
+    ;(WhatsappMessageRecord.update as jest.Mock).mockResolvedValue([0])
+    ;(WhatsappMessageRecord.findOne as jest.Mock).mockResolvedValue(adoptedByOther)
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const result = await SessionRepository.addMsg(
+      'session-A',
+      mockWpMessage('wamid-1', { msg: 'attempted overwrite' })
+    )
+
+    expect(result).toEqual({ created: false, id: 'wamid-1' })
+    expect(existing.save).not.toHaveBeenCalled()
+    expect(adoptedByOther.save).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[SessionAddMsgCrossSessionDuplicate]',
+      expect.stringContaining('"owningSessionId":"session-B"')
+    )
+
+    warnSpy.mockRestore()
+  })
+
   it('refreshes mutable fields and returns created: false for a same-session duplicate', async () => {
     const existing = mockMessageRecord({
       messageId: 'wamid-1',

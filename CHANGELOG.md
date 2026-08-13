@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the chatbot going silent for every inbound message (all transports) after the 2.0.14 duplicate-reply fix: inbound rows are pre-persisted with `chat_session_id = NULL` before the chatbot runs, and `SessionRepository.addMsg` treated that state as a foreign-session duplicate, so no conversation turn was ever enqueued (most visibly, sharing a location on an assistant-enabled line no longer activated the bot). A null-session row is now adopted into the calling session via an atomic conditional update; rows genuinely owned by another session are still never re-parented.
+
 ## [2.0.14(2026-08-12)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.14...2.0.13)
 
 ### Fixed
