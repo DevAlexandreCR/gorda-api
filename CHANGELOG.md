@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.14(2026-08-12)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.14...2.0.13)
+
 ### Fixed
 
 - Fix a race in new-session registration that made the first message of any brand-new chat session fail the conversation turn (`Cannot read properties of undefined (reading 'created_at')`), plus a defensive guard in the conversation-turn processor that logs and discards a turn instead of crashing if it ever finds the in-memory session desynced from the database.
