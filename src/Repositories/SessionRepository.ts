@@ -268,21 +268,43 @@ class SessionRepository {
       },
     })
 
-    const shouldProcess = created || messageRecord.chatSessionId !== sessionId
+    if (created) {
+      return {
+        created: true,
+        id: messageRecord.messageId,
+      }
+    }
+
+    if (messageRecord.chatSessionId !== sessionId) {
+      console.warn(
+        '[SessionAddMsgCrossSessionDuplicate]',
+        JSON.stringify({
+          wpClientId: sessionRecord.wpClientId,
+          messageId: msg.id,
+          owningSessionId: messageRecord.chatSessionId,
+          callingSessionId: sessionId,
+          at: new Date().toISOString(),
+        })
+      )
+      return {
+        created: false,
+        id: messageRecord.messageId,
+      }
+    }
 
     messageRecord.chatId = sessionRecord.chatId
     messageRecord.chatSessionId = sessionId
     messageRecord.created_at = msg.created_at
     messageRecord.type = msg.type
     messageRecord.body = msg.msg
-    messageRecord.processed = processed
+    messageRecord.processed = messageRecord.processed || processed
     messageRecord.location = msg.location
     messageRecord.interactive = msg.interactive
     messageRecord.interactiveReply = msg.interactiveReply
     await messageRecord.save()
 
     return {
-      created: shouldProcess,
+      created: false,
       id: messageRecord.messageId,
     }
   }
@@ -299,10 +321,11 @@ class SessionRepository {
     }
 
     await WhatsappMessageRecord.update(
-      { processed: true, chatSessionId: sessionId },
+      { processed: true },
       {
         where: {
           wpClientId: sessionRecord.wpClientId,
+          chatSessionId: sessionId,
           messageId: {
             [Op.in]: messageIds,
           },

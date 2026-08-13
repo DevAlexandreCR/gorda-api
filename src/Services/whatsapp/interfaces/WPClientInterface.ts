@@ -13,6 +13,8 @@ export interface WPClientInterface {
 
   on(event: WpEvents, callback: (...arg: any) => void): void
 
+  removeAllListeners(): void
+
   getWWebVersion(): Promise<string>
 
   getState(): Promise<WpStates>

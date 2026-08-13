@@ -1,5 +1,10 @@
 jest.mock('axios')
 
+jest.mock('@sentry/node', () => ({
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+}))
+
 jest.mock('../../../../queue/QueueService', () => ({
   __esModule: true,
   default: {
@@ -22,12 +27,15 @@ jest.mock('../../../../store/Store', () => ({
 }))
 
 import axios from 'axios'
+import * as Sentry from '@sentry/node'
 import { OfficialClient } from '../OfficialClient'
 import { WpClient } from '../../../../../Interfaces/WpClient'
 import { WpClients } from '../../../constants/WPClients'
+import { WpEvents } from '../../../constants/WpEvents'
 import config from '../../../../../../config'
 
 const mockedAxios = axios as jest.Mocked<typeof axios>
+const mockedSentry = Sentry as jest.Mocked<typeof Sentry>
 
 const wpClient: WpClient = {
   id: 'wp-client-1',
@@ -89,6 +97,70 @@ describe('OfficialClient.sendTypingIndicator (spec: chatbot-typing-indicator)', 
     ).resolves.toBeUndefined()
 
     expect(warnSpy).toHaveBeenCalledWith('Failed to send typing indicator:', error.message)
+
+    warnSpy.mockRestore()
+  })
+})
+
+describe('OfficialClient.on / removeAllListeners (spec: wp-inbound-single-processing, task 1.4)', () => {
+  let client: OfficialClient
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    client = new OfficialClient(wpClient)
+  })
+
+  it('removeAllListeners() detaches previously registered callbacks', () => {
+    const callback = jest.fn()
+    client.on(WpEvents.MESSAGE_RECEIVED, callback)
+
+    client.removeAllListeners()
+    client.triggerEvent(WpEvents.MESSAGE_RECEIVED, 'some-arg')
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+
+  it('registers a single callback normally: triggerEvent invokes it exactly once', () => {
+    const callback = jest.fn()
+    client.on(WpEvents.MESSAGE_RECEIVED, callback)
+
+    client.triggerEvent(WpEvents.MESSAGE_RECEIVED, 'some-arg')
+
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback).toHaveBeenCalledWith('some-arg')
+  })
+
+  it('logs a warning (and reports to Sentry) when a second callback is registered for the same event, while still registering both', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const firstCallback = jest.fn()
+    const secondCallback = jest.fn()
+
+    client.on(WpEvents.MESSAGE_RECEIVED, firstCallback)
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(mockedSentry.captureMessage).not.toHaveBeenCalled()
+
+    client.on(WpEvents.MESSAGE_RECEIVED, secondCallback)
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[OfficialClientDuplicateListener]',
+      expect.stringContaining(wpClient.id)
+    )
+    expect(mockedSentry.captureMessage).toHaveBeenCalledWith(
+      'OfficialClient: duplicate event registration',
+      expect.objectContaining({
+        level: 'warning',
+        extra: expect.objectContaining({
+          wpClientId: wpClient.id,
+          event: WpEvents.MESSAGE_RECEIVED,
+          callbackCount: 2,
+        }),
+      })
+    )
+
+    // Registration behavior is unchanged: both callbacks remain registered and fire.
+    client.triggerEvent(WpEvents.MESSAGE_RECEIVED, 'payload')
+    expect(firstCallback).toHaveBeenCalledWith('payload')
+    expect(secondCallback).toHaveBeenCalledWith('payload')
 
     warnSpy.mockRestore()
   })

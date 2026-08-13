@@ -59,6 +59,7 @@ export class WhatsAppClient {
 
   initClient(): void {
     this.client = ClientFactory.build(this.wpClient)
+    this.client.removeAllListeners()
     this.client.on(WpEvents.QR_RECEIVED, this.onQR)
     this.client.on(WpEvents.READY, this.onReady)
     this.client.on(WpEvents.AUTHENTICATED, this.onAuth)

@@ -85,6 +85,10 @@ export class WWebClient implements WPClientInterface {
     }
   }
 
+  removeAllListeners(): void {
+    this.client.removeAllListeners()
+  }
+
   async getState(): Promise<WpStates> {
     const state = await this.client.getState()
     return state as unknown as WpStates

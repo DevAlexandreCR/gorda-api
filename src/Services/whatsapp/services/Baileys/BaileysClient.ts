@@ -81,6 +81,10 @@ export class BaileysClient implements WPClientInterface {
     this.eventCallbacks[event].push(callback)
   }
 
+  removeAllListeners(): void {
+    this.eventCallbacks = {}
+  }
+
   async getWWebVersion(): Promise<string> {
     const { version, isLatest } = await fetchLatestBaileysVersion()
     return Promise.resolve(`v${version}, is Latest: ${isLatest}`)

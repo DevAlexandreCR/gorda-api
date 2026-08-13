@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix a race in new-session registration that made the first message of any brand-new chat session fail the conversation turn (`Cannot read properties of undefined (reading 'created_at')`), plus a defensive guard in the conversation-turn processor that logs and discards a turn instead of crashing if it ever finds the in-memory session desynced from the database.
 - Fixed chatbot outbound messages being stamped with millisecond timestamps, causing out-of-order message display and incorrect date separators in the admin chat.
+- Fix duplicate chatbot replies on Official (Meta Cloud API) lines caused by accumulated singleton event listeners across `destroy`/`recreate` cycles and cross-session message re-parenting: `WPClientInterface` implementations now expose `removeAllListeners()`, called before re-registering wrapper events on client init, and `SessionRepository.addMsg` no longer re-parents a message row that already exists under a different chat session (it now returns `{created: false}` without mutating the row or downgrading `processed`).
 
 ## [2.0.13(2026-08-11)](https://github.com/DevAlexandreCR/gorda-api/compare/2.0.13...2.0.12)
 

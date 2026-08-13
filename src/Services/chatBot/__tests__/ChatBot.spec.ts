@@ -39,6 +39,7 @@ function buildFakeWpClient(overrides: Partial<WPClientInterface> = {}): WPClient
     sendMessage: jest.fn(),
     sendTypingIndicator: jest.fn(),
     on: jest.fn(),
+    removeAllListeners: jest.fn(),
     getWWebVersion: jest.fn(),
     getState: jest.fn(),
     getChatById: jest.fn().mockResolvedValue(buildFakeChat()),

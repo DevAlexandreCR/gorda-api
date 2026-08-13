@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import { WpClient } from '../../../../Interfaces/WpClient'
 import config from '../../../../../config'
 import { WpEvents } from '../../constants/WpEvents'
@@ -198,6 +199,25 @@ export class OfficialClient implements WPClientInterface {
       this.eventCallbacks[event] = []
     }
     this.eventCallbacks[event].push(callback)
+
+    const callbackCount = this.eventCallbacks[event].length
+    if (callbackCount > 1) {
+      const details = {
+        wpClientId: this.wpClient.id,
+        event,
+        callbackCount,
+        at: new Date().toISOString(),
+      }
+      console.warn('[OfficialClientDuplicateListener]', JSON.stringify(details))
+      Sentry.captureMessage('OfficialClient: duplicate event registration', {
+        level: 'warning',
+        extra: details,
+      })
+    }
+  }
+
+  removeAllListeners(): void {
+    this.eventCallbacks = {}
   }
 
   async getChatById(chatId: string): Promise<WpChatInterface> {
