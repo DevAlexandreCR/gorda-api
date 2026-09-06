@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0(2026-09-05)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.0...2.0.14)
+
 ### Added
 
 - Add a read-only payments audit API under `/payments`: paginated, filterable cross-driver listings of monthly payments and recharges (`GET /payments/monthly`, `GET /payments/recharges`), per-driver summary modes (`GET /payments/monthly/summary`, `GET /payments/recharges/summary`), and an actor lookup (`GET /payments/actors`) for the "registered by" filter.
