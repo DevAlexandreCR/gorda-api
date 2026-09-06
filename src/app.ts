@@ -43,6 +43,7 @@ import MetricsController from './Api/Controllers/Metrics/MetricsController'
 import ServiceHistoryInternalController from './Api/Controllers/Internal/ServiceHistoryInternalController'
 import DriversInternalController from './Api/Controllers/Internal/DriversInternalController'
 import BillingController from './Api/Controllers/Billing/BillingController'
+import PaymentsAuditController from './Api/Controllers/Payments/PaymentsAuditController'
 import type { CorsOptions } from 'cors'
 import ChatRealtimeGateway from './Services/whatsapp/ChatRealtimeGateway'
 import DatabaseService from './Services/firebase/Database'
@@ -131,6 +132,7 @@ app.use('/driver-app', DriverAppController)
 app.use('/services', ServiceHistoryController)
 app.use('/metrics', MetricsController)
 app.use('/billing', BillingController)
+app.use('/payments', PaymentsAuditController)
 app.use('/internal/service-history', ServiceHistoryInternalController)
 app.use('/internal/drivers', DriversInternalController)
 

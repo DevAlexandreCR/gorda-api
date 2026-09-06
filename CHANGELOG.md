@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add a read-only payments audit API under `/payments`: paginated, filterable cross-driver listings of monthly payments and recharges (`GET /payments/monthly`, `GET /payments/recharges`), per-driver summary modes (`GET /payments/monthly/summary`, `GET /payments/recharges/summary`), and an actor lookup (`GET /payments/actors`) for the "registered by" filter.
+- Compute anomaly flags server-side per row — `duplicate`, `atypical`, `outOfPeriod`, `voided` (monthly) — before any non-period filter is applied, and return footer totals over the whole filtered set using the same predicates as `/metrics/revenue`, so they tie out with it. No migration; no changes to any write path.
+
 ### Fixed
 
 - Fix the chatbot going silent for every inbound message (all transports) after the 2.0.14 duplicate-reply fix: inbound rows are pre-persisted with `chat_session_id = NULL` before the chatbot runs, and `SessionRepository.addMsg` treated that state as a foreign-session duplicate, so no conversation turn was ever enqueued (most visibly, sharing a location on an assistant-enabled line no longer activated the bot). A null-session row is now adopted into the calling session via an atomic conditional update; rows genuinely owned by another session are still never re-parented.
