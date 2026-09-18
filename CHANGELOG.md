@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add an agent-first conversation turn for `chatBot` lines: an OpenAI Responses model (`OpenAIResponsesClient`) drives each turn through a structured prompt, an `AgentContextBuilder` (session, place, and booking context), a `search_place` tool backed by the existing place-search strategy, deterministic action validation (`AgentValidator`), and an executor that applies the model's actions (set place, book service, send message). Booking is centralized in a new `ServiceBooking` helper shared by the agent and deterministic paths. Each turn emits a structured `agent_turn` log (inputs, actions, tool calls, outcome).
+- Add `agent_in_trip` to `wp_clients` (surfaced as `agentInTrip` on the WpClient master-data contract) and `state` (JSONB) to `chat_sessions`, gating a new `LocationAssistantFlow` that lets the agent assist customers on `assistant` lines while a service is in progress (pin, name shortcut, comment, then service) — new `TurnDispatcher` routes each line to the agent-first or deterministic/assistant path per line mode.
+
+### Changed
+
+- Collapse `SessionStatuses` to five values: `BOOKING`, `REQUESTING_SERVICE`, `SERVICE_IN_PROGRESS`, `COMPLETED`, `SUPPORT`. Legacy statuses are mapped to `BOOKING` on read for backward compatibility with existing rows.
+- **Breaking:** replace the chatbot's environment contract. Added `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, `AGENT_MAX_TOOL_CALLS`; removed `AI_SERVICE_URL`, `AI_SERVICE_API_KEY`, `HUGGINGFACE_TOKEN`, `ENTITY_MODEL_NAME`. The server now fails fast at startup if `OPENAI_API_KEY` is missing while a `chatBot` line is configured.
+
+### Removed
+
+- Remove the dependency on the `ia-app` service, the legacy `MessageStrategy` response strategies and `ai/*` client (`EntityExtractor`, `MessageHandler`, `GordaChatBot`), the `Types/Intent.ts` type, and the `@huggingface/inference` dependency.
+
 ## [2.1.0(2026-09-05)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.0...2.0.14)
 
 ### Added

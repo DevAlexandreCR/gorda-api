@@ -14,6 +14,7 @@ class ChatSessionRecord
   public place!: any
   public placeOptions!: any
   public notifications!: any
+  public state!: any
   public assigned_at!: number
   public created_at!: number
   public updated_at!: number | null
@@ -56,6 +57,11 @@ ChatSessionRecord.init(
     notifications: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    state: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
     assigned_at: {
       type: DataTypes.BIGINT,

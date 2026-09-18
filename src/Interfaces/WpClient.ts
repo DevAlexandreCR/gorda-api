@@ -7,5 +7,6 @@ export type WpClient = {
   full: boolean
   chatBot: boolean
   assistant: boolean
+  agentInTrip: boolean
   service: WpClients
 }

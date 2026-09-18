@@ -107,6 +107,7 @@ function buildWpClient(overrides: Partial<WpClient> = {}): WpClient {
     full: false,
     chatBot: true,
     assistant: false,
+    agentInTrip: false,
     service: WpClients.OFFICIAL,
     ...overrides,
   }
@@ -218,6 +219,25 @@ describe('WhatsAppClient.onMessageReceived typing indicator wiring (spec: chatbo
     )
 
     warnSpy.mockRestore()
+  })
+})
+
+describe('WhatsAppClient.isProcessableMsg gating on a wpNotifications-only line (spec: chatbot-session-state, task 6.2)', () => {
+  it('an inbound text message on a line with only wpNotifications enabled is not processed and no session is created', async () => {
+    const { whatsAppClient, chatBot } = buildClient({
+      wpNotifications: true,
+      chatBot: false,
+      assistant: false,
+    })
+    const msg = buildMsg({ type: MessageTypes.TEXT, body: 'Hola' })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    // isProcessableMsg first checks for an existing session; none exists here, and with
+    // both chatBot and assistant disabled it falls through to false, so the message never
+    // reaches ChatBot.processMessage (which is what would create a session).
+    expect(chatBot.findSessionByChatId).toHaveBeenCalledWith(msg.from)
+    expect(chatBot.processMessage).not.toHaveBeenCalled()
   })
 })
 

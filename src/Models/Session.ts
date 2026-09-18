@@ -1,9 +1,9 @@
 import { SessionInterface } from '../Interfaces/SessionInterface'
 import SessionRepository from '../Repositories/SessionRepository'
-import { PlaceOption } from '../Interfaces/PlaceOption'
+import { EMPTY_SESSION_STATE, SessionState } from '../Types/SessionState'
 import Place from './Place'
 import { WpMessage } from '../Types/WpMessage'
-import { ResponseContext } from '../Services/chatBot/MessageStrategy/ResponseContext'
+import { dispatchTurn } from '../Services/chatBot/TurnDispatcher'
 import MessageHelper from '../Helpers/MessageHelper'
 import { WpLocation } from '../Types/WpLocation'
 import { exit } from 'process'
@@ -41,7 +41,6 @@ export default class Session implements SessionInterface {
   public id: string
   public status: SessionStatuses
   public chat_id: string
-  public placeOptions?: Array<PlaceOption>
   public assigned_at: number = 0
   public service_id: string | null
   public created_at: number
@@ -51,24 +50,20 @@ export default class Session implements SessionInterface {
   public chat: WpChatInterface
   public wp_client_id: string
   public notifications: WpNotifications
+  public state: SessionState = { ...EMPTY_SESSION_STATE }
   private turnMessageId: string | null = null
   private turnDepth = 0
 
-  static readonly STATUS_AGREEMENT = SessionStatuses.AGREEMENT
-  static readonly STATUS_CREATED = SessionStatuses.CREATED
-  static readonly STATUS_ASKING_FOR_PLACE = SessionStatuses.ASKING_FOR_PLACE
-  static readonly STATUS_CHOOSING_PLACE = SessionStatuses.CHOOSING_PLACE
-  static readonly STATUS_ASKING_FOR_COMMENT = SessionStatuses.ASKING_FOR_COMMENT
+  static readonly STATUS_BOOKING = SessionStatuses.BOOKING
   static readonly STATUS_REQUESTING_SERVICE = SessionStatuses.REQUESTING_SERVICE
   static readonly STATUS_SERVICE_IN_PROGRESS = SessionStatuses.SERVICE_IN_PROGRESS
   static readonly STATUS_COMPLETED = SessionStatuses.COMPLETED
-  static readonly STATUS_ASKING_FOR_NAME = SessionStatuses.ASKING_FOR_NAME
   static readonly STATUS_SUPPORT = SessionStatuses.SUPPORT
 
   constructor(chat_id: string) {
     this.chat_id = chat_id
     this.created_at = new Date().getTime()
-    this.status = Session.STATUS_CREATED
+    this.status = Session.STATUS_BOOKING
     this.service_id = null
     this.notifications = {
       greeting: false,
@@ -236,18 +231,27 @@ export default class Session implements SessionInterface {
   }
 
   async setStatus(status: SessionStatuses): Promise<void> {
+    const leavingBooking =
+      this.status === Session.STATUS_BOOKING && status !== Session.STATUS_BOOKING
     this.status = status
+    if (leavingBooking) {
+      // Session state document (design D4/chatbot-session-state spec): what is
+      // still missing from a booking is meaningless once the session moves on.
+      this.state = { ...EMPTY_SESSION_STATE }
+    }
     await SessionRepository.updateStatus(this)
+  }
+
+  // Persists a partial update to the session state document (design D4/D6),
+  // merged onto the current state so callers only need to name what changed.
+  async setState(patch: Partial<SessionState>): Promise<void> {
+    this.state = { ...this.state, ...patch }
+    await SessionRepository.updateState(this)
   }
 
   async setPlace(place: PlaceInterface): Promise<void> {
     this.place = place
     await SessionRepository.updatePlace(this)
-  }
-
-  async setPlaceOptions(placeOptions: Array<PlaceOption>): Promise<void> {
-    this.placeOptions = placeOptions
-    await SessionRepository.updatePlaceOptions(this)
   }
 
   async setNotification(notification: NotificationType): Promise<void> {
@@ -340,11 +344,7 @@ export default class Session implements SessionInterface {
     message: WpMessage,
     unprocessedMessages: WpMessage[]
   ): Promise<SessionProcessOutcome> {
-    const handler = ResponseContext.getResponse(this.status, this)
-    const response = new ResponseContext(handler)
-
-    return response
-      .processMessage(message)
+    return dispatchTurn(this, message)
       .then(async (): Promise<SessionProcessOutcome> => {
         await this.markUnprocessedMessagesProcessed(message.id, unprocessedMessages)
         return 'completed'

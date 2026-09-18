@@ -277,6 +277,7 @@ class MasterDataRepository {
       full: plain.full,
       chatBot: plain.chatBot,
       assistant: plain.assistant,
+      agentInTrip: plain.agentInTrip,
       service: plain.service,
     }
   }

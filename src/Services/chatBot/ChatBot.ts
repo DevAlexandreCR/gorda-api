@@ -2,7 +2,6 @@ import { randomUUID } from 'crypto'
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
 import { SessionInterface } from '../../Interfaces/SessionInterface'
-import { Agreement } from './MessageStrategy/Responses/Agreement'
 import { WPClientInterface } from '../whatsapp/interfaces/WPClientInterface'
 import { WpMessageInterface } from '../whatsapp/interfaces/WpMessageInterface'
 import ChatIdHelper from '../../Helpers/ChatIdHelper'
@@ -69,7 +68,7 @@ export default class ChatBot {
               sessionInMap.place = session.place
               sessionInMap.notifications = session.notifications
               sessionInMap.wp_client_id = session.wp_client_id
-              sessionInMap.placeOptions = session.placeOptions
+              sessionInMap.state = session.state
               sessionInMap.created_at = session.created_at
               sessionInMap.updated_at = session.updated_at
               sessionInMap.service_id = session.service_id
@@ -102,9 +101,6 @@ export default class ChatBot {
       const newSession = new Session(normalizedChatId)
       newSession.setWpClientId(this.wpClientId)
       newSession.id = randomUUID()
-      // if (this.isAgreement(message.body)) {
-      //   newSession.status = Session.STATUS_AGREEMENT // TODO: Handle agreement status
-      // }
       const chat = await message.getChat()
       newSession.setChat(chat)
       // Register before persisting: SessionRepository.create emits the 'added'
@@ -126,10 +122,6 @@ export default class ChatBot {
 
   isSessionActive(session: SessionInterface): boolean {
     return session.status !== Session.STATUS_COMPLETED
-  }
-
-  isAgreement(message: string): boolean {
-    return message.includes(Agreement.AGREEMENT)
   }
 
   async createSession(session: Session): Promise<Session> {

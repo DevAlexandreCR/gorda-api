@@ -168,6 +168,15 @@ server.listen(config.PORT, async () => {
   store.getWpClients((clients: ClientDictionary) => {
     const activeClientIds = new Set(Object.keys(clients))
 
+    const hasChatBotLine = Object.values(clients).some((client: WpClient) => client.chatBot)
+    if (hasChatBotLine && !config.OPENAI_API_KEY) {
+      console.error(
+        'OPENAI_API_KEY is not set but at least one WhatsApp line has chatBot enabled. ' +
+          'Set OPENAI_API_KEY in the environment before starting the server.'
+      )
+      process.exit(1)
+    }
+
     Object.values(clients).forEach((client: WpClient) => {
       if (!wpServices[client.id]) {
         const wpService = new WhatsAppClient(client)

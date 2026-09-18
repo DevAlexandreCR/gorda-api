@@ -5,13 +5,14 @@ import { MessageTypes } from '../../Services/whatsapp/constants/MessageTypes'
 import { SessionStatuses } from '../../Types/SessionStatuses'
 import { SessionInterface } from '../../Interfaces/SessionInterface'
 import { DiscardedTurnError } from '../../Services/chatBot/turns/DiscardedTurnError'
-import { ResponseContext } from '../../Services/chatBot/MessageStrategy/ResponseContext'
-import { ResponseContract } from '../../Services/chatBot/MessageStrategy/ResponseContract'
+import { dispatchTurn } from '../../Services/chatBot/TurnDispatcher'
 import { enqueueConversationTurn } from '../../Services/chatBot/turns/ConversationTurnQueue'
 import { WpMessageInterface } from '../../Services/whatsapp/interfaces/WpMessageInterface'
 import config from '../../../config.js'
-import { AskingForPlace } from '../../Services/chatBot/MessageStrategy/Responses/AskingForPlace'
-import { PlaceInterface } from '../../Interfaces/PlaceInterface'
+
+jest.mock('../../Services/chatBot/TurnDispatcher', () => ({
+  dispatchTurn: jest.fn(),
+}))
 
 jest.mock('../../Services/chatBot/Messages', () => ({
   getSingleMessage: jest.fn(() => ({
@@ -123,7 +124,10 @@ describe('Session.buildMergedUnprocessedMessage', () => {
       created_at: 2000,
       msg: 'option_a',
       type: MessageTypes.INTERACTIVE,
-      interactiveReply: { type: 'button_reply', button_reply: { id: 'option_a', title: 'Option A' } },
+      interactiveReply: {
+        type: 'button_reply',
+        button_reply: { id: 'option_a', title: 'Option A' },
+      },
     })
     const session = makeSessionWithMessages([first, newest])
 
@@ -225,7 +229,10 @@ describe('Session.addMsg', () => {
     const inbound = makeInboundMessage({
       id: 'wamid-raw-3',
       type: MessageTypes.INTERACTIVE,
-      interactiveReply: { type: 'button_reply', button_reply: { id: 'option_a', title: 'Option A' } },
+      interactiveReply: {
+        type: 'button_reply',
+        button_reply: { id: 'option_a', title: 'Option A' },
+      },
     })
 
     await session.addMsg(inbound)
@@ -337,7 +344,10 @@ describe('Session.enqueueBootSweepTurn', () => {
 
   beforeEach(() => {
     enqueueMock.mockClear()
-    getNewestUnprocessedMessageIdSpy = jest.spyOn(SessionRepository, 'getNewestUnprocessedMessageId')
+    getNewestUnprocessedMessageIdSpy = jest.spyOn(
+      SessionRepository,
+      'getNewestUnprocessedMessageId'
+    )
   })
 
   afterEach(() => {
@@ -388,7 +398,7 @@ describe('Session.enqueueBootSweepTurn', () => {
 function makeFreshSessionRecord(overrides: Partial<SessionInterface> = {}): SessionInterface {
   return {
     id: 'session-1',
-    status: SessionStatuses.ASKING_FOR_PLACE,
+    status: SessionStatuses.BOOKING,
     place: null,
     wp_client_id: 'wp-client-1',
     chat_id: 'chat-1',
@@ -396,6 +406,7 @@ function makeFreshSessionRecord(overrides: Partial<SessionInterface> = {}): Sess
     created_at: 1000,
     updated_at: null,
     notifications: { greeting: false, assigned: false, arrived: false, completed: false },
+    state: { comment: null, pending_candidates: [], pending_pin: null, awaiting: null },
     ...overrides,
   }
 }
@@ -508,16 +519,9 @@ describe('Session turn gate', () => {
 
 describe('Session.processMessage', () => {
   let setProcessedMsgsSpy: jest.SpyInstance
-  let getResponseSpy: jest.SpyInstance
   let sendMessageMock: jest.Mock
   let consoleLogSpy: jest.SpyInstance
-
-  function makeFakeHandler(processMessageImpl: () => Promise<void>): ResponseContract {
-    return {
-      supportMessage: () => true,
-      processMessage: jest.fn(processMessageImpl),
-    } as unknown as ResponseContract
-  }
+  const dispatchTurnMock = dispatchTurn as jest.Mock
 
   function makeSessionForProcessing(unprocessed: WpMessage[]): Session {
     const session = makeSessionWithMessages(unprocessed)
@@ -530,25 +534,27 @@ describe('Session.processMessage', () => {
   }
 
   beforeEach(() => {
-    setProcessedMsgsSpy = jest.spyOn(SessionRepository, 'setProcessedMsgs').mockResolvedValue(undefined)
+    setProcessedMsgsSpy = jest
+      .spyOn(SessionRepository, 'setProcessedMsgs')
+      .mockResolvedValue(undefined)
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    dispatchTurnMock.mockReset()
   })
 
   afterEach(() => {
     setProcessedMsgsSpy.mockRestore()
-    getResponseSpy.mockRestore()
     consoleLogSpy.mockRestore()
   })
 
-  it('success path: marks the batch processed and sends no fallback', async () => {
+  it('success path: dispatches through TurnDispatcher, marks the batch processed and sends no fallback', async () => {
     const msg = makeMessage()
     const session = makeSessionForProcessing([msg])
-    getResponseSpy = jest
-      .spyOn(ResponseContext, 'getResponse')
-      .mockReturnValue(makeFakeHandler(() => Promise.resolve()))
+    dispatchTurnMock.mockResolvedValue(undefined)
 
     await session.processMessage(msg, [msg])
 
+    expect(dispatchTurnMock).toHaveBeenCalledTimes(1)
+    expect(dispatchTurnMock).toHaveBeenCalledWith(session, msg)
     expect(setProcessedMsgsSpy).toHaveBeenCalledWith(session.id, [msg])
     expect(msg.processed).toBe(true)
     expect(sendMessageMock).not.toHaveBeenCalled()
@@ -557,9 +563,7 @@ describe('Session.processMessage', () => {
   it('DiscardedTurnError: sends no fallback, is not reported as an error, and leaves messages unprocessed', async () => {
     const msg = makeMessage()
     const session = makeSessionForProcessing([msg])
-    getResponseSpy = jest
-      .spyOn(ResponseContext, 'getResponse')
-      .mockReturnValue(makeFakeHandler(() => Promise.reject(new DiscardedTurnError('superseded'))))
+    dispatchTurnMock.mockRejectedValue(new DiscardedTurnError('superseded'))
 
     await session.processMessage(msg, [msg])
 
@@ -590,9 +594,7 @@ describe('Session.processMessage', () => {
     async (reason) => {
       const msg = makeMessage()
       const session = makeSessionForProcessing([msg])
-      getResponseSpy = jest
-        .spyOn(ResponseContext, 'getResponse')
-        .mockReturnValue(makeFakeHandler(() => Promise.reject(new DiscardedTurnError(reason))))
+      dispatchTurnMock.mockRejectedValue(new DiscardedTurnError(reason))
 
       await session.processMessage(msg, [msg])
 
@@ -606,12 +608,10 @@ describe('Session.processMessage', () => {
     }
   )
 
-  it('generic error: still sends the fallback and still marks the batch processed (today\'s behavior preserved)', async () => {
+  it("generic error: still sends the fallback and still marks the batch processed (today's behavior preserved)", async () => {
     const msg = makeMessage()
     const session = makeSessionForProcessing([msg])
-    getResponseSpy = jest
-      .spyOn(ResponseContext, 'getResponse')
-      .mockReturnValue(makeFakeHandler(() => Promise.reject(new Error('boom'))))
+    dispatchTurnMock.mockRejectedValue(new Error('boom'))
 
     await session.processMessage(msg, [msg])
 
@@ -636,16 +636,21 @@ describe('Session.processMessage', () => {
 
 describe('Session sliding window: three buffered texts merge into exactly one AI turn', () => {
   let setProcessedMsgsSpy: jest.SpyInstance
-  let getResponseSpy: jest.SpyInstance
   let sendMessageMock: jest.Mock
+  const dispatchTurnMock = dispatchTurn as jest.Mock
+
+  beforeEach(() => {
+    dispatchTurnMock.mockReset()
+  })
 
   afterEach(() => {
     setProcessedMsgsSpy.mockRestore()
-    getResponseSpy.mockRestore()
   })
 
   it('runs one AI turn with all three texts merged, then marks all three processed', async () => {
-    setProcessedMsgsSpy = jest.spyOn(SessionRepository, 'setProcessedMsgs').mockResolvedValue(undefined)
+    setProcessedMsgsSpy = jest
+      .spyOn(SessionRepository, 'setProcessedMsgs')
+      .mockResolvedValue(undefined)
 
     const first = makeMessage({ id: 'wamid-1', created_at: 1000, msg: 'hola' })
     const second = makeMessage({ id: 'wamid-2', created_at: 2000, msg: 'quiero un taxi' })
@@ -657,15 +662,11 @@ describe('Session sliding window: three buffered texts merge into exactly one AI
       archive: jest.fn().mockResolvedValue(undefined),
     } as unknown as Session['chat']
 
-    const handlerProcessMessage = jest.fn().mockResolvedValue(undefined)
-    getResponseSpy = jest.spyOn(ResponseContext, 'getResponse').mockReturnValue({
-      supportMessage: () => true,
-      processMessage: handlerProcessMessage,
-    } as unknown as ResponseContract)
+    dispatchTurnMock.mockResolvedValue(undefined)
 
     // Mirrors what the third (newest) message's turn job does when it wakes:
     // merge the buffered batch, then run the merged message through the
-    // strategy pipeline (design D4).
+    // dispatcher (design D4/D5).
     const merged = session.buildMergedUnprocessedMessage()
     const unprocessed = session.getUnprocessedMessagesArray()
     const outcome = await session.processMessage(merged, unprocessed)
@@ -674,8 +675,8 @@ describe('Session sliding window: three buffered texts merge into exactly one AI
     // this call (they are superseded pre-AI, covered separately in
     // ConversationTurnProcessor.spec.ts); this test only asserts the winning
     // turn's single call and its merged content.
-    expect(handlerProcessMessage).toHaveBeenCalledTimes(1)
-    const [aiInputMessage] = handlerProcessMessage.mock.calls[0]
+    expect(dispatchTurnMock).toHaveBeenCalledTimes(1)
+    const [, aiInputMessage] = dispatchTurnMock.mock.calls[0]
     expect(aiInputMessage.msg).toBe('hola quiero un taxi estoy en el centro')
     expect(outcome).toBe('completed')
 
@@ -687,56 +688,36 @@ describe('Session sliding window: three buffered texts merge into exactly one AI
 })
 
 // ---------------------------------------------------------------------------
-// AskingForPlace's nested `this.session.processMessage(message, [])` call
-// (AskingForPlace.ts:82, the "session.place already set, message doesn't
-// match either place-collection branch" fallback) must not corrupt the outer
-// turn context (design D3's counter-based beginTurn/endTurn — task 3.4/3.6).
-// Uses the REAL Session (unlike AskingForPlace.spec.ts, which mocks Session
-// entirely to dodge the Session<->ResponseContext<->strategies import cycle)
-// because the assertion is on Session's own private turn bookkeeping.
+// Nested `session.processMessage(...)` call from inside a turn (the pattern
+// the legacy AskingForPlace strategy used to exercise before task 3.4 deleted
+// it) must not corrupt the outer turn context (design D3's counter-based
+// beginTurn/endTurn — task 3.4/3.6). Drives the nested call directly from a
+// mocked TurnDispatcher implementation instead of a real strategy class, so
+// this stays scoped to Session's own turn bookkeeping regardless of which
+// flow the dispatcher runs.
 // ---------------------------------------------------------------------------
 
-describe('AskingForPlace nested session.processMessage: outer turn context integrity', () => {
+describe('Nested session.processMessage: outer turn context integrity', () => {
   let setProcessedMsgsSpy: jest.SpyInstance
-  let updateStatusSpy: jest.SpyInstance
-  let getResponseSpy: jest.SpyInstance
-  let nestedHandlerProcessMessage: jest.Mock
+  const dispatchTurnMock = dispatchTurn as jest.Mock
 
   beforeEach(() => {
-    setProcessedMsgsSpy = jest.spyOn(SessionRepository, 'setProcessedMsgs').mockResolvedValue(undefined)
-    updateStatusSpy = jest.spyOn(SessionRepository, 'updateStatus').mockResolvedValue(undefined as never)
-    // The nested Session.processMessage call dispatches through
-    // ResponseContext.getResponse again, based on the just-updated status.
-    // Stub it so this test stays scoped to turn-context bookkeeping instead of
-    // also exercising whatever real strategy that post-transition status maps to.
-    nestedHandlerProcessMessage = jest.fn().mockResolvedValue(undefined)
-    getResponseSpy = jest.spyOn(ResponseContext, 'getResponse').mockReturnValue({
-      supportMessage: () => true,
-      processMessage: nestedHandlerProcessMessage,
-    } as unknown as ResponseContract)
+    setProcessedMsgsSpy = jest
+      .spyOn(SessionRepository, 'setProcessedMsgs')
+      .mockResolvedValue(undefined)
+    dispatchTurnMock.mockReset()
   })
 
   afterEach(() => {
     setProcessedMsgsSpy.mockRestore()
-    updateStatusSpy.mockRestore()
-    getResponseSpy.mockRestore()
   })
 
   it('keeps the outer turnMessageId/turnDepth intact through the nested call, and a single endTurn tears it down fully', async () => {
     const session = new Session('chat-1')
     session.id = 'session-1'
     session.setWpClientId('wp-client-1')
-    session.status = SessionStatuses.ASKING_FOR_PLACE
-    session.place = {
-      id: 'place-1',
-      name: 'Barrio Centro',
-      lat: 2.44,
-      lng: -76.6,
-      location: null,
-      cityId: 'popayan',
-    } as PlaceInterface
+    session.status = SessionStatuses.BOOKING
 
-    const strategy = new AskingForPlace(session)
     const message = makeMessage({ id: 'wamid-outer', msg: 'algo mas' })
 
     // Simulate ConversationTurnProcessor.processConversationTurn's beginTurn
@@ -747,30 +728,33 @@ describe('AskingForPlace nested session.processMessage: outer turn context integ
 
     const processMessageSpy = jest.spyOn(session, 'processMessage')
 
-    // Hits AskingForPlace's fallback branch (place set, name !== LOCATION_NO_NAME):
-    // awaits setStatus, then fires session.processMessage(message, []) WITHOUT
-    // awaiting it — existing fire-and-forget behavior (AskingForPlace.ts:82),
-    // not something this test changes.
-    await strategy.processMessage(message)
+    // The outer dispatchTurn call fires a nested session.processMessage WITHOUT
+    // awaiting it — the fire-and-forget pattern the legacy AskingForPlace
+    // strategy used to exercise (its fallback branch, deleted in task 3.4),
+    // reproduced here directly against the dispatcher seam so this test keeps
+    // covering the exact shape that originally motivated the counter-based
+    // beginTurn/endTurn design.
+    dispatchTurnMock.mockImplementationOnce((s: Session, m: WpMessage) => {
+      s.processMessage(m, [])
+      return Promise.resolve()
+    })
+    dispatchTurnMock.mockImplementationOnce(() => Promise.resolve())
 
-    expect(updateStatusSpy).toHaveBeenCalledTimes(1)
-    expect(session.status).toBe(SessionStatuses.ASKING_FOR_COMMENT)
-    expect(processMessageSpy).toHaveBeenCalledTimes(1)
-    const [nestedMessageArg, nestedUnprocessedArg] = processMessageSpy.mock.calls[0]
+    await session.processMessage(message, [message])
+
+    expect(dispatchTurnMock).toHaveBeenCalledTimes(2)
+    expect(processMessageSpy).toHaveBeenCalledTimes(2)
+    const [nestedMessageArg, nestedUnprocessedArg] = processMessageSpy.mock.calls[1]
     expect(nestedMessageArg).toBe(message)
     expect(nestedUnprocessedArg).toEqual([])
 
     // Capture and await the nested call's own promise so its work is fully
     // settled before asserting on the context it observed.
-    await processMessageSpy.mock.results[0].value
+    await processMessageSpy.mock.results[1].value
 
-    // Proof the nested dispatch actually ran, using the post-transition status:
-    expect(getResponseSpy).toHaveBeenCalledWith(SessionStatuses.ASKING_FOR_COMMENT, session)
-    expect(nestedHandlerProcessMessage).toHaveBeenCalledTimes(1)
-
-    // The depth counter is untouched by any of this: AskingForPlace never
-    // calls session.beginTurn again for this branch, so depth stays exactly 1
-    // and the active messageId stays the OUTER one throughout the nested call.
+    // The depth counter is untouched by any of this: the nested call never
+    // calls session.beginTurn again, so depth stays exactly 1 and the active
+    // messageId stays the OUTER one throughout the nested call.
     expect(session['turnDepth']).toBe(1)
     expect(session['turnMessageId']).toBe('outer-wamid')
 
@@ -783,5 +767,91 @@ describe('AskingForPlace nested session.processMessage: outer turn context integ
     session.endTurn()
     expect(session['turnDepth']).toBe(0)
     expect(session['turnMessageId']).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Session state document (design D4/D6, chatbot-session-state spec)
+// ---------------------------------------------------------------------------
+
+describe('Session.setState / setStatus state clearing', () => {
+  let updateStatusSpy: jest.SpyInstance
+  let updateStateSpy: jest.SpyInstance
+
+  beforeEach(() => {
+    updateStatusSpy = jest
+      .spyOn(SessionRepository, 'updateStatus')
+      .mockResolvedValue(undefined as never)
+    updateStateSpy = jest
+      .spyOn(SessionRepository, 'updateState')
+      .mockResolvedValue(undefined as never)
+  })
+
+  afterEach(() => {
+    updateStatusSpy.mockRestore()
+    updateStateSpy.mockRestore()
+  })
+
+  it('setState merges a patch onto the current state and persists it through SessionRepository', async () => {
+    const session = new Session('chat-1')
+    session.id = 'session-1'
+    session.status = SessionStatuses.BOOKING
+
+    await session.setState({
+      pending_candidates: [
+        { id: 'place-1', name: 'Parque Caldas' },
+        { id: 'place-2', name: 'Terminal de Transportes' },
+      ],
+    })
+    await session.setState({ pending_pin: { lat: 2.4419, lng: -76.6141 } })
+
+    // Round trip: pending_candidates set by the first patch survives the second
+    // patch untouched, and pending_pin from the second patch is present too.
+    expect(session.state.pending_candidates).toEqual([
+      { id: 'place-1', name: 'Parque Caldas' },
+      { id: 'place-2', name: 'Terminal de Transportes' },
+    ])
+    expect(session.state.pending_pin).toEqual({ lat: 2.4419, lng: -76.6141 })
+    expect(updateStateSpy).toHaveBeenCalledTimes(2)
+    expect(updateStateSpy).toHaveBeenLastCalledWith(session)
+  })
+
+  it('clears state to {} when setStatus moves the session out of BOOKING', async () => {
+    const session = new Session('chat-1')
+    session.id = 'session-1'
+    session.status = SessionStatuses.BOOKING
+    await session.setState({ comment: 'en la puerta blanca' })
+
+    await session.setStatus(SessionStatuses.REQUESTING_SERVICE)
+
+    expect(session.state).toEqual({
+      comment: null,
+      pending_candidates: [],
+      pending_pin: null,
+      awaiting: null,
+    })
+    expect(updateStatusSpy).toHaveBeenCalledWith(session)
+  })
+
+  it('leaves state untouched when setStatus is called while already leaving BOOKING for BOOKING (no-op transition)', async () => {
+    const session = new Session('chat-1')
+    session.id = 'session-1'
+    session.status = SessionStatuses.BOOKING
+    await session.setState({ comment: 'en la puerta blanca' })
+
+    await session.setStatus(SessionStatuses.BOOKING)
+
+    expect(session.state.comment).toBe('en la puerta blanca')
+  })
+
+  it('does not clear state again on a second setStatus call once already outside BOOKING', async () => {
+    const session = new Session('chat-1')
+    session.id = 'session-1'
+    session.status = SessionStatuses.REQUESTING_SERVICE
+    await session.setState({ comment: 'should survive' })
+
+    await session.setStatus(SessionStatuses.SERVICE_IN_PROGRESS)
+
+    expect(session.state.comment).toBe('should survive')
   })
 })

@@ -1,6 +1,7 @@
 import { PlaceOption } from './PlaceOption'
 import { PlaceInterface } from './PlaceInterface'
 import { WpNotifications } from '../Types/WpNotifications'
+import { SessionState } from '../Types/SessionState'
 
 export interface ChatSessionRecordInterface {
   id: string
@@ -11,6 +12,7 @@ export interface ChatSessionRecordInterface {
   place: PlaceInterface | null
   placeOptions?: Array<PlaceOption>
   notifications: WpNotifications
+  state: SessionState
   assigned_at: number
   created_at: number
   updated_at: number | null

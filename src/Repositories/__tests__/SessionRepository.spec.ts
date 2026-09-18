@@ -1,5 +1,6 @@
-// Mock Session before any module that triggers the circular Session -> ResponseContext -> subclasses
-// cycle (SessionRepository -> Session -> ResponseContext -> ... -> ChatRepository -> Session).
+// Mock Session before any module that triggers the circular Session <-> SessionRepository
+// dependency (Session imports SessionRepository directly; SessionRepository also reaches
+// Session indirectly via ChatRepository, and via TurnDispatcher/dispatchTurn).
 jest.mock('../../Models/Session', () => {
   class MockSession {
     static STATUS_COMPLETED = 'completed'
@@ -16,6 +17,19 @@ jest.mock('../../Models/WhatsappMessageRecord', () => ({
 
 jest.mock('../../Models/ChatSessionRecord', () => ({
   findByPk: jest.fn(),
+}))
+
+// updateState (unlike findSessionById/mapSession) also emits a session update;
+// stub both singletons out so the state round-trip test below stays isolated
+// from Socket.IO and the real chats table.
+jest.mock('../../Services/whatsapp/ChatRealtimeGateway', () => ({
+  __esModule: true,
+  default: { emitSessionEvent: jest.fn() },
+}))
+
+jest.mock('../ChatRepository', () => ({
+  __esModule: true,
+  default: { emitAdminChat: jest.fn().mockResolvedValue(null) },
 }))
 
 import { Op } from 'sequelize'
@@ -159,6 +173,130 @@ describe('SessionRepository.getNewestUnprocessedMessageId', () => {
         ['id', 'DESC'],
       ],
     })
+  })
+})
+
+describe('SessionRepository legacy status mapping', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('reads a session persisted with a legacy status (ASKING_FOR_COMMENT) as BOOKING', async () => {
+    ;(ChatSessionRecord.findByPk as jest.Mock).mockResolvedValue({
+      id: 'session-A',
+      status: 'ASKING_FOR_COMMENT',
+      wpClientId: 'wp-1',
+      chatId: 'chat-1',
+      place: null,
+      placeOptions: [],
+      notifications: {},
+      service_id: null,
+      assigned_at: 0,
+      created_at: 100,
+      updated_at: null,
+    })
+
+    const session = await SessionRepository.findSessionById('session-A')
+
+    expect(session?.status).toBe('BOOKING')
+  })
+})
+
+describe('SessionRepository session state round trip', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('reads pending_candidates and pending_pin back out of the state JSONB column', async () => {
+    ;(ChatSessionRecord.findByPk as jest.Mock).mockResolvedValue({
+      id: 'session-A',
+      status: 'BOOKING',
+      wpClientId: 'wp-1',
+      chatId: 'chat-1',
+      place: null,
+      placeOptions: [],
+      notifications: {},
+      state: {
+        comment: null,
+        pending_candidates: [{ id: 'place-1', name: 'Parque Caldas' }],
+        pending_pin: { lat: 2.44, lng: -76.61 },
+        awaiting: null,
+      },
+      service_id: null,
+      assigned_at: 0,
+      created_at: 100,
+      updated_at: null,
+    })
+
+    const session = await SessionRepository.findSessionById('session-A')
+
+    expect(session?.state.pending_candidates).toEqual([{ id: 'place-1', name: 'Parque Caldas' }])
+    expect(session?.state.pending_pin).toEqual({ lat: 2.44, lng: -76.61 })
+  })
+
+  it('defaults state to the empty document when the column is null (pre-existing row)', async () => {
+    ;(ChatSessionRecord.findByPk as jest.Mock).mockResolvedValue({
+      id: 'session-A',
+      status: 'BOOKING',
+      wpClientId: 'wp-1',
+      chatId: 'chat-1',
+      place: null,
+      placeOptions: [],
+      notifications: {},
+      state: null,
+      service_id: null,
+      assigned_at: 0,
+      created_at: 100,
+      updated_at: null,
+    })
+
+    const session = await SessionRepository.findSessionById('session-A')
+
+    expect(session?.state).toEqual({
+      comment: null,
+      pending_candidates: [],
+      pending_pin: null,
+      awaiting: null,
+    })
+  })
+
+  it('updateState persists the full state document and the round trip preserves pending_candidates and pending_pin', async () => {
+    const record: Record<string, unknown> = {
+      id: 'session-A',
+      status: 'BOOKING',
+      wpClientId: 'wp-1',
+      chatId: 'chat-1',
+      place: null,
+      placeOptions: [],
+      notifications: {},
+      state: { comment: null, pending_candidates: [], pending_pin: null, awaiting: null },
+      service_id: null,
+      assigned_at: 0,
+      created_at: 100,
+      updated_at: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    }
+    ;(ChatSessionRecord.findByPk as jest.Mock).mockResolvedValue(record)
+
+    const newState = {
+      comment: null,
+      pending_candidates: [
+        { id: 'place-1', name: 'Parque Caldas' },
+        { id: 'place-2', name: 'Terminal de Transportes' },
+      ],
+      pending_pin: { lat: 2.4419, lng: -76.6141 },
+      awaiting: null,
+    }
+
+    const updated = await SessionRepository.updateState({
+      id: 'session-A',
+      status: 'BOOKING',
+      state: newState,
+    } as never)
+
+    expect(record.state).toEqual(newState)
+    expect(record.save).toHaveBeenCalledTimes(1)
+    expect(updated.state).toEqual(newState)
   })
 })
 

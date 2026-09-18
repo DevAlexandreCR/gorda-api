@@ -5,7 +5,7 @@ import { WpClients } from '../Services/whatsapp/constants/WPClients'
 
 type WpClientCreationAttributes = Optional<
   WpClient,
-  'full' | 'wpNotifications' | 'chatBot' | 'assistant'
+  'full' | 'wpNotifications' | 'chatBot' | 'assistant' | 'agentInTrip'
 >
 
 class WpClientRecord extends Model<WpClient, WpClientCreationAttributes> implements WpClient {
@@ -15,6 +15,7 @@ class WpClientRecord extends Model<WpClient, WpClientCreationAttributes> impleme
   public full!: boolean
   public chatBot!: boolean
   public assistant!: boolean
+  public agentInTrip!: boolean
   public service!: WpClients
   public readonly created_at!: Date
   public readonly updated_at!: Date
@@ -51,6 +52,12 @@ WpClientRecord.init(
     assistant: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
+      defaultValue: false,
+    },
+    agentInTrip: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      field: 'agent_in_trip',
       defaultValue: false,
     },
     service: {

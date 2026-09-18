@@ -20,6 +20,7 @@ const wpClient: WpClient = {
   full: false,
   chatBot: true,
   assistant: false,
+  agentInTrip: false,
   service: WpClients.BAILEYS,
 }
 

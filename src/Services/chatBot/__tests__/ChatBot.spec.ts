@@ -9,6 +9,7 @@ import { WpMessageInterface } from '../../whatsapp/interfaces/WpMessageInterface
 import { WpChatInterface } from '../../whatsapp/interfaces/WpChatInterface'
 import { MessageTypes } from '../../whatsapp/constants/MessageTypes'
 import { WpClients } from '../../whatsapp/constants/WPClients'
+import { enqueueConversationTurn } from '../turns/ConversationTurnQueue'
 
 jest.mock('crypto', () => ({
   ...jest.requireActual('crypto'),
@@ -68,7 +69,7 @@ function buildInboundMessage(overrides: Partial<WpMessageInterface> = {}): WpMes
 function buildSessionRecord(overrides: Partial<SessionInterface> = {}): SessionInterface {
   return {
     id: 'session-record-1',
-    status: SessionStatuses.CREATED,
+    status: SessionStatuses.BOOKING,
     place: null,
     wp_client_id: 'wp-client-1',
     chat_id: 'chat-1',
@@ -76,6 +77,7 @@ function buildSessionRecord(overrides: Partial<SessionInterface> = {}): SessionI
     created_at: 1000,
     updated_at: null,
     notifications: { greeting: false, assigned: false, arrived: false, completed: false },
+    state: { comment: null, pending_candidates: [], pending_pin: null, awaiting: null },
     ...overrides,
   }
 }
@@ -319,5 +321,56 @@ describe('ChatBot — concurrent new-session creation vs. an unrelated added eve
     const registeredY = chatBot.getSessionById('session-y')
     expect(registeredY).toBeDefined()
     expect(registeredY!.chat_id).toBe('chat-y')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ChatBot.sync — boot sweep for a session loaded with a legacy status
+// (task 3.5, agent-first-chatbot / design D4): SessionRepository.getActiveSessions
+// already returns the row with status mapped to BOOKING by mapSession's
+// LEGACY_STATUS_MAP (see SessionRepository.spec.ts's own coverage of that
+// mapping), so the fixture below reflects exactly what syncSessions receives
+// for a chat that was mid-flow at a retired status (e.g. ASKING_FOR_COMMENT)
+// before this restart. The boot sweep must still enqueue a turn for it.
+// ---------------------------------------------------------------------------
+
+describe('ChatBot.sync — boot sweep for a legacy-status session loaded as BOOKING', () => {
+  const enqueueMock = enqueueConversationTurn as jest.Mock
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+    enqueueMock.mockClear()
+  })
+
+  it('enqueues a delay-0 turn for the newest unprocessed message of a session whose stored status was legacy and is now read as BOOKING', async () => {
+    const wpClient = buildFakeWpClient({
+      getChatById: jest.fn().mockResolvedValue(buildFakeChat('chat-legacy')),
+    })
+    const chatBot = new ChatBot(wpClient, 'wp-client-1')
+
+    const legacySession = buildSessionRecord({
+      id: 'session-legacy-1',
+      chat_id: 'chat-legacy',
+      status: SessionStatuses.BOOKING,
+    })
+    jest.spyOn(SessionRepository, 'getActiveSessions').mockResolvedValue([legacySession])
+    jest.spyOn(SessionRepository, 'sessionActiveListener').mockImplementation(() => {})
+    jest.spyOn(SessionRepository, 'getMessages').mockResolvedValue(new Map())
+    jest
+      .spyOn(SessionRepository, 'getNewestUnprocessedMessageId')
+      .mockResolvedValue('wamid-legacy-1')
+
+    chatBot.sync()
+    await flushPromises()
+
+    expect(enqueueMock).toHaveBeenCalledWith(
+      {
+        wpClientId: 'wp-client-1',
+        sessionId: 'session-legacy-1',
+        chatId: 'chat-legacy',
+        messageId: 'wamid-legacy-1',
+      },
+      0
+    )
   })
 })

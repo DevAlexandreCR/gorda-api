@@ -10,6 +10,20 @@ import WhatsappMessageRecord from '../Models/WhatsappMessageRecord'
 import ChatIdHelper from '../Helpers/ChatIdHelper'
 import ChatRealtimeGateway from '../Services/whatsapp/ChatRealtimeGateway'
 import ChatRepository from './ChatRepository'
+import { SessionStatuses } from '../Types/SessionStatuses'
+import { EMPTY_SESSION_STATE, SessionState } from '../Types/SessionState'
+
+// Statuses retired by the collapsed enum (design D4). Sessions persisted with
+// one of these are read as BOOKING; the value is rewritten on the row's next
+// status write (Session.setStatus), so no data migration is required.
+const LEGACY_STATUS_MAP: Record<string, SessionStatuses> = {
+  CREATED: SessionStatuses.BOOKING,
+  ASKING_FOR_NAME: SessionStatuses.BOOKING,
+  ASKING_FOR_PLACE: SessionStatuses.BOOKING,
+  CHOOSING_PLACE: SessionStatuses.BOOKING,
+  ASKING_FOR_COMMENT: SessionStatuses.BOOKING,
+  AGREEMENT: SessionStatuses.BOOKING,
+}
 
 class SessionRepository {
   public async findSessionByChatId(chatId: string): Promise<SessionInterface | null> {
@@ -99,11 +113,28 @@ class SessionRepository {
     }
 
     sessionRecord.status = session.status
+    // setStatus clears state in-memory when the session leaves BOOKING (design D4);
+    // persist it here so the write stays in the single updateStatus round trip.
+    sessionRecord.state = session.state ?? { ...EMPTY_SESSION_STATE }
     sessionRecord.updated_at = Date.now()
     await sessionRecord.save()
 
     const mappedSession = this.mapSession(sessionRecord)
     await this.emitSessionUpdate(mappedSession)
+
+    return session
+  }
+
+  public async updateState(session: SessionInterface): Promise<SessionInterface> {
+    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
+    if (!sessionRecord) {
+      return session
+    }
+
+    sessionRecord.state = session.state ?? { ...EMPTY_SESSION_STATE }
+    sessionRecord.updated_at = Date.now()
+    await sessionRecord.save()
+    await this.emitSessionUpdate(this.mapSession(sessionRecord))
 
     return session
   }
@@ -136,20 +167,6 @@ class SessionRepository {
     return session
   }
 
-  public async updatePlaceOptions(session: SessionInterface): Promise<SessionInterface> {
-    const sessionRecord = await ChatSessionRecord.findByPk(session.id)
-    if (!sessionRecord) {
-      return session
-    }
-
-    sessionRecord.placeOptions = session.placeOptions ?? []
-    sessionRecord.updated_at = Date.now()
-    await sessionRecord.save()
-    await this.emitSessionUpdate(this.mapSession(sessionRecord))
-
-    return session
-  }
-
   public async updateNotification(
     sessionId: string,
     notifications: WpNotifications
@@ -173,8 +190,12 @@ class SessionRepository {
       status: session.status,
       service_id: session.service_id,
       place: session.place ? { ...session.place } : null,
-      placeOptions: session.placeOptions ?? [],
+      // placeOptions is no longer driven by Session (design D4): the column stays
+      // for now (kept in mapSession's output for the admin chat-summary payload)
+      // but nothing writes a meaningful value to it after this point.
+      placeOptions: [],
       notifications: session.notifications,
+      state: session.state ?? { ...EMPTY_SESSION_STATE },
       assigned_at: session.assigned_at ?? 0,
       created_at: session.created_at,
       updated_at: session.updated_at ?? null,
@@ -400,13 +421,14 @@ class SessionRepository {
   private mapSession(record: ChatSessionRecord): SessionInterface {
     return {
       id: record.id,
-      status: record.status,
+      status: LEGACY_STATUS_MAP[record.status] ?? record.status,
       placeOptions: record.placeOptions ?? [],
       place: record.place ?? null,
       wp_client_id: record.wpClientId,
       chat_id: record.chatId,
       service_id: record.service_id,
       notifications: record.notifications,
+      state: (record.state as SessionState) ?? { ...EMPTY_SESSION_STATE },
       assigned_at: Number(record.assigned_at ?? 0),
       created_at: Number(record.created_at),
       updated_at: record.updated_at === null ? null : Number(record.updated_at),

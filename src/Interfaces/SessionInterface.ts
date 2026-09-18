@@ -4,6 +4,7 @@ import { WpMessage } from '../Types/WpMessage'
 import { WpNotifications } from '../Types/WpNotifications'
 import { WpChatInterface } from '../Services/whatsapp/interfaces/WpChatInterface'
 import { PlaceInterface } from './PlaceInterface'
+import { SessionState } from '../Types/SessionState'
 
 export interface SessionInterface {
   id: string
@@ -18,5 +19,6 @@ export interface SessionInterface {
   created_at: number
   updated_at: number | null
   notifications: WpNotifications
+  state: SessionState
   messages?: Map<string, WpMessage>
 }

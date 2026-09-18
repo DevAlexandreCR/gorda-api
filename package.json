@@ -4,7 +4,7 @@
   "description": "WhatsApp chatbot to gorda admin",
   "main": "src/app.ts",
   "scripts": {
-    "build": "tsc -p . && cp -r src/.well-known build/src/.well-known && cp -r src/views build/src/views && cp -r src/assets build/src/assets",
+    "build": "tsc -p . && cp -r src/.well-known build/src/.well-known && cp -r src/views build/src/views && cp -r src/assets build/src/assets && cp -r src/Services/chatBot/agent/prompts build/src/Services/chatBot/agent/prompts",
     "serve": "tsc && node build/src/app.js",
     "watch": "nodemon src/app.ts --ignore 'storage/'",
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",
@@ -26,7 +26,6 @@
   "license": "ISC",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@huggingface/inference": "^2.6.4",
     "@sentry/node": "^7.5.0",
     "@sentry/tracing": "^7.5.0",
     "@turf/turf": "^7.1.0",

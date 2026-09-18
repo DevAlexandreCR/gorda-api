@@ -1,5 +1,9 @@
 import { Store } from '../../../store/Store'
 import SessionRepository from '../../../../Repositories/SessionRepository'
+import Session from '../../../../Models/Session'
+import { SessionStatuses } from '../../../../Types/SessionStatuses'
+import { DiscardedTurnError } from '../DiscardedTurnError'
+import { dispatchTurn } from '../../TurnDispatcher'
 import { processConversationTurn } from '../ConversationTurnProcessor'
 import { ConversationTurnPayload } from '../ConversationTurnQueue'
 import { WpMessage } from '../../../../Types/WpMessage'
@@ -7,6 +11,10 @@ import { MessageTypes } from '../../../whatsapp/constants/MessageTypes'
 
 jest.mock('../../../store/Store', () => ({
   Store: { getInstance: jest.fn() },
+}))
+
+jest.mock('../../TurnDispatcher', () => ({
+  dispatchTurn: jest.fn(),
 }))
 
 function buildPayload(overrides: Partial<ConversationTurnPayload> = {}): ConversationTurnPayload {
@@ -239,5 +247,105 @@ describe('processConversationTurn', () => {
       messageId: payload.messageId,
       outcome: 'error',
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Integration with the real Session/dispatchTurn seam (task 5.3, design D5):
+// every test above stubs session.processMessage wholesale, so nothing proves
+// the processor's real caller (Session.processMessage, unit-tested on its own
+// in Session.spec.ts) actually reaches TurnDispatcher.dispatchTurn for a
+// BOOKING session on a chatBot line, nor that a DiscardedTurnError raised from
+// there surfaces as 'discarded_post_ai' with no fallback message once routed
+// back through this processor. Line-mode/status gating itself is TurnDispatcher's
+// own responsibility (covered by TurnDispatcher.spec.ts's matrix) — dispatchTurn
+// is mocked here too, this only pins the seam between the two real modules.
+// ---------------------------------------------------------------------------
+
+describe('processConversationTurn — real Session.processMessage reaching dispatchTurn', () => {
+  const dispatchTurnMock = dispatchTurn as jest.Mock
+  let setProcessedMsgsSpy: jest.SpyInstance
+  let consoleLogSpy: jest.SpyInstance
+
+  function buildRealSession(message: WpMessage): Session {
+    const session = new Session('chat-1')
+    session.id = 'session-1'
+    session.wp_client_id = 'wp-client-1'
+    session.messages = new Map([[message.id, message]])
+    session.chat = {
+      sendMessage: jest.fn().mockResolvedValue(undefined),
+      archive: jest.fn().mockResolvedValue(undefined),
+    } as unknown as Session['chat']
+    return session
+  }
+
+  function mockWhatsappClientWithSession(session: Session) {
+    const getChatBot = jest.fn().mockReturnValue({
+      getSessionById: jest.fn().mockReturnValue(session),
+    })
+    ;(Store.getInstance as jest.Mock).mockReturnValue({
+      getWhatsAppClient: jest.fn().mockReturnValue({ getChatBot }),
+    })
+  }
+
+  beforeEach(() => {
+    dispatchTurnMock.mockReset()
+    setProcessedMsgsSpy = jest
+      .spyOn(SessionRepository, 'setProcessedMsgs')
+      .mockResolvedValue(undefined)
+    jest.spyOn(SessionRepository, 'getNewestUnprocessedMessageId').mockResolvedValue('wamid-active')
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    jest.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it('reaches dispatchTurn with the BOOKING session on a chatBot-line turn and logs completed', async () => {
+    const message = buildMergedMessage({ id: 'wamid-active' })
+    const session = buildRealSession(message)
+    expect(session.status).toBe(SessionStatuses.BOOKING)
+    mockWhatsappClientWithSession(session)
+    dispatchTurnMock.mockResolvedValue(undefined)
+    const payload = buildPayload()
+
+    await processConversationTurn(payload)
+
+    expect(dispatchTurnMock).toHaveBeenCalledTimes(1)
+    expect(dispatchTurnMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'session-1', status: SessionStatuses.BOOKING }),
+      expect.objectContaining({ id: 'wamid-active' })
+    )
+    expect(setProcessedMsgsSpy).toHaveBeenCalledWith('session-1', [message])
+    expect(consoleLogSpy).toHaveBeenCalledWith('info: conversation turn outcome', {
+      wpClientId: payload.wpClientId,
+      sessionId: payload.sessionId,
+      messageId: payload.messageId,
+      outcome: 'completed',
+    })
+  })
+
+  it('a DiscardedTurnError from dispatchTurn yields discarded_post_ai with no fallback message and no double log', async () => {
+    const message = buildMergedMessage({ id: 'wamid-active' })
+    const session = buildRealSession(message)
+    mockWhatsappClientWithSession(session)
+    dispatchTurnMock.mockRejectedValue(new DiscardedTurnError('superseded'))
+    const payload = buildPayload()
+
+    await processConversationTurn(payload)
+
+    expect(setProcessedMsgsSpy).not.toHaveBeenCalled()
+    expect(message.processed).toBe(false)
+    expect(session.chat.sendMessage as jest.Mock).not.toHaveBeenCalled()
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      'info: chatbot turn discarded post-AI',
+      expect.objectContaining({ outcome: 'discarded_post_ai', reason: 'superseded' })
+    )
+    expect(consoleLogSpy).not.toHaveBeenCalledWith(
+      'info: conversation turn outcome',
+      expect.anything()
+    )
   })
 })
