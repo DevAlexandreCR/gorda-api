@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto'
 import * as Sentry from '@sentry/node'
-import { exit } from 'process'
 import Session from '../../Models/Session'
 import SessionRepository from '../../Repositories/SessionRepository'
 import DateHelper from '../../Helpers/DateHelper'
@@ -14,19 +13,21 @@ import { MessageTypes } from '../whatsapp/constants/MessageTypes'
 // delegation, so legacy behavior stays byte-identical) ResponseContract itself.
 // Task 3.4 shrinks ResponseContract down to essentially this helper.
 
-function retryPromise<T>(promiseFactory: Promise<T>, maxRetries: number): Promise<T> {
+function retryPromise<T>(promiseFactory: () => Promise<T>, maxRetries: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const attempt = (attemptNumber: number) => {
-      promiseFactory.then(resolve).catch((error) => {
-        if (attemptNumber < maxRetries) {
-          console.log(`Retry attempt ${attemptNumber + 1}/${maxRetries}`, {
-            error: error.message,
-          })
-          setTimeout(() => attempt(attemptNumber + 1), 2000)
-        } else {
-          reject(error)
-        }
-      })
+      promiseFactory()
+        .then(resolve)
+        .catch((error) => {
+          if (attemptNumber < maxRetries - 1) {
+            console.log(`Retry attempt ${attemptNumber + 1}/${maxRetries}`, {
+              error: error.message,
+            })
+            setTimeout(() => attempt(attemptNumber + 1), 2000)
+          } else {
+            reject(error)
+          }
+        })
     }
     attempt(0)
   })
@@ -41,7 +42,7 @@ async function recordOutboundMessage(session: Session, message: ChatBotMessage):
     processed: true,
     location: null,
     interactiveReply: null,
-    interactive: null,
+    interactive: message.interactive ?? null,
     fromMe: true,
   }
 
@@ -70,14 +71,23 @@ export async function sendGatedMessage(session: Session, message: ChatBotMessage
   // DiscardedTurnError thrown here propagates to the caller untouched (Session.
   // processMessage's catch special-cases it; AgentTurn, task 2.8, does too). If
   // this check were moved past the retryPromise block instead, a benign discard
-  // would be caught by that block's `.catch` and crash the process via
-  // Sentry.captureException + exit(1) on every stale turn. Do not move this
-  // below the retryPromise call.
+  // would be caught by that block's `.catch` and rethrow as a genuine send
+  // failure on every stale turn. Do not move this below the retryPromise call.
   await session.assertTurnStillValid()
 
-  await retryPromise<void>(session.sendMessage(message), 3).catch((e) => {
+  // Design D9: a factory (not an already-created promise) so each of the three
+  // attempts issues a new send instead of re-awaiting the same settled
+  // rejection. A failure after all retries is logged, reported to Sentry, and
+  // rethrown to the caller — it MUST NOT terminate the process (spec:
+  // wp-send-failure-resilience).
+  await retryPromise<void>(() => session.sendMessage(message), 3).catch((e) => {
+    console.error('failed to send gated message', {
+      wpClientId: session.wp_client_id,
+      chatId: session.chat_id,
+      error: e,
+    })
     Sentry.captureException(e)
-    exit(1)
+    throw e instanceof Error ? e : new Error(String(e))
   })
 
   await recordOutboundMessage(session, message)

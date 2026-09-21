@@ -10,6 +10,7 @@ import { ChatBotMessage } from '../../../Types/ChatBotMessage'
 import { Store } from '../../store/Store'
 import dayjs from 'dayjs'
 import Database from '../../firebase/Database'
+import { interactiveReplyId } from '../../whatsapp/interactive/interactiveReplyId'
 
 // Same injection pattern as ServiceBooking.bookService (task 2.6): callers
 // pass their own turn-gated outbound send path, so this module stays
@@ -26,8 +27,11 @@ async function loadService(session: Session): Promise<Service | null> {
 }
 
 function interactiveButtonId(message: WpMessage): string {
-  if (message.type === MessageTypes.INTERACTIVE && message.interactiveReply?.button_reply) {
-    return message.interactiveReply.button_reply.id.toUpperCase()
+  if (message.type === MessageTypes.INTERACTIVE) {
+    const id = interactiveReplyId(message.interactiveReply)
+    if (id) {
+      return id.toUpperCase()
+    }
   }
   return ''
 }

@@ -25,7 +25,6 @@ import { WpMessageInterface } from './interfaces/WpMessageInterface'
 import { ClientFactory } from './ClientFactory'
 import { WpClients } from './constants/WPClients'
 import { MessageTypes } from './constants/MessageTypes'
-import { spawn } from 'child_process'
 import MessageHelper from '../../Helpers/MessageHelper'
 import DateHelper from '../../Helpers/DateHelper'
 import InboundMessageMetrics from './monitoring/InboundMessageMetrics'
@@ -43,6 +42,8 @@ import MessageRepository from '../../Repositories/MessageRepository'
 import DatabaseService from '../firebase/Database'
 import { VehicleSnapshot } from '../chatBot/Messages'
 import { resolveDriverCurrentVehicle } from '../drivers/DriverVehicleResolver'
+import { resolveInteractiveOption } from './interactive/resolveInteractiveOption'
+import { interactiveReplyId } from './interactive/interactiveReplyId'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -82,9 +83,6 @@ export class WhatsAppClient {
         this.starting = false
         console.log(e.message)
         Sentry.captureException(e)
-        if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
-          return this.restartChromium()
-        }
       })
   }
 
@@ -109,7 +107,7 @@ export class WhatsAppClient {
     // Register the per-WpClient conversation-turn queue + worker right after ChatBot
     // construction (design D6): the turn processor resolves this.chatBot through
     // Store when a queued job wakes up, so it must already exist. onReady re-fires
-    // on reconnect/restartChromium; registerConversationTurnQueue is idempotent
+    // on reconnect; registerConversationTurnQueue is idempotent
     // (task 1.2/3.1), so this never registers a second worker on the same queue.
     registerConversationTurnQueue(this.wpClient.id, processConversationTurn)
     console.log(
@@ -163,6 +161,8 @@ export class WhatsAppClient {
       )
     } else {
       if (this.client.serviceName !== WpClients.OFFICIAL) {
+        await this.promoteInteractiveOptionPick(msg)
+
         const chat = await msg.getChat()
         const contact = await chat.getContact().catch(() => null)
         const normalizedChatId = ChatIdHelper.normalize(msg.from)
@@ -181,7 +181,7 @@ export class WhatsAppClient {
             type: msg.type,
             body:
               msg.type === MessageTypes.INTERACTIVE
-                ? (msg.interactiveReply?.button_reply?.id ?? msg.body)
+                ? (interactiveReplyId(msg.interactiveReply) ?? msg.body)
                 : msg.body,
             fromMe: false,
             location: msg.location ?? null,
@@ -199,11 +199,30 @@ export class WhatsAppClient {
         if (isDebounceableMsg(msg)) {
           this.client
             .sendTypingIndicator(msg.from, msg.id)
-            .catch((e) => console.warn('sendTypingIndicator error', this.wpClient.alias, e.message))
+            .catch((e) =>
+              console.warn('sendTypingIndicator error', this.wpClient.alias, e.message)
+            )
         }
         await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
       }
     }
+  }
+
+  // Design D3/D4 (spec: wp-interactive-fallback): on a Baileys line, a plain-text pick
+  // of the most recently offered catalog option is promoted to INTERACTIVE before the
+  // message is persisted or checked by isProcessableMsg, matching a native button/list
+  // reply. Only a TEXT message is a candidate; an already-INTERACTIVE message (a native
+  // reply forwarded through the adapter) passes through unchanged.
+  private async promoteInteractiveOptionPick(msg: WpMessageInterface): Promise<void> {
+    if (msg.type !== MessageTypes.TEXT) return
+
+    const latestOutbound = await MessageRepository.findLatestOutbound(this.wpClient.id, msg.from)
+    const matched = resolveInteractiveOption(msg.body, latestOutbound?.interactive ?? null)
+    if (!matched) return
+
+    msg.type = MessageTypes.INTERACTIVE
+    msg.interactiveReply = matched
+    msg.body = matched.button_reply?.id ?? matched.list_reply?.id ?? msg.body
   }
 
   private async shouldProcessInboundMessage(msg: WpMessageInterface): Promise<boolean> {
@@ -357,9 +376,6 @@ export class WhatsAppClient {
         console.log('destroy ', this.wpClient.alias, e.message)
         this.socket?.emit(EmitEvents.FAILURE, e.message)
         Sentry.captureException(e)
-        if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
-          return this.restartChromium()
-        }
       })
   }
 
@@ -528,9 +544,6 @@ export class WhatsAppClient {
         console.log('logout: ', this.wpClient.alias, e)
         Sentry.captureException(e)
         if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.FAILURE, e.message)
-        if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
-          return this.restartChromium()
-        }
       })
   }
 
@@ -538,7 +551,7 @@ export class WhatsAppClient {
     this.wpClient.wpNotifications = client.wpNotifications
     this.wpClient.chatBot = client.chatBot
     this.wpClient.assistant = client.assistant
-    this.wpClient.service = client.service ?? WpClients.WHATSAPP_WEB_JS
+    this.wpClient.service = client.service ?? WpClients.BAILEYS
     this.wpClient.full = client.full
   }
 
@@ -627,9 +640,6 @@ export class WhatsAppClient {
       )
       Sentry.captureException(e)
       // if (this.socket) this.socket.to(this.wpClient.id).emit(EmitEvents.GET_STATE, WpStates.OPENING)
-      if (this.client.serviceName === WpClients.WHATSAPP_WEB_JS) {
-        return this.restartChromium()
-      }
     })
 
     if (this.client.serviceName !== WpClients.OFFICIAL) {
@@ -661,15 +671,5 @@ export class WhatsAppClient {
         }, config.ARCHIVE_CHAT_TIMEOUT as number)
       })
     }
-  }
-
-  async restartChromium(): Promise<void> {
-    const chromium = spawn(config.CHROMIUM_PATH, ['--remote-debugging-port=9222'], {
-      stdio: 'ignore',
-      detached: true,
-    })
-    chromium.unref()
-    console.log('restart chromium...')
-    return this.client.initialize()
   }
 }

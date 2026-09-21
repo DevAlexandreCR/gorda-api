@@ -38,6 +38,23 @@ class MessageRepository {
     return messageRecords.reverse().map((record) => this.mapMessage(record))
   }
 
+  public async findLatestOutbound(wpClientId: string, chatId: string): Promise<Message | null> {
+    const normalizedChatId = ChatIdHelper.normalize(chatId)
+    const record = await WhatsappMessageRecord.findOne({
+      where: {
+        wpClientId,
+        chatId: normalizedChatId,
+        fromMe: true,
+      },
+      order: [
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
+      ],
+    })
+
+    return record ? this.mapMessage(record) : null
+  }
+
   public async addMessage(
     wpClientId: string,
     chatId: string,

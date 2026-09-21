@@ -11,15 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add an agent-first conversation turn for `chatBot` lines: an OpenAI Responses model (`OpenAIResponsesClient`) drives each turn through a structured prompt, an `AgentContextBuilder` (session, place, and booking context), a `search_place` tool backed by the existing place-search strategy, deterministic action validation (`AgentValidator`), and an executor that applies the model's actions (set place, book service, send message). Booking is centralized in a new `ServiceBooking` helper shared by the agent and deterministic paths. Each turn emits a structured `agent_turn` log (inputs, actions, tool calls, outcome).
 - Add `agent_in_trip` to `wp_clients` (surfaced as `agentInTrip` on the WpClient master-data contract) and `state` (JSONB) to `chat_sessions`, gating a new `LocationAssistantFlow` that lets the agent assist customers on `assistant` lines while a service is in progress (pin, name shortcut, comment, then service) — new `TurnDispatcher` routes each line to the agent-first or deterministic/assistant path per line mode.
+- Add an interactive text fallback for the Baileys transport: `button`/`list` catalog messages render as body text followed by a numbered option list (`location_request_message` renders as body-only), and a customer's plain-text reply matching an offered option (ordinal or title) is resolved against the latest outbound interactive message of the chat and promoted to a synthesized `button_reply`/`list_reply`, so the chatbot sees the same `INTERACTIVE` message it sees on Official.
+- Normalize Baileys inbound messages: unwrap `ephemeralMessage`/`viewOnceMessage`/`viewOnceMessageV2`, read text from `extendedTextMessage` as well as `conversation`, map native `buttonsResponseMessage`/`listResponseMessage`/`templateButtonReplyMessage`/`interactiveResponseMessage` to `INTERACTIVE`, and convert `Long` `messageTimestamp` values with Baileys' `toNumber`.
+- Honor `list_reply.id` everywhere `button_reply.id` was already read (Official webhook controller, `Session.addMsg`, `DeterministicHandlers`, `WhatsAppClient` persistence), closing an existing Official false negative where a list selection reached the chatbot as an empty message.
+- Send a `composing` presence update on Baileys for the typing indicator (previously a no-op).
 
 ### Changed
 
 - Collapse `SessionStatuses` to five values: `BOOKING`, `REQUESTING_SERVICE`, `SERVICE_IN_PROGRESS`, `COMPLETED`, `SUPPORT`. Legacy statuses are mapped to `BOOKING` on read for backward compatibility with existing rows.
 - **Breaking:** replace the chatbot's environment contract. Added `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, `AGENT_MAX_TOOL_CALLS`; removed `AI_SERVICE_URL`, `AI_SERVICE_API_KEY`, `HUGGINGFACE_TOKEN`, `ENTITY_MODEL_NAME`. The server now fails fast at startup if `OPENAI_API_KEY` is missing while a `chatBot` line is configured.
+- Upgrade `@whiskeysockets/baileys` to `7.0.0-rc14` and declare `engines.node >= 20.19.0`, guarded by a startup check that exits with a clear message when the running Node version is below the floor.
+- Rework the Baileys reconnect policy: the attempt counter resets on a successful `open`, retries back off exponentially (capped at 60s) instead of giving up after three attempts, reconnection is immediate on `restartRequired`, and the session folder is deleted only on `DisconnectReason.loggedOut` or an explicit logout.
+- Replace the on-disk Baileys `store.json` (and its periodic flush) with an in-process bounded cache of sent messages used to serve `getMessage` retries; `syncFullHistory` is now disabled for faster pairing.
+- Persist the outbound `interactive` payload in `TurnSupport.recordOutboundMessage` (previously always `null`), matching what `WhatsAppClient.sendMessage` already stores.
+- Isolate per-line WhatsApp initialization failures in the `app.ts` boot loop so an unknown or misconfigured transport on one line no longer aborts initialization of the remaining lines.
+- Send failures in the chatbot flow no longer terminate the process: the two `exit(1)` calls on the send-failure path (`TurnSupport.sendGatedMessage`, `Session.processMessage`) are replaced with structured logging, Sentry capture, and a normal rejection/error return handled by the existing turn-level error handling.
+- Migrate existing `wp_clients` rows with `service = 'whatsapp-web-js'` to `baileys` (they require re-pairing); the `setWpClient` and backfill defaults now target `baileys`.
 
 ### Removed
 
 - Remove the dependency on the `ia-app` service, the legacy `MessageStrategy` response strategies and `ai/*` client (`EntityExtractor`, `MessageHandler`, `GordaChatBot`), the `Types/Intent.ts` type, and the `@huggingface/inference` dependency.
+- **Breaking:** remove the `whatsapp-web.js` transport (`WWebClient` and its adapters, the `whatsapp-web-js` transport value, `restartChromium`), the Chromium binary from the Docker image, and the `CHROMIUM_PATH`/`WWEB_VERSION` configuration. Any environment still pairing a whatsapp-web.js line must re-pair it as Baileys.
 
 ## [2.1.0(2026-09-05)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.0...2.0.14)
 

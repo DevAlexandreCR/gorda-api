@@ -207,7 +207,7 @@ async function backfillWpClients(): Promise<void> {
         chatBot: !!value.chatBot,
         assistant: !!value.assistant,
         agentInTrip: !!value.agentInTrip,
-        service: value.service ?? 'whatsapp-web-js',
+        service: value.service ?? 'baileys',
       })
     )
     count += 1

@@ -6,6 +6,7 @@ import { Store } from '../../../../../Services/store/Store'
 import config from '../../../../../../config'
 import { ClientInterface } from '../../../../../Interfaces/ClientInterface'
 import { ChatBotMessage } from '../../../../../Types/ChatBotMessage'
+import { renderInteractiveAsText } from '../../../interactive/renderInteractiveAsText'
 
 export class WpChatAdapter implements WpChatInterface {
   archived: boolean = false
@@ -19,7 +20,7 @@ export class WpChatAdapter implements WpChatInterface {
   }
 
   async sendMessage(message: ChatBotMessage): Promise<void> {
-    await this.waSocket.sendMessage(this.id, { text: message.message })
+    await this.waSocket.sendMessage(this.id, { text: renderInteractiveAsText(message) })
     return Promise.resolve()
   }
 

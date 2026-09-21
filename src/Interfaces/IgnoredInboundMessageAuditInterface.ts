@@ -1,4 +1,4 @@
-export type IgnoredInboundMessageReason = 'old_message' | 'duplicate_message'
+export type IgnoredInboundMessageReason = 'old_message' | 'duplicate_message' | 'unresolved_sender'
 
 export interface IgnoredInboundMessageAuditInterface {
   id?: number

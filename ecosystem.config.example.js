@@ -2,6 +2,9 @@
 // override enabled, so no `env` block is needed here. See `.env.example` for the
 // full variable list. After editing `.env`, a plain `pm2 restart wp-api` is
 // enough since the app re-reads the file at boot.
+// Requires Node >= 20.19.0 (Baileys 7.x is ESM-only, loaded via require(esm));
+// the app fails fast at boot below that floor. Confirm `node -v` under the
+// PM2 user before starting/restarting this process.
 module.exports = {
   apps: [{
     name: 'wp-api',

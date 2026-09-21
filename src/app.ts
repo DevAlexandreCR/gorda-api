@@ -4,6 +4,7 @@ import https, { Server as HTTPSServer } from 'https'
 import path from 'path'
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { WhatsAppClient } from './Services/whatsapp/WhatsAppClient'
+import { initializeWpClients } from './Services/whatsapp/WpClientBootLoop'
 import config from '../config'
 import * as Sentry from '@sentry/node'
 import * as Tracing from '@sentry/tracing'
@@ -47,6 +48,9 @@ import PaymentsAuditController from './Api/Controllers/Payments/PaymentsAuditCon
 import type { CorsOptions } from 'cors'
 import ChatRealtimeGateway from './Services/whatsapp/ChatRealtimeGateway'
 import DatabaseService from './Services/firebase/Database'
+import { assertNodeVersionFloor } from './Helpers/NodeVersionGuard'
+
+assertNodeVersionFloor()
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -177,17 +181,12 @@ server.listen(config.PORT, async () => {
       process.exit(1)
     }
 
-    Object.values(clients).forEach((client: WpClient) => {
-      if (!wpServices[client.id]) {
-        const wpService = new WhatsAppClient(client)
-        wpService.setWpClient(client)
-        wpService.initClient()
-        wpServices[client.id] = wpService
-        store.registerWhatsAppClient(client.id, wpService)
-      } else {
-        wpServices[client.id].setWpClient(client)
-      }
-    })
+    initializeWpClients(
+      clients,
+      wpServices,
+      (client) => new WhatsAppClient(client),
+      (client, wpService) => store.registerWhatsAppClient(client.id, wpService)
+    )
 
     Object.keys(wpServices).forEach(async (clientId) => {
       if (activeClientIds.has(clientId)) return

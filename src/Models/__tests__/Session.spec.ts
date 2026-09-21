@@ -9,6 +9,7 @@ import { dispatchTurn } from '../../Services/chatBot/TurnDispatcher'
 import { enqueueConversationTurn } from '../../Services/chatBot/turns/ConversationTurnQueue'
 import { WpMessageInterface } from '../../Services/whatsapp/interfaces/WpMessageInterface'
 import config from '../../../config.js'
+import * as Sentry from '@sentry/node'
 
 jest.mock('../../Services/chatBot/TurnDispatcher', () => ({
   dispatchTurn: jest.fn(),
@@ -27,6 +28,10 @@ jest.mock('../../Services/chatBot/Messages', () => ({
 
 jest.mock('../../Services/chatBot/turns/ConversationTurnQueue', () => ({
   enqueueConversationTurn: jest.fn(),
+}))
+
+jest.mock('@sentry/node', () => ({
+  captureException: jest.fn(),
 }))
 
 // ---------------------------------------------------------------------------
@@ -241,6 +246,28 @@ describe('Session.addMsg', () => {
       expect.objectContaining({ messageId: 'stored-wamid-3' }),
       0
     )
+  })
+
+  // Design D10 / spec: wp-inbound-message-normalization ("List replies are honored
+  // wherever button replies are"): addMsg must set the WpMessage.msg field to the
+  // list_reply id, the same way it already does for a button_reply (task 5.1).
+  it('interactive list reply: sets the persisted wpMessage.msg to the list id', async () => {
+    addMsgSpy = jest
+      .spyOn(SessionRepository, 'addMsg')
+      .mockResolvedValue({ created: true, id: 'stored-wamid-4' })
+    const session = makeSessionForAddMsg()
+    const inbound = makeInboundMessage({
+      id: 'wamid-raw-4',
+      type: MessageTypes.INTERACTIVE,
+      interactiveReply: {
+        type: 'list_reply',
+        list_reply: { id: 'CANCEL', title: 'Cancelar' },
+      },
+    })
+
+    await session.addMsg(inbound)
+
+    expect(addMsgSpy).toHaveBeenCalledWith('session-1', expect.objectContaining({ msg: 'CANCEL' }))
   })
 
   it('duplicate message (not created): enqueues nothing', async () => {
@@ -622,6 +649,41 @@ describe('Session.processMessage', () => {
       'error while processing message',
       expect.objectContaining({ error: 'boom' })
     )
+  })
+
+  // Task 5.2 (design D9, spec: wp-send-failure-resilience "Error fallback
+  // itself fails to send"): the fallback send used to call process.exit(1) on
+  // rejection. It must instead log + report to Sentry, and processMessage must
+  // still resolve with 'error' rather than exiting or rejecting.
+  it('fallback send fails: logs and reports to Sentry, does not exit, and still returns "error"', async () => {
+    const msg = makeMessage()
+    const session = makeSessionForProcessing([msg])
+    session.wp_client_id = 'wp-client-1'
+    dispatchTurnMock.mockRejectedValue(new Error('boom'))
+    const sendError = new Error('line disconnected')
+    sendMessageMock.mockRejectedValue(sendError)
+
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const outcome = await session.processMessage(msg, [msg])
+
+    expect(outcome).toBe('error')
+    expect(errorSpy).toHaveBeenCalledWith(
+      'error while sending error message',
+      expect.objectContaining({
+        wpClientId: 'wp-client-1',
+        chatId: session.chat_id,
+        error: sendError,
+      })
+    )
+    expect(Sentry.captureException).toHaveBeenCalledWith(sendError)
+    expect(exitSpy).not.toHaveBeenCalled()
+    expect(setProcessedMsgsSpy).toHaveBeenCalledWith(session.id, [msg])
+    expect(msg.processed).toBe(true)
+
+    exitSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 })
 

@@ -6,7 +6,7 @@ import { WpMessage } from '../Types/WpMessage'
 import { dispatchTurn } from '../Services/chatBot/TurnDispatcher'
 import MessageHelper from '../Helpers/MessageHelper'
 import { WpLocation } from '../Types/WpLocation'
-import { exit } from 'process'
+import * as Sentry from '@sentry/node'
 import config from '../../config.js'
 import { WpNotifications } from '../Types/WpNotifications'
 import { NotificationType } from '../Types/NotificationType'
@@ -21,6 +21,7 @@ import { PlaceInterface } from '../Interfaces/PlaceInterface'
 import { DiscardedTurnError } from '../Services/chatBot/turns/DiscardedTurnError'
 import { enqueueConversationTurn } from '../Services/chatBot/turns/ConversationTurnQueue'
 import { isDebounceableMsg } from '../Services/whatsapp/policies/DebounceableMessagePolicy'
+import { interactiveReplyId } from '../Services/whatsapp/interactive/interactiveReplyId'
 
 // Session.processMessage swallows every error internally (fallback message on
 // genuine failures, silent skip on DiscardedTurnError) and never rejects, so a
@@ -104,7 +105,7 @@ export default class Session implements SessionInterface {
       }
       wpMessage.msg = ''
     } else if (msg.type === MessageTypes.INTERACTIVE) {
-      wpMessage.msg = msg.interactiveReply?.button_reply?.id ?? ''
+      wpMessage.msg = interactiveReplyId(msg.interactiveReply) ?? ''
     }
 
     return SessionRepository.addMsg(this.id, wpMessage)
@@ -375,9 +376,13 @@ export default class Session implements SessionInterface {
         })
         const msg = getSingleMessage(MessagesEnum.ERROR_WHILE_PROCESSING)
         if (msg.enabled) {
-          await this.sendMessage(msg).catch((e) => {
-            console.log('error while sending error message', e.message)
-            exit(1)
+          await this.sendMessage(msg).catch((sendError) => {
+            console.error('error while sending error message', {
+              wpClientId: this.wp_client_id,
+              chatId: this.chat_id,
+              error: sendError,
+            })
+            Sentry.captureException(sendError)
           })
         }
         return 'error'

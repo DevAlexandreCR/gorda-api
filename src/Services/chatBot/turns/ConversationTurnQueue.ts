@@ -28,9 +28,12 @@ export function getConversationTurnQueueName(wpClientId: string): string {
 export type ConversationTurnProcessor = (payload: ConversationTurnPayload) => Promise<void>
 
 // Registers the per-WpClient queue and its worker. Safe to call more than once for the
-// same wpClientId (e.g. WhatsAppClient.onReady re-firing on reconnect/restartChromium):
+// same wpClientId (e.g. WhatsAppClient.onReady re-firing on reconnect):
 // QueueService.addQueue/addWorker are idempotent and skip re-registration (task 1.2).
-export function registerConversationTurnQueue(wpClientId: string, processor: ConversationTurnProcessor): void {
+export function registerConversationTurnQueue(
+  wpClientId: string,
+  processor: ConversationTurnProcessor
+): void {
   const queueService = QueueService.getInstance()
   const queueName = getConversationTurnQueueName(wpClientId)
 

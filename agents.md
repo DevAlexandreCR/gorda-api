@@ -9,12 +9,14 @@ This document explains the agents (long-running services, jobs, and helper modul
 - Wires controllers under `/src/Api/Controllers/**` for WhatsApp webhooks, notifications, polygon uploads, and admin dashboard routes.
 - Registers Sentry, CORS, static assets, and JSON parsing middleware.
 - Owns the lifecycle of WhatsApp client instances (see below) via the dependency `Store` + `Container` bootstrap.
+- Fails fast at boot, before any `WhatsAppClient` is built, if the Node runtime is below the floor Baileys 7.x requires (`>= 20.19.0`) — see `Helpers/NodeVersionGuard.ts`.
 
 ### 1.2 WhatsApp Client Agent (`src/Services/whatsapp/WhatsAppClient.ts`)
 - Spins up one instance per configured `WpClient` entry.
-- Bridges outbound messages from repositories/services to WhatsApp transports (Baileys, whatsapp-web.js, or official API depending on client metadata).
+- Bridges outbound messages from repositories/services to WhatsApp transports (Baileys or the official API, depending on client metadata) — the only two supported transports.
 - Emits session state (QR, connection status, events) to Socket.IO for the admin UI under `wpServices[client.id]`.
 - Delegates message classification to the chatbot service and persists audit trails via repositories.
+- **Baileys transport (`@whiskeysockets/baileys` 7.0.0-rc14, ESM-only, loaded via Node's `require(esm)` — hence the Node floor above)**: no on-disk `store.json`; a bounded in-process cache of the messages this line sent serves `getMessage` retries instead, `syncFullHistory` is disabled, reconnect attempts back off up to 60s and reset on a successful `open`, and the session folder is deleted only on an explicit logout. Inbound senders under a `@lid` JID are resolved to a phone number before the message reaches the chatbot (unresolvable senders are audit-logged and skipped). The typing indicator sends a `composing` presence update. Catalog messages with buttons or lists render as numbered text, and a plain-text option pick against the chat's latest offered options is promoted back to an interactive reply.
 
 ### 1.3 Chatbot Orchestrator (`src/Services/chatBot/**`)
 - Turn pipeline: `Session.addMsg` → BullMQ delayed job → `processConversationTurn` → `Session.processMessage`, unchanged by the agent-first rework (turn gate, supersede gate, typing indicator, outbound persistence all stay).
@@ -106,7 +108,7 @@ Rollback: raising `DRIVER_STALE_SECONDS` back up disables eviction; the heartbea
 docker compose restart api
 ```
 
-1. **Bootstrap**: `npm run build` followed by `npm run serve` (or PM2 using `ecosystem.config.example.js`). Ensure environment variables, Firebase credentials, and SSL certs (`src/Helpers/SSL.ts`) are available.
+1. **Bootstrap**: confirm `node -v` >= 20.19 (Baileys 7.x's ESM floor; the app also fails fast at boot below it), then `npm run build` followed by `npm run serve` (or PM2 using `ecosystem.config.example.js`). Ensure environment variables, Firebase credentials, and SSL certs (`src/Helpers/SSL.ts`) are available.
 2. **Monitoring**: Sentry DSN configured; check Socket.IO logs for WhatsApp reconnect loops.
 3. **Scaling WhatsApp Clients**: Add rows through the admin panel or seeders; the `Store` hot-reloads clients and `app.ts` instantiates a `WhatsAppClient` per tenant.
 4. **Queue Health**: Inspect BullMQ dashboard (if configured) or Redis metrics, especially before marketing campaigns.

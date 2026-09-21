@@ -152,6 +152,70 @@ describe('sendGatedMessage turn gate', () => {
   })
 })
 
+// Task 5.2 (design D9, spec: wp-send-failure-resilience "Send failures never
+// terminate the process"): retryPromise used to take an already-created
+// promise, so every "retry" re-awaited the same settled rejection and
+// session.sendMessage was invoked only once no matter how many retries were
+// configured. Fixed to take a factory so each attempt issues a new send.
+describe('sendGatedMessage retry-then-fail (design D9)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.useFakeTimers()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('invokes session.sendMessage three times (a fresh send per attempt) on repeated rejection, then rejects', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    mockSession.sendMessage = jest.fn().mockRejectedValue(new Error('line disconnected'))
+
+    const outcome = sendGatedMessage(mockSession as any, buildOutboundMessage())
+    const assertion = expect(outcome).rejects.toThrow('line disconnected')
+
+    // Two retries are scheduled 2s apart between the three attempts.
+    await jest.advanceTimersByTimeAsync(2000)
+    await jest.advanceTimersByTimeAsync(2000)
+
+    await assertion
+    expect(mockSession.sendMessage).toHaveBeenCalledTimes(3)
+  })
+
+  it('logs { wpClientId, chatId, error }, reports to Sentry, rethrows, and never calls process.exit', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const sendError = new Error('provider error')
+    mockSession.sendMessage = jest.fn().mockRejectedValue(sendError)
+
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const outcome = sendGatedMessage(mockSession as any, buildOutboundMessage())
+    const assertion = expect(outcome).rejects.toThrow('provider error')
+
+    await jest.advanceTimersByTimeAsync(2000)
+    await jest.advanceTimersByTimeAsync(2000)
+
+    await assertion
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'failed to send gated message',
+      expect.objectContaining({
+        wpClientId: mockSession.wp_client_id,
+        chatId: mockSession.chat_id,
+        error: sendError,
+      })
+    )
+    expect(Sentry.captureException).toHaveBeenCalledWith(sendError)
+    expect(exitSpy).not.toHaveBeenCalled()
+    // The failed send must not be persisted as an outbound message.
+    expect(SessionRepository.addMsg).not.toHaveBeenCalled()
+
+    exitSpy.mockRestore()
+    errorSpy.mockRestore()
+  })
+})
+
 // Ported from the retired ResponseContract.spec.ts (task 3.4/5.1).
 describe('sendGatedMessage recordOutboundMessage (happy path)', () => {
   beforeEach(() => {
@@ -178,5 +242,29 @@ describe('sendGatedMessage recordOutboundMessage (happy path)', () => {
 
     expect(mockSession.messages.set).toHaveBeenCalledTimes(1)
     expect(mockSession.messages.set).toHaveBeenCalledWith(persistedMessage.id, persistedMessage)
+  })
+
+  // Task 4.5 (spec: wp-interactive-fallback, "Outbound interactive payloads are
+  // persisted on every send path"): the turn path used to always persist `null`,
+  // leaving resolveInteractiveOption's findLatestOutbound lookup unable to see
+  // options offered by a conversation turn. This mirrors what
+  // WhatsAppClient.sendMessage already stores for the notification path.
+  it('persists the catalog message interactive payload instead of null', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const interactive = {
+      type: 'button' as const,
+      body: { text: 'Seguimos buscando conductor.' },
+      action: {
+        buttons: [
+          { type: 'reply' as const, reply: { id: 'CANCEL', title: 'Cancelar' } },
+          { type: 'reply' as const, reply: { id: 'INSIST', title: 'Insistir' } },
+        ],
+      },
+    }
+
+    await sendGatedMessage(mockSession as any, buildOutboundMessage({ interactive }))
+
+    const [, persistedMessage] = (SessionRepository.addMsg as jest.Mock).mock.calls[0]
+    expect(persistedMessage.interactive).toEqual(interactive)
   })
 })

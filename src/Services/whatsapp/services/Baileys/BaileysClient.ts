@@ -3,7 +3,6 @@ import { WpEvents } from '../../constants/WpEvents'
 import { WpStates } from '../../constants/WpStates'
 import { WpChatInterface } from '../../interfaces/WpChatInterface'
 import { WPClientInterface } from '../../interfaces/WPClientInterface'
-import NodeCache from 'node-cache'
 import {
   default as makeWASocket,
   DisconnectReason,
@@ -14,7 +13,6 @@ import {
   Browsers,
   WASocket,
   fetchLatestBaileysVersion,
-  makeInMemoryStore,
   WAMessageKey,
   WAMessageContent,
   WAMessage,
@@ -22,27 +20,33 @@ import {
   proto,
   isJidBroadcast,
   isJidNewsletter,
+  isPnUser,
   delay,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import P, { Logger } from 'pino'
 import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import { WpMessageAdapter } from './Adapters/WPMessageAdapter'
+import { MapCacheStore } from './MapCacheStore'
 import { FileHelper } from '../../../../Helpers/FileHelper'
 import { WpClients } from '../../constants/WPClients'
 import config from '../../../../../config'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 import QueueService from '../../../queue/QueueService'
+import IgnoredInboundMessageAuditRepository from '../../../../Repositories/IgnoredInboundMessageAuditRepository'
+import { renderInteractiveAsText } from '../../interactive/renderInteractiveAsText'
 
 export class BaileysClient implements WPClientInterface {
   private clientSock: WASocket
   private eventCallbacks: { [key: string]: Function[] } = {}
   private state: AuthenticationState
   private logger: any
-  private store: any
+  private msgRetryCounterCache = new MapCacheStore()
+  private static readonly SENT_MESSAGE_CACHE_LIMIT = 500
+  private readonly sentMessages = new Map<string, proto.IMessage>()
   static SESSION_PATH = 'storage/sessions/baileys/'
-  private retries = 0
-  private interval: NodeJS.Timer
+  private attempt = 0
+  private reconnectTimer: NodeJS.Timeout | null = null
   serviceName: WpClients = WpClients.BAILEYS
   private status: WpStates = WpStates.UNPAIRED
   private QR: string | null = null
@@ -53,14 +57,16 @@ export class BaileysClient implements WPClientInterface {
     this.logger = P({
       level: config.NODE_ENV === 'production' ? 'error' : 'trace',
     }) as unknown as Logger
-    this.store = makeInMemoryStore({ logger: this.logger })
     this.QUEUE_NAME = WpClients.BAILEYS + '-msg-queue-' + this.wpClient.id
     this.msgQueue.addQueue(this.QUEUE_NAME)
     this.msgQueue.addWorker(this.QUEUE_NAME, async (data: any) => {
       const { phoneNumber, message } = data
       const waitTime = Math.random() * (5000 - 2000) + 2000
       await delay(waitTime)
-      await this.clientSock.sendMessage(phoneNumber, { text: message.message })
+      const sent = await this.clientSock.sendMessage(phoneNumber, {
+        text: renderInteractiveAsText(message),
+      })
+      this.cacheSentMessage(sent?.key, sent?.message)
     })
   }
 
@@ -68,10 +74,15 @@ export class BaileysClient implements WPClientInterface {
     this.msgQueue.add(this.QUEUE_NAME, { phoneNumber, message })
   }
 
-  // No-op: typing indicator is only implemented for the Official transport (design D7).
   async sendTypingIndicator(chatId: string, inboundMessageId: string): Promise<void> {
-    this.logger.debug({ chatId, inboundMessageId }, 'sendTypingIndicator is a no-op on Baileys')
-    return Promise.resolve()
+    try {
+      await this.clientSock.sendPresenceUpdate('composing', chatId)
+    } catch (error: any) {
+      this.logger.warn(
+        { chatId, inboundMessageId, error: error?.message ?? error },
+        'Failed to send composing presence update'
+      )
+    }
   }
 
   on(event: WpEvents, callback: (...arg: any) => void): void {
@@ -102,34 +113,23 @@ export class BaileysClient implements WPClientInterface {
   }
 
   async logout(): Promise<void> {
+    this.clearReconnectTimer()
     await this.clientSock.logout()
-    clearInterval(this.interval)
     FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
 
     return Promise.resolve()
-  }
-
-  private initCache(): void {
-    this.interval = setInterval(() => {
-      this.store.writeToFile(BaileysClient.SESSION_PATH + this.wpClient.id + '/store.json')
-    }, 10_000)
   }
 
   async initialize(): Promise<void> {
     if (this.status === WpStates.CONNECTED) {
       return Promise.resolve()
     }
-    this.retries++
     const { state, saveCreds } = await useMultiFileAuthState(
       BaileysClient.SESSION_PATH + this.wpClient.id
     )
     this.state = {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, this.logger),
-    }
-
-    if (this.retries == 1) {
-      this.initCache()
     }
 
     const { version } = await fetchLatestBaileysVersion()
@@ -141,7 +141,7 @@ export class BaileysClient implements WPClientInterface {
       browser: Browsers.ubuntu('Chrome'),
       printQRInTerminal: false,
       mobile: false,
-      msgRetryCounterCache: new NodeCache({ stdTTL: 60, checkperiod: 60 }),
+      msgRetryCounterCache: this.msgRetryCounterCache,
       maxMsgRetryCount: 3,
       keepAliveIntervalMs: 15000,
       retryRequestDelayMs: 1500,
@@ -149,11 +149,9 @@ export class BaileysClient implements WPClientInterface {
       shouldIgnoreJid: (jid?: string) => !jid || isJidBroadcast(jid) || isJidNewsletter(jid),
       defaultQueryTimeoutMs: 3000,
       connectTimeoutMs: 20000,
-      syncFullHistory: true,
+      syncFullHistory: false,
       getMessage: this.getMessage,
     })
-
-    this.store.bind(this.clientSock.ev)
 
     this.clientSock.ev.on('creds.update', saveCreds)
 
@@ -165,31 +163,32 @@ export class BaileysClient implements WPClientInterface {
 
       if (connection === 'close') {
         this.QR = null
-        const shouldReconnect =
-          (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut &&
-          this.retries <= 2
-        console.log(
-          'Connection closed due to',
-          lastDisconnect?.error,
-          'Reconnecting:',
-          shouldReconnect
-        )
+        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
+        console.log('Connection closed due to', lastDisconnect?.error)
         this.triggerEvent(WpEvents.AUTHENTICATION_FAILURE)
         this.status = WpStates.UNPAIRED
-        if (
-          shouldReconnect ||
-          (lastDisconnect?.error as Boom)?.output?.statusCode === DisconnectReason.restartRequired
-        ) {
-          console.log('Restart required')
-          this.status = WpStates.OPENING
-          this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
-          setTimeout(() => this.initialize(), 3000)
-        } else {
+
+        if (statusCode === DisconnectReason.loggedOut) {
+          this.clearReconnectTimer()
           this.triggerEvent(WpEvents.DISCONNECTED)
-          clearInterval(this.interval)
           FileHelper.removeFolder(BaileysClient.SESSION_PATH + this.wpClient.id)
-          console.log('Not reconnecting, loggedout')
+          console.log('Not reconnecting, logged out')
+          return
         }
+
+        this.status = WpStates.OPENING
+        this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
+
+        if (statusCode === DisconnectReason.restartRequired) {
+          console.log('Restart required, reconnecting immediately')
+          this.scheduleReconnect(0)
+          return
+        }
+
+        const backoffMs = Math.min(3000 * 2 ** this.attempt, 60000)
+        this.attempt++
+        console.log('Reconnecting in', backoffMs, 'ms, attempt', this.attempt)
+        this.scheduleReconnect(backoffMs)
       } else if (connection === 'connecting') {
         this.status = WpStates.OPENING
         this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.OPENING)
@@ -197,6 +196,7 @@ export class BaileysClient implements WPClientInterface {
         this.QR = null
         console.log('Connected to socket successfully')
         this.status = WpStates.CONNECTED
+        this.attempt = 0
         this.triggerEvent(WpEvents.STATE_CHANGED, WpStates.CONNECTED)
       } else if (qr) {
         this.QR = qr
@@ -220,12 +220,75 @@ export class BaileysClient implements WPClientInterface {
     this.clientSock.ev.on(
       'messages.upsert',
       async (message: { messages: WAMessage[]; type: MessageUpsertType }) => {
-        if (this.isValidMessage(message.messages[0], message.type)) {
-          const msg = new WpMessageAdapter(message.messages[0], this.clientSock)
-          this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
+        const waMessage = message.messages[0]
+        if (!this.isValidMessage(waMessage, message.type)) {
+          return
         }
+
+        const phoneNumberJid = await this.resolveSenderPhoneNumberJid(waMessage.key)
+        if (!phoneNumberJid) {
+          await this.recordUnresolvedSender(waMessage)
+          return
+        }
+
+        const from = phoneNumberJid.replace('@s.whatsapp.net', '@c.us')
+        const msg = new WpMessageAdapter(waMessage, this.clientSock, from)
+        this.triggerEvent(WpEvents.MESSAGE_RECEIVED, msg)
       }
     )
+  }
+
+  // Design D5: resolves the customer's phone-number JID before the (synchronous)
+  // WpMessageAdapter is built, trying remoteJid, then remoteJidAlt, then the
+  // library's LID-to-PN mapping. Returns null when none of those yields a PN.
+  private async resolveSenderPhoneNumberJid(key: WAMessageKey): Promise<string | null> {
+    if (key.remoteJid && isPnUser(key.remoteJid)) {
+      return key.remoteJid
+    }
+    if (key.remoteJidAlt && isPnUser(key.remoteJidAlt)) {
+      return key.remoteJidAlt
+    }
+    if (!key.remoteJid) {
+      return null
+    }
+    return this.clientSock.signalRepository.lidMapping.getPNForLID(key.remoteJid)
+  }
+
+  // Design D5: a LID with no alternate JID and no known mapping is skipped rather
+  // than dispatched under a LID-keyed sender, which would poison `clients`.
+  private async recordUnresolvedSender(message: WAMessage): Promise<void> {
+    const wpClientId = this.wpClient.id
+    const messageId = message.key.id ?? 'unknown'
+    const remoteJid = message.key.remoteJid ?? null
+
+    this.logger.warn(
+      { wpClientId, messageId, remoteJid },
+      'Unable to resolve inbound sender phone number'
+    )
+
+    await IgnoredInboundMessageAuditRepository.recordIgnoredEvent({
+      wpClientId,
+      provider: this.serviceName,
+      messageId,
+      chatId: remoteJid,
+      rawTimestamp: message.messageTimestamp != null ? String(message.messageTimestamp) : null,
+      messageType: null,
+      reason: 'unresolved_sender',
+    })
+  }
+
+  // Stores the timer handle (design D7/D12) so a future `destroy()`
+  // (fix-wp-reset-per-line task 1.3) can cancel a pending reconnect.
+  private scheduleReconnect(delayMs: number): void {
+    this.clearReconnectTimer()
+    this.reconnectTimer = setTimeout(() => this.initialize(), delayMs)
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
   }
 
   private isValidMessage(message: WAMessage, type: MessageUpsertType): boolean {
@@ -247,12 +310,28 @@ export class BaileysClient implements WPClientInterface {
     }
   }
 
-  private async getMessage(key: WAMessageKey): Promise<WAMessageContent | undefined> {
-    try {
-      const msg = await this.store.loadMessage(key.remoteJid!, key.id!)
-      return msg?.message || undefined
-    } catch (error) {
-      console.log('Error getting message', error)
+  // Bounded, insertion-ordered cache of messages this client has sent (design D6):
+  // replaces the on-disk store solely for the library's delivery-retry lookups.
+  private cacheSentMessage(key?: WAMessageKey, message?: proto.IMessage | null): void {
+    if (!key?.id || !message) {
+      return
     }
+    this.sentMessages.set(this.sentMessageCacheKey(key), message)
+    if (this.sentMessages.size > BaileysClient.SENT_MESSAGE_CACHE_LIMIT) {
+      const oldestKey = this.sentMessages.keys().next().value
+      if (oldestKey !== undefined) {
+        this.sentMessages.delete(oldestKey)
+      }
+    }
+  }
+
+  private sentMessageCacheKey(key: WAMessageKey): string {
+    return `${key.remoteJid ?? ''}:${key.id ?? ''}`
+  }
+
+  // Declared as an arrow function (class field) so it stays bound to this instance's
+  // cache even though `makeWASocket` invokes it detached from `this` (design D6).
+  private getMessage = async (key: WAMessageKey): Promise<WAMessageContent | undefined> => {
+    return this.sentMessages.get(this.sentMessageCacheKey(key))
   }
 }

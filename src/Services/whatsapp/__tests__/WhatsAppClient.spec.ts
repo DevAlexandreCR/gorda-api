@@ -82,6 +82,35 @@ jest.mock('../../../Models/WhatsappMessageRecord', () => ({
   findOne: jest.fn(),
 }))
 
+// The task 4.4 tests below drive a non-Official line, which makes onMessageReceived call
+// shouldProcessInboundMessage -> InboundMessageDedupCache.evaluate ->
+// ProcessedInboundMessageRepository.exists, a real Sequelize model call otherwise unmocked
+// in this file (every prior test here uses the Official service, which skips this branch
+// entirely). Mock it the same way as the other Sequelize models above so dedup resolves
+// to "process" without touching a real database.
+jest.mock('../../../Models/ProcessedInboundMessage', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn().mockResolvedValue(null),
+    upsert: jest.fn().mockResolvedValue(undefined),
+  },
+}))
+
+// Task 4.4 (spec: wp-interactive-fallback): the promotion tests below drive a
+// non-Official line, which makes onMessageReceived's persistence branch call
+// MessageRepository.findLatestOutbound (to read the offered options) and
+// MessageRepository.addMessage (inbound persistence). Neither needs the real
+// Sequelize-backed implementation here; each test configures findLatestOutbound
+// directly.
+jest.mock('../../../Repositories/MessageRepository', () => ({
+  __esModule: true,
+  default: {
+    findLatestOutbound: jest.fn(),
+    addMessage: jest.fn().mockResolvedValue(undefined),
+  },
+}))
+
+import * as Sentry from '@sentry/node'
 import { Worker } from 'bullmq'
 import { WhatsAppClient } from '../WhatsAppClient'
 import { WpClient } from '../../../Interfaces/WpClient'
@@ -96,6 +125,9 @@ import { getConversationTurnQueueName } from '../../chatBot/turns/ConversationTu
 import Session from '../../../Models/Session'
 import ChatSessionRecord from '../../../Models/ChatSessionRecord'
 import WhatsappMessageRecord from '../../../Models/WhatsappMessageRecord'
+import MessageRepository from '../../../Repositories/MessageRepository'
+import { Store } from '../../store/Store'
+import { Interactive } from '../services/Official/Constants/Interactive'
 
 const flushMicrotasks = () => new Promise((resolve) => setImmediate(resolve))
 
@@ -125,6 +157,27 @@ function buildMsg(overrides: Partial<WpMessageInterface> = {}): WpMessageInterfa
     interactiveReply: null,
     getChat: jest.fn(),
     ...overrides,
+  }
+}
+
+// A text message on a non-Official line goes through onMessageReceived's persistence
+// branch (task 4.4), which fetches the chat/contact before storing the inbound row.
+function buildBaileysMsg(overrides: Partial<WpMessageInterface> = {}): WpMessageInterface {
+  return buildMsg({
+    getChat: jest.fn().mockResolvedValue({ getContact: jest.fn().mockResolvedValue(null) }),
+    ...overrides,
+  })
+}
+
+function buildButtonOffer(): Interactive {
+  return {
+    type: 'button',
+    action: {
+      buttons: [
+        { type: 'reply', reply: { id: 'CANCEL', title: 'Cancelar' } },
+        { type: 'reply', reply: { id: 'INSIST', title: 'Insistir' } },
+      ],
+    },
   }
 }
 
@@ -241,6 +294,11 @@ describe('WhatsAppClient.isProcessableMsg gating on a wpNotifications-only line 
   })
 })
 
+// The courtesy filter (MessageHelper.isCourtesyMessage) must only gate the deterministic
+// `assistant` line (LocationAssistantFlow), never the agent-driven `chatBot` line, which
+// judges acknowledgment vs. new intent itself. A session is stubbed as already existing so
+// isMessageTypeSupported passes TEXT through uniformly on both line kinds, isolating the
+// courtesy branch under test from the rest of isProcessableMsg's fallback logic.
 describe('WhatsAppClient.onReady conversation-turn worker registration (design D6, task 3.7)', () => {
   it('constructs ChatBot before registering the conversation-turn worker', () => {
     const ChatBotMock = jest.requireMock('../../chatBot/ChatBot').default as jest.Mock
@@ -256,7 +314,7 @@ describe('WhatsAppClient.onReady conversation-turn worker registration (design D
     expect(chatBotCallOrder).toBeLessThan(workerCallOrder)
   })
 
-  it('is idempotent: onReady firing twice for the same wpClient (reconnect / restartChromium) registers exactly one worker', () => {
+  it('is idempotent: onReady firing twice for the same wpClient (reconnect) registers exactly one worker', () => {
     const mockWorker = Worker as unknown as jest.Mock
     const { whatsAppClient } = buildClient({ id: 'wp-client-onready-idempotent' })
     const callsBefore = mockWorker.mock.calls.length
@@ -460,9 +518,7 @@ describe('Combined failure chain: two WhatsAppClient generations over one Offici
     ]
 
     function findRecord(wpClientIdArg: string, messageId: string) {
-      return messageRecords.find(
-        (r) => r.wpClientId === wpClientIdArg && r.messageId === messageId
-      )
+      return messageRecords.find((r) => r.wpClientId === wpClientIdArg && r.messageId === messageId)
     }
 
     ;(WhatsappMessageRecord.findOrCreate as jest.Mock).mockImplementation(
@@ -513,3 +569,259 @@ describe('Combined failure chain: two WhatsAppClient generations over one Offici
     addSpy.mockRestore()
   })
 })
+
+// Task 4.4 (spec: wp-interactive-fallback, "Plain-text option picks are promoted to
+// interactive replies"): resolveInteractiveOption's matching rules are unit-tested on
+// their own (resolveInteractiveOption.spec.ts); these tests instead prove the wiring
+// inside onMessageReceived — that a non-Official line actually calls
+// MessageRepository.findLatestOutbound, rewrites the WpMessageInterface in place on a
+// match, and leaves it alone otherwise (including when it already arrived INTERACTIVE).
+describe('WhatsAppClient.onMessageReceived interactive option resolution (spec: wp-interactive-fallback, task 4.4)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(MessageRepository.addMessage as jest.Mock).mockResolvedValue(undefined)
+    ;(Store.getInstance().getChatById as jest.Mock).mockResolvedValue({ id: 'chat-1' })
+  })
+
+  it('Ordinal pick: "1" is promoted to an INTERACTIVE message whose button_reply.id is CANCEL, and body becomes the id', async () => {
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({
+      interactive: buildButtonOffer(),
+    })
+    const findSessionByChatId = jest.fn().mockReturnValue({ chat_id: '573001234567@c.us' })
+    const { whatsAppClient, chatBot } = buildClient(
+      { service: WpClients.BAILEYS },
+      { findSessionByChatId }
+    )
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-ordinal-1',
+      type: MessageTypes.TEXT,
+      body: '1',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(MessageRepository.findLatestOutbound).toHaveBeenCalledWith('wp-client-1', msg.from)
+    expect(msg.type).toBe(MessageTypes.INTERACTIVE)
+    expect(msg.body).toBe('CANCEL')
+    expect(msg.interactiveReply).toEqual({
+      type: 'button_reply',
+      button_reply: { id: 'CANCEL', title: 'Cancelar' },
+    })
+    expect(chatBot.processMessage).toHaveBeenCalledWith(msg)
+  })
+
+  it('Title pick: "insistir" is promoted to a button_reply of INSIST', async () => {
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({
+      interactive: buildButtonOffer(),
+    })
+    const { whatsAppClient } = buildClient({ service: WpClients.BAILEYS })
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-title-1',
+      type: MessageTypes.TEXT,
+      body: 'insistir',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(msg.type).toBe(MessageTypes.INTERACTIVE)
+    expect(msg.body).toBe('INSIST')
+    expect(msg.interactiveReply).toEqual({
+      type: 'button_reply',
+      button_reply: { id: 'INSIST', title: 'Insistir' },
+    })
+  })
+
+  it('List pick becomes a list reply: "3" resolves to the third row across sections', async () => {
+    const listOffer: Interactive = {
+      type: 'list',
+      action: {
+        sections: [
+          {
+            rows: [
+              { id: 'A', title: 'Fila A' },
+              { id: 'B', title: 'Fila B' },
+            ],
+          },
+          { rows: [{ id: 'C', title: 'Fila C' }] },
+        ],
+      },
+    }
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({
+      interactive: listOffer,
+    })
+    const { whatsAppClient } = buildClient({ service: WpClients.BAILEYS })
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-list-1',
+      type: MessageTypes.TEXT,
+      body: '3',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(msg.type).toBe(MessageTypes.INTERACTIVE)
+    expect(msg.body).toBe('C')
+    expect(msg.interactiveReply).toEqual({
+      type: 'list_reply',
+      list_reply: { id: 'C', title: 'Fila C' },
+    })
+  })
+
+  it('Extra words are not a pick: "2 gracias" stays TEXT (resolution wiring, independent of the unrelated courtesy filter)', async () => {
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({
+      interactive: buildButtonOffer(),
+    })
+    const { whatsAppClient } = buildClient({ service: WpClients.BAILEYS })
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-extra-1',
+      type: MessageTypes.TEXT,
+      body: '2 gracias',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    // "2 gracias" is the spec's own example. isProcessableMsg separately treats it as
+    // a courtesy message (MessageHelper.isCourtesyMessage) and never reaches
+    // ChatBot.processMessage regardless of promotion — that gate is pre-existing and
+    // out of scope here; this test only asserts resolution left the message as TEXT.
+    expect(msg.type).toBe(MessageTypes.TEXT)
+    expect(msg.body).toBe('2 gracias')
+    expect(msg.interactiveReply).toBeNull()
+  })
+
+  it('Options superseded by a later plain message: the chat’s latest outbound carries no interactive payload, so "1" stays TEXT', async () => {
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({ interactive: null })
+    const { whatsAppClient } = buildClient({ service: WpClients.BAILEYS })
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-superseded-1',
+      type: MessageTypes.TEXT,
+      body: '1',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(msg.type).toBe(MessageTypes.TEXT)
+    expect(msg.body).toBe('1')
+  })
+
+  it('a chat with no stored outbound message at all leaves "1" as TEXT', async () => {
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue(null)
+    const { whatsAppClient } = buildClient({ service: WpClients.BAILEYS })
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-nooutbound-1',
+      type: MessageTypes.TEXT,
+      body: '1',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(msg.type).toBe(MessageTypes.TEXT)
+  })
+
+  it('Already INTERACTIVE: a message that already arrived as INTERACTIVE is never sent through resolution', async () => {
+    const findSessionByChatId = jest.fn().mockReturnValue({ chat_id: '573001234567@c.us' })
+    const { whatsAppClient, chatBot } = buildClient(
+      { service: WpClients.BAILEYS },
+      { findSessionByChatId }
+    )
+    const originalReply = {
+      type: 'button_reply' as const,
+      button_reply: { id: 'NATIVE', title: 'Native' },
+    }
+    const msg = buildBaileysMsg({
+      id: 'wamid.interactive-already-1',
+      type: MessageTypes.INTERACTIVE,
+      body: 'NATIVE',
+      interactiveReply: originalReply,
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(MessageRepository.findLatestOutbound).not.toHaveBeenCalled()
+    expect(msg.type).toBe(MessageTypes.INTERACTIVE)
+    expect(msg.body).toBe('NATIVE')
+    expect(msg.interactiveReply).toBe(originalReply)
+    expect(chatBot.processMessage).toHaveBeenCalledWith(msg)
+  })
+
+  // Candidate-list race (chatbot-agent-conversation follow-up, "render search_place
+  // candidates as a selectable list"): a candidate list is sent, then an unrelated
+  // outbound message is sent afterwards (e.g. a later turn's reply, or a lifecycle
+  // notification) — findLatestOutbound now points at that later message, which carries
+  // no `interactive` payload, so resolveInteractiveOption has nothing to match against
+  // and returns null. The reply stays plain TEXT rather than resolving against the
+  // stale list; this is documented degradation, not a bug — the model still resolves
+  // "2" from session.state.pending_candidates as ordinary free text.
+  it('candidate-list race: an unrelated message sent after the list means the reply stays TEXT, not a resolved pick', async () => {
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({ interactive: null })
+    const { whatsAppClient } = buildClient({ service: WpClients.BAILEYS })
+    const msg = buildBaileysMsg({
+      id: 'wamid.candidate-list-race-1',
+      type: MessageTypes.TEXT,
+      body: '2',
+    })
+
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(MessageRepository.findLatestOutbound).toHaveBeenCalledWith('wp-client-1', msg.from)
+    expect(msg.type).toBe(MessageTypes.TEXT)
+    expect(msg.body).toBe('2')
+    expect(msg.interactiveReply).toBeNull()
+  })
+})
+
+// Task 4.4, scenario "Promoted pick skips the debounce window": drives the real
+// Session.addMsg -> enqueueConversationTurn path (the same pattern as the combined
+// failure chain test above) instead of a mocked ChatBot, to prove the promoted
+// message's conversation turn is actually enqueued with delay 0.
+describe('WhatsAppClient.onMessageReceived promoted pick skips the debounce window (spec: wp-interactive-fallback, task 4.4)', () => {
+  it('enqueues the promoted conversation turn with delay 0, matching a native button reply', async () => {
+    const wpClientId = 'wp-client-delay0'
+
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue({
+      interactive: buildButtonOffer(),
+    })
+    ;(MessageRepository.addMessage as jest.Mock).mockResolvedValue(undefined)
+    ;(Store.getInstance().getChatById as jest.Mock).mockResolvedValue({ id: 'chat-delay0' })
+    ;(ChatSessionRecord.findByPk as jest.Mock).mockResolvedValue({
+      wpClientId,
+      chatId: 'chat-delay0',
+    })
+    ;(WhatsappMessageRecord.findOrCreate as jest.Mock).mockImplementation(
+      async ({ defaults }: { defaults: Record<string, unknown> }) => [{ ...defaults }, true]
+    )
+
+    const session = new Session('chat-delay0')
+    session.id = 'session-delay0'
+    session.setWpClientId(wpClientId)
+
+    const findSessionByChatId = jest.fn().mockReturnValue(session)
+    const processMessage = jest.fn(async (msg: WpMessageInterface) => {
+      await session.addMsg(msg)
+    })
+    const { whatsAppClient } = buildClient(
+      { id: wpClientId, service: WpClients.BAILEYS },
+      { findSessionByChatId, processMessage }
+    )
+
+    const addSpy = jest.spyOn(QueueService.getInstance(), 'add').mockImplementation(() => {})
+
+    const msg = buildBaileysMsg({ id: 'wamid.delay0-1', type: MessageTypes.TEXT, body: '1' })
+    await whatsAppClient.onMessageReceived(msg)
+
+    expect(msg.type).toBe(MessageTypes.INTERACTIVE)
+    expect(addSpy).toHaveBeenCalledTimes(1)
+    expect(addSpy).toHaveBeenCalledWith(
+      getConversationTurnQueueName(wpClientId),
+      expect.objectContaining({ sessionId: 'session-delay0' }),
+      expect.objectContaining({ delay: 0 })
+    )
+
+    addSpy.mockRestore()
+  })
+})
+
+// Regression test for the crash reported from container logs: initClient() registers
+// onMessageReceived before onReady ever assigns this.chatBot, so a restart that delivers
+// queued/offline Baileys messages before READY used to dereference `this.chatBot` in
+// isProcessableMsg and crash the whole process with an unhandled rejection. The fix guards
+// the chatbot-processing branch on `this.chatBot` and wraps the handler body in try/catch.

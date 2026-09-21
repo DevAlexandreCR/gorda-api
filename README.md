@@ -14,7 +14,7 @@ The codebase is written in TypeScript and provides cron jobs for housekeeping ta
 - **Express** – HTTP server
 - **Socket.IO** – realtime communication with the admin panel
 - **Firebase Admin SDK** – Firestore/Realtime Database and FCM
-- **whatsapp-web.js / Baileys / Official API** – WhatsApp integration
+- **Baileys / Official API** – WhatsApp integration
 - **BullMQ** – background jobs
 - **Sentry** – error tracking
 

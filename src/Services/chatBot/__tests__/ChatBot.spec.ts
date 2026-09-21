@@ -36,7 +36,7 @@ function buildFakeChat(id = 'chat-1'): WpChatInterface {
 
 function buildFakeWpClient(overrides: Partial<WPClientInterface> = {}): WPClientInterface {
   return {
-    serviceName: WpClients.WHATSAPP_WEB_JS,
+    serviceName: WpClients.BAILEYS,
     sendMessage: jest.fn(),
     sendTypingIndicator: jest.fn(),
     on: jest.fn(),

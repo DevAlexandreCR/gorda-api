@@ -13,6 +13,7 @@ import InboundMessageMetrics from '../../../Services/whatsapp/monitoring/Inbound
 import { InboundMessagePolicy } from '../../../Services/whatsapp/policies/InboundMessagePolicy'
 import InboundMessageDedupCache from '../../../Services/whatsapp/policies/InboundMessageDedupCache'
 import { WpClients } from '../../../Services/whatsapp/constants/WPClients'
+import { interactiveReplyId } from '../../../Services/whatsapp/interactive/interactiveReplyId'
 
 const controller = Router()
 const store = Store.getInstance()
@@ -80,7 +81,7 @@ async function processWebhookPayload(body: any): Promise<void> {
   }
 }
 
-async function processOfficialMessage(
+export async function processOfficialMessage(
   message: WebhookMessage,
   profileName: string | undefined,
   wpClientId: string,
@@ -232,7 +233,7 @@ async function processOfficialMessage(
   )
 
   if (wpMessage.interactiveReply) {
-    wpMessage.body = wpMessage.interactiveReply.button_reply?.id ?? wpMessage.body
+    wpMessage.body = interactiveReplyId(wpMessage.interactiveReply) ?? wpMessage.body
   }
 
   const chat = await store.getChatById(wpClientId, message.from, profileName)

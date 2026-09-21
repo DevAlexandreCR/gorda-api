@@ -103,6 +103,22 @@ function buttonMessage(id: string): WpMessage {
   }
 }
 
+// Design D10 / spec: wp-inbound-message-normalization ("List replies are honored
+// wherever button replies are"): a native list_reply, as Official sends it.
+function listMessage(id: string): WpMessage {
+  return {
+    created_at: 0,
+    id: 'msg-1',
+    type: MessageTypes.INTERACTIVE,
+    msg: id,
+    processed: false,
+    location: null,
+    interactiveReply: { type: 'list_reply', list_reply: { id, title: id } },
+    interactive: null,
+    fromMe: false,
+  }
+}
+
 describe('DeterministicHandlers', () => {
   const mockSendMessage = jest.fn().mockResolvedValue(undefined)
 
@@ -133,6 +149,14 @@ describe('DeterministicHandlers', () => {
     it('detects the CANCEL button reply', () => {
       expect(isCancelMessage(buttonMessage('CANCEL'))).toBe(true)
       expect(isCancelMessage(buttonMessage('cancel'))).toBe(true)
+    })
+
+    // Spec scenario "Official list selection cancels a service": a CANCEL list_reply
+    // (e.g. from an Official native list) must trigger the deterministic shortcut the
+    // same way a CANCEL button_reply does (design D10).
+    it('detects the CANCEL list reply', () => {
+      expect(isCancelMessage(listMessage('CANCEL'))).toBe(true)
+      expect(isCancelMessage(listMessage('cancel'))).toBe(true)
     })
 
     it('detects the INSIST button reply only', () => {

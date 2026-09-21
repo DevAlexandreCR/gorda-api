@@ -23,7 +23,7 @@ class QueueService {
 
   public addQueue(name: string): void {
     // onReady (and similar bootstrap paths) can fire more than once per process
-    // (reconnects, restartChromium). Skip re-registration instead of overwriting
+    // (reconnects). Skip re-registration instead of overwriting
     // the map entry, which would leak the previous Queue's Redis connection.
     if (this.hasQueue(name)) {
       console.log(`QueueService.addQueue: queue "${name}" already registered, skipping`)
@@ -48,7 +48,9 @@ class QueueService {
     // Same idempotency guard as addQueue: a second worker on the same Redis
     // queue would double effective concurrency and leak a connection (design D6).
     if (this.hasWorker(queueName)) {
-      console.log(`QueueService.addWorker: worker for queue "${queueName}" already registered, skipping`)
+      console.log(
+        `QueueService.addWorker: worker for queue "${queueName}" already registered, skipping`
+      )
       return
     }
 
