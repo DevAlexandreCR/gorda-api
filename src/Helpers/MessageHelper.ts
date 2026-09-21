@@ -154,7 +154,7 @@ export default class MessageHelper {
   }
 
   /**
-   * Check if message is likely a courtesy/ack message.
+   * Check if message is pure courtesy, i.e. it contains nothing but courtesy/ack content.
    * Uses normalization and fuzzy matching with a default threshold.
    */
   static isCourtesyMessage(message: string, threshold = 0.74): boolean {
@@ -162,38 +162,42 @@ export default class MessageHelper {
     const normalized = this.normalize(message)
     if (!normalized) return false
 
-    // Short messages are more likely to be courtesy; try whole-string first
+    // Whole-string check first (catches single-token typos like "grasias")
     for (const term of this.COURTESY_TERMS) {
       if (normalized === term) return true
       if (this.similarity(normalized, term) >= threshold) return true
     }
 
-    // Check word-by-word for messages like "ok gracias" or "dale listo"
-    const parts = normalized.split(/\s+/).filter(Boolean)
-    if (parts.length === 0) return false
+    const tokens = normalized.split(/\s+/).filter(Boolean)
+    if (tokens.length === 0) return false
 
-    // If every token resembles a courtesy term, consider it courtesy
-    const allCourtesy = parts.every((token) =>
-      this.COURTESY_TERMS.some((term) => {
-        if (token === term) return true
-        return this.similarity(token, term) >= threshold
-      })
-    )
-    if (allCourtesy) return true
+    return this.isFullyCourtesy(tokens, threshold)
+  }
 
-    // Also handle two-word courtesy phrases inside the message (e.g., "esta bien")
-    if (parts.length >= 2) {
-      for (let i = 0; i < parts.length - 1; i++) {
-        const bigram = `${parts[i]} ${parts[i + 1]}`
-        if (
-          this.COURTESY_TERMS.some(
-            (term) => bigram === term || this.similarity(bigram, term) >= threshold
-          )
-        )
-          return true
+  /**
+   * True only when the ENTIRE token sequence can be partitioned into consecutive runs
+   * of 1 or 2 tokens that each match a courtesy term (e.g. "por favor" spans two tokens,
+   * "gracias" spans one). Any leftover content token (a place, a request) breaks the
+   * partition, so a real message that merely contains a courtesy phrase stays false.
+   */
+  private static isFullyCourtesy(tokens: string[], threshold: number): boolean {
+    const matchesTerm = (run: string): boolean =>
+      this.COURTESY_TERMS.some((term) => run === term || this.similarity(run, term) >= threshold)
+
+    const n = tokens.length
+    // dp[i] = true when tokens[i..n) can be fully partitioned into courtesy runs
+    const dp: boolean[] = new Array(n + 1).fill(false)
+    dp[n] = true
+    for (let i = n - 1; i >= 0; i--) {
+      if (matchesTerm(tokens[i]) && dp[i + 1]) {
+        dp[i] = true
+        continue
+      }
+      if (i + 2 <= n && matchesTerm(`${tokens[i]} ${tokens[i + 1]}`) && dp[i + 2]) {
+        dp[i] = true
       }
     }
 
-    return false
+    return dp[0]
   }
 }

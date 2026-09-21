@@ -299,6 +299,56 @@ describe('WhatsAppClient.isProcessableMsg gating on a wpNotifications-only line 
 // judges acknowledgment vs. new intent itself. A session is stubbed as already existing so
 // isMessageTypeSupported passes TEXT through uniformly on both line kinds, isolating the
 // courtesy branch under test from the rest of isProcessableMsg's fallback logic.
+describe('WhatsAppClient.isProcessableMsg courtesy-filter scoping to the assistant line only', () => {
+  const findSessionByChatId = jest.fn().mockReturnValue({ chat_id: '573001234567@c.us' })
+
+  it('a pure-courtesy TEXT message is processable on a chatBot line', () => {
+    const { whatsAppClient } = buildClient(
+      { chatBot: true, assistant: false },
+      { findSessionByChatId }
+    )
+    const msg = buildMsg({ type: MessageTypes.TEXT, body: 'Si' })
+
+    expect(whatsAppClient.isProcessableMsg(msg)).toBe(true)
+  })
+
+  it('a pure-courtesy TEXT message is NOT processable on an assistant line', () => {
+    const { whatsAppClient } = buildClient(
+      { chatBot: false, assistant: true },
+      { findSessionByChatId }
+    )
+    const msg = buildMsg({ type: MessageTypes.TEXT, body: 'Si' })
+
+    expect(whatsAppClient.isProcessableMsg(msg)).toBe(false)
+  })
+
+  it('a content message containing "por favor" is processable on a chatBot line', () => {
+    const { whatsAppClient } = buildClient(
+      { chatBot: true, assistant: false },
+      { findSessionByChatId }
+    )
+    const msg = buildMsg({
+      type: MessageTypes.TEXT,
+      body: 'Necesito un taxi en el centro por favor',
+    })
+
+    expect(whatsAppClient.isProcessableMsg(msg)).toBe(true)
+  })
+
+  it('a content message containing "por favor" is processable on an assistant line', () => {
+    const { whatsAppClient } = buildClient(
+      { chatBot: false, assistant: true },
+      { findSessionByChatId }
+    )
+    const msg = buildMsg({
+      type: MessageTypes.TEXT,
+      body: 'Necesito un taxi en el centro por favor',
+    })
+
+    expect(whatsAppClient.isProcessableMsg(msg)).toBe(true)
+  })
+})
+
 describe('WhatsAppClient.onReady conversation-turn worker registration (design D6, task 3.7)', () => {
   it('constructs ChatBot before registering the conversation-turn worker', () => {
     const ChatBotMock = jest.requireMock('../../chatBot/ChatBot').default as jest.Mock

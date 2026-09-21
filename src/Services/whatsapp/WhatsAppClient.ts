@@ -356,9 +356,21 @@ export class WhatsAppClient {
   }
 
   isProcessableMsg(msg: WpMessageInterface): boolean {
-    // Reject stickers and courtesy-only text messages
+    // Reject stickers outright
     if (msg.type == MessageTypes.STICKER) return false
-    if (msg.type == MessageTypes.TEXT && MessageHelper.isCourtesyMessage(msg.body)) return false
+
+    // The courtesy filter only applies to the deterministic `assistant` line
+    // (LocationAssistantFlow: pin -> reference name -> comment). That flow is rigid and
+    // would swallow a stray "gracias" as the reference or the comment. On the agent-driven
+    // `chatBot` line, the model itself judges acknowledgment vs. new intent, and
+    // TurnDispatcher already no-ops SUPPORT/COMPLETED sessions, so the "thanks after a
+    // finished service" case this filter was written for is covered there regardless.
+    if (
+      this.wpClient.assistant &&
+      msg.type == MessageTypes.TEXT &&
+      MessageHelper.isCourtesyMessage(msg.body)
+    )
+      return false
 
     const session = this.chatBot.findSessionByChatId(msg.from)
     if (session && this.isMessageTypeSupported(msg.type)) return true
