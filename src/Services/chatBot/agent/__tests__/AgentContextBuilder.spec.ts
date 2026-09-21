@@ -154,6 +154,7 @@ describe('buildAgentContext', () => {
       comment: null,
       pending_candidates: [],
       pending_pin_awaiting_reference: false,
+      is_first_reply: true,
     })
     expect(context.service).toBeNull()
     expect(context.line).toEqual({
@@ -302,6 +303,36 @@ describe('buildAgentContext', () => {
     expect(context.session.comment).toBe('casa verde')
     expect(context.session.pending_candidates).toEqual([{ id: 'p1', name: 'Estación de Policía' }])
     expect(context.session.pending_pin_awaiting_reference).toBe(true)
+  })
+
+  it('is_first_reply is true when the bounded history has no prior assistant message', async () => {
+    mockFindClientById.mockReturnValue(undefined)
+    const session = buildMockSession()
+
+    const inbound = textMsg('m1', 100, false, 'hola')
+    session.messages.set(inbound.id, inbound)
+    const current = textMsg('current', 200, false, 'sigo aquí')
+    session.messages.set(current.id, current)
+
+    const { context } = await buildAgentContext(session as any, current)
+
+    expect(context.session.is_first_reply).toBe(true)
+  })
+
+  it('is_first_reply is false once a prior assistant message exists in the history', async () => {
+    mockFindClientById.mockReturnValue(undefined)
+    const session = buildMockSession()
+
+    const inbound = textMsg('m1', 100, false, 'hola')
+    const outbound = textMsg('m2', 200, true, 'hola, en qué te ayudo')
+    session.messages.set(inbound.id, inbound)
+    session.messages.set(outbound.id, outbound)
+    const current = textMsg('current', 300, false, 'sigo aquí')
+    session.messages.set(current.id, current)
+
+    const { context } = await buildAgentContext(session as any, current)
+
+    expect(context.session.is_first_reply).toBe(false)
   })
 
   it('carries the current message GPS location and interactive reply id', async () => {
@@ -507,6 +538,7 @@ describe('buildAgentInput', () => {
         comment: null,
         pending_candidates: [],
         pending_pin_awaiting_reference: false,
+        is_first_reply: true,
       },
       service: null,
       line: { company_name: 'Gorda', pqr_number: '3000000000', city: 'Popayán' },
@@ -538,6 +570,7 @@ describe('buildAgentInput', () => {
         comment: null,
         pending_candidates: [],
         pending_pin_awaiting_reference: false,
+        is_first_reply: true,
       },
       service: null,
       line: { company_name: 'Gorda', pqr_number: '3000000000', city: 'Popayán' },

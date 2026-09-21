@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Normalize Baileys inbound messages: unwrap `ephemeralMessage`/`viewOnceMessage`/`viewOnceMessageV2`, read text from `extendedTextMessage` as well as `conversation`, map native `buttonsResponseMessage`/`listResponseMessage`/`templateButtonReplyMessage`/`interactiveResponseMessage` to `INTERACTIVE`, and convert `Long` `messageTimestamp` values with Baileys' `toNumber`.
 - Honor `list_reply.id` everywhere `button_reply.id` was already read (Official webhook controller, `Session.addMsg`, `DeterministicHandlers`, `WhatsAppClient` persistence), closing an existing Official false negative where a list selection reached the chatbot as an empty message.
 - Send a `composing` presence update on Baileys for the typing indicator (previously a no-op).
+- Add `is_first_reply` to the agent context's `session` facts (`AgentContextBuilder`), precomputed as "no assistant message in the bounded history" so the model no longer has to infer whether a turn is its first reply of the conversation.
 
 ### Changed
 

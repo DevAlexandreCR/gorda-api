@@ -98,6 +98,7 @@ function buildContext(overrides: Partial<AgentContext> = {}): AgentContext {
       comment: null,
       pending_candidates: [],
       pending_pin_awaiting_reference: false,
+      is_first_reply: false,
     },
     service: null,
     line: { company_name: 'Gorda', pqr_number: '123', city: 'Popayán' },

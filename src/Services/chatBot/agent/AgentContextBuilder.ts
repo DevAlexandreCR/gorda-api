@@ -38,6 +38,7 @@ export interface AgentContextSession {
   comment: string | null
   pending_candidates: AgentContextSessionCandidate[]
   pending_pin_awaiting_reference: boolean
+  is_first_reply: boolean
 }
 
 export interface AgentContextService {
@@ -139,7 +140,14 @@ function buildHistory(session: Session, currentMessage: WpMessage): AgentHistory
     }))
 }
 
-function buildSessionFacts(session: Session): AgentContextSession {
+/**
+ * `is_first_reply` is precomputed here rather than left for the model to infer
+ * by scanning the raw history (chatbot-agent-conversation spec, "Agent context
+ * contract"), matching every other conditional fact in this object. `history`
+ * is the same bounded, current-message-excluded array returned alongside the
+ * context, so a genuinely first turn (no prior assistant message) yields true.
+ */
+function buildSessionFacts(session: Session, history: AgentHistoryMessage[]): AgentContextSession {
   return {
     status: session.status as AgentSessionStatus,
     place: session.place?.name ?? null,
@@ -149,6 +157,7 @@ function buildSessionFacts(session: Session): AgentContextSession {
       name: candidate.name,
     })),
     pending_pin_awaiting_reference: session.state.pending_pin !== null,
+    is_first_reply: history.every((message) => message.role !== 'assistant'),
   }
 }
 
@@ -322,6 +331,7 @@ export async function buildAgentContext(
   options: BuildAgentContextOptions = {}
 ): Promise<AgentContextResult> {
   const store = Store.getInstance()
+  const history = buildHistory(session, currentMessage)
 
   const [client, service] = await Promise.all([
     buildClientFacts(session.chat_id),
@@ -330,14 +340,14 @@ export async function buildAgentContext(
 
   const context: AgentContext = {
     client,
-    session: buildSessionFacts(session),
+    session: buildSessionFacts(session, history),
     service,
     line: buildLineFacts(store),
     current_message: buildCurrentMessageFacts(currentMessage),
     system_events: options.systemEvents ?? [],
   }
 
-  return { context, history: buildHistory(session, currentMessage) }
+  return { context, history }
 }
 
 /**
