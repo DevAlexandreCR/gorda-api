@@ -136,75 +136,92 @@ export class WhatsAppClient {
   }
 
   onMessageReceived = async (msg: WpMessageInterface): Promise<void> => {
-    console.log(
-      'Message received',
-      this.wpClient.alias,
-      msg.type,
-      msg.from,
-      msg.body.substring(0, 50)
-    )
-
-    if (this.client.serviceName !== WpClients.OFFICIAL) {
-      const shouldProcess = await this.shouldProcessInboundMessage(msg)
-      if (!shouldProcess) return
-    }
-
-    if (this.wpClient.full) {
-      await this.sendMessage(msg.from, Messages.getSingleMessage(MessagesEnum.FULL_CLIENT)).catch(
-        (e) =>
-          console.log(
-            'sendMessage FULL_CLIENT Error',
-            this.wpClient.alias,
-            msg.from,
-            JSON.stringify(e)
-          )
+    try {
+      console.log(
+        'Message received',
+        this.wpClient.alias,
+        msg.type,
+        msg.from,
+        msg.body.substring(0, 50)
       )
-    } else {
+
       if (this.client.serviceName !== WpClients.OFFICIAL) {
-        await this.promoteInteractiveOptionPick(msg)
-
-        const chat = await msg.getChat()
-        const contact = await chat.getContact().catch(() => null)
-        const normalizedChatId = ChatIdHelper.normalize(msg.from)
-        const profileName =
-          contact?.pushname ||
-          this.store.findClientById(normalizedChatId)?.name ||
-          `Chat ${normalizedChatId}`
-        const storedChat = await this.store.getChatById(this.wpClient.id, msg.from, profileName)
-
-        await MessageRepository.addMessage(
-          this.wpClient.id,
-          storedChat.id,
-          {
-            id: msg.id,
-            created_at: msg.timestamp,
-            type: msg.type,
-            body:
-              msg.type === MessageTypes.INTERACTIVE
-                ? (interactiveReplyId(msg.interactiveReply) ?? msg.body)
-                : msg.body,
-            fromMe: false,
-            location: msg.location ?? null,
-            interactive: null,
-            interactiveReply: msg.interactiveReply,
-          },
-          {
-            clientName: profileName,
-            processed: false,
-          }
-        )
+        const shouldProcess = await this.shouldProcessInboundMessage(msg)
+        if (!shouldProcess) return
       }
 
-      if (this.isProcessableMsg(msg)) {
-        if (isDebounceableMsg(msg)) {
-          this.client
-            .sendTypingIndicator(msg.from, msg.id)
-            .catch((e) =>
-              console.warn('sendTypingIndicator error', this.wpClient.alias, e.message)
+      if (this.wpClient.full) {
+        await this.sendMessage(msg.from, Messages.getSingleMessage(MessagesEnum.FULL_CLIENT)).catch(
+          (e) =>
+            console.log(
+              'sendMessage FULL_CLIENT Error',
+              this.wpClient.alias,
+              msg.from,
+              JSON.stringify(e)
             )
+        )
+      } else {
+        if (this.client.serviceName !== WpClients.OFFICIAL) {
+          await this.promoteInteractiveOptionPick(msg)
+
+          const chat = await msg.getChat()
+          const contact = await chat.getContact().catch(() => null)
+          const normalizedChatId = ChatIdHelper.normalize(msg.from)
+          const profileName =
+            contact?.pushname ||
+            this.store.findClientById(normalizedChatId)?.name ||
+            `Chat ${normalizedChatId}`
+          const storedChat = await this.store.getChatById(this.wpClient.id, msg.from, profileName)
+
+          await MessageRepository.addMessage(
+            this.wpClient.id,
+            storedChat.id,
+            {
+              id: msg.id,
+              created_at: msg.timestamp,
+              type: msg.type,
+              body:
+                msg.type === MessageTypes.INTERACTIVE
+                  ? (interactiveReplyId(msg.interactiveReply) ?? msg.body)
+                  : msg.body,
+              fromMe: false,
+              location: msg.location ?? null,
+              interactive: null,
+              interactiveReply: msg.interactiveReply,
+            },
+            {
+              clientName: profileName,
+              processed: false,
+            }
+          )
         }
-        await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
+
+        // initClient() registers this listener before onReady assigns this.chatBot,
+        // so a restart can deliver queued/offline messages before the chatbot exists.
+        // Skip chatbot processing in that case instead of dereferencing it: the
+        // message is already persisted above with processed: false, so onReady's
+        // boot sweep (Session.enqueueBootSweepTurn) picks it up once sessions sync.
+        if (!this.chatBot) {
+          console.warn(
+            'onMessageReceived: chatBot not ready yet, message queued for boot sweep',
+            this.wpClient.alias,
+            msg.from
+          )
+        } else if (this.isProcessableMsg(msg)) {
+          if (isDebounceableMsg(msg)) {
+            this.client
+              .sendTypingIndicator(msg.from, msg.id)
+              .catch((e) =>
+                console.warn('sendTypingIndicator error', this.wpClient.alias, e.message)
+              )
+          }
+          await this.chatBot.processMessage(msg).catch((e) => console.log(e.message))
+        }
       }
+    } catch (e) {
+      const error = e as Error
+      console.log('onMessageReceived Error', this.wpClient.alias, error.message)
+      Sentry.captureException(error)
     }
   }
 

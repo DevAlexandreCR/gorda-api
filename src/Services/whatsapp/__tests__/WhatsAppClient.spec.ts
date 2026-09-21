@@ -825,3 +825,77 @@ describe('WhatsAppClient.onMessageReceived promoted pick skips the debounce wind
 // queued/offline Baileys messages before READY used to dereference `this.chatBot` in
 // isProcessableMsg and crash the whole process with an unhandled rejection. The fix guards
 // the chatbot-processing branch on `this.chatBot` and wraps the handler body in try/catch.
+describe('WhatsAppClient.onMessageReceived guards against a missing chatBot (crash-on-inbound-before-ready fix)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(MessageRepository.addMessage as jest.Mock).mockResolvedValue(undefined)
+    ;(MessageRepository.findLatestOutbound as jest.Mock).mockResolvedValue(null)
+    ;(Store.getInstance().getChatById as jest.Mock).mockResolvedValue({ id: 'chat-not-ready' })
+  })
+
+  // Builds a wrapper wired to a fake transport, deliberately leaving this.chatBot
+  // unassigned to reproduce the pre-onReady state (onMessageReceived's real guard is
+  // what's under test here, unlike buildClient() above which always injects a chatBot).
+  function buildClientWithoutChatBot(wpClientOverrides: Partial<WpClient> = {}) {
+    const wpClient = buildWpClient({ service: WpClients.BAILEYS, ...wpClientOverrides })
+    const whatsAppClient = new WhatsAppClient(wpClient)
+    const client: jest.Mocked<WPClientInterface> = {
+      serviceName: wpClient.service,
+      sendMessage: jest.fn().mockResolvedValue(undefined),
+      sendTypingIndicator: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
+      getWWebVersion: jest.fn(),
+      getState: jest.fn(),
+      getChatById: jest.fn(),
+      logout: jest.fn(),
+      initialize: jest.fn(),
+      getInfo: jest.fn(),
+    }
+    ;(whatsAppClient as any).client = client
+    return { whatsAppClient, client }
+  }
+
+  it('does not throw and skips chatbot processing when a message arrives before onReady assigns chatBot, while still persisting it for the boot sweep', async () => {
+    const { whatsAppClient, client } = buildClientWithoutChatBot()
+    const isProcessableSpy = jest.spyOn(whatsAppClient, 'isProcessableMsg')
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const msg = buildBaileysMsg({ id: 'wamid.not-ready-1', type: MessageTypes.TEXT, body: 'Hola' })
+
+    await expect(whatsAppClient.onMessageReceived(msg)).resolves.toBeUndefined()
+
+    expect(isProcessableSpy).not.toHaveBeenCalled()
+    expect(client.sendTypingIndicator).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith(
+      'onMessageReceived: chatBot not ready yet, message queued for boot sweep',
+      'Test Client',
+      msg.from
+    )
+    // Inbound persistence still runs so onReady's boot sweep can pick this message up later.
+    expect(MessageRepository.addMessage).toHaveBeenCalledWith(
+      'wp-client-1',
+      'chat-not-ready',
+      expect.objectContaining({ id: msg.id, body: 'Hola' }),
+      expect.objectContaining({ processed: false })
+    )
+
+    warnSpy.mockRestore()
+  })
+
+  it('never lets an error thrown while handling one inbound message escape as an unhandled rejection', async () => {
+    const { whatsAppClient } = buildClientWithoutChatBot()
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const captureSpy = jest.spyOn(Sentry, 'captureException').mockImplementation(() => '' as any)
+    const boom = new Error('boom')
+    ;(MessageRepository.addMessage as jest.Mock).mockRejectedValueOnce(boom)
+    const msg = buildBaileysMsg({ id: 'wamid.not-ready-2', type: MessageTypes.TEXT, body: 'Hola' })
+
+    await expect(whatsAppClient.onMessageReceived(msg)).resolves.toBeUndefined()
+
+    expect(captureSpy).toHaveBeenCalledWith(boom)
+    expect(logSpy).toHaveBeenCalledWith('onMessageReceived Error', 'Test Client', boom.message)
+
+    logSpy.mockRestore()
+    captureSpy.mockRestore()
+  })
+})
