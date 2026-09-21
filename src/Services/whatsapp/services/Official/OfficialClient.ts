@@ -16,6 +16,7 @@ import DateHelper from '../../../../Helpers/DateHelper'
 import { ApiMessage } from './Constants/ApiMessage'
 import { TypingIndicatorMessage } from './Constants/TypingIndicatorMessage'
 import { Interactive } from './Constants/Interactive'
+import { sanitizeInteractiveForOfficial } from './Constants/InteractiveLimits'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
 import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
 import QueueService from '../../../queue/QueueService'
@@ -116,7 +117,14 @@ export class OfficialClient implements WPClientInterface {
   }
 
   private getInteractive(message: ChatBotMessage): Interactive | false {
-    return message.interactive ?? false
+    if (!message.interactive) {
+      return false
+    }
+
+    // Only the Official (Cloud API) transport enforces these length caps: Baileys
+    // has none and renders the same interactive payload as plain text, so the
+    // shared message builder is free to carry full, untruncated names.
+    return sanitizeInteractiveForOfficial(message.interactive)
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
