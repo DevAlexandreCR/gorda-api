@@ -197,6 +197,57 @@ describe('PlaceSearchRepository.searchWithSuggestions() - dedup metadata integri
 })
 
 // ---------------------------------------------------------------------------
+// Numeric-string score coercion (Postgres `numeric` columns/literals come
+// back from node-postgres as strings; exactSearch/contentSearch select
+// numeric literals, so their rows arrive as string scores from the DB even
+// though the TS type claims `number`). Regression coverage must use string
+// scores in the mock to reproduce the real failure mode: string + number
+// concatenates instead of adding.
+// ---------------------------------------------------------------------------
+
+describe('PlaceSearchRepository.smartSearch() - numeric-string score coercion', () => {
+  it('a string-scored exact match totals 2.0 and outranks a keyword hit on the same place', async () => {
+    const { repository } = makeRepository({
+      // exactSearch's `1.0 as score` literal comes back from Postgres as the
+      // string '1.0', while keywordSearch's `::float` cast already produces
+      // a genuine number — this asymmetry is exactly what causes the bug.
+      exact: [row('p1', '1.0' as any)],
+      keyword: [row('p1', 0.5, { fullKeywordCoverage: false })], // 0.5 + 0.8 = 1.3
+    })
+
+    const result = await repository.searchWithSuggestions('puerto madero')
+
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0].score).toBe(2.0)
+    expect(result.results[0].search_type).toBe('exact')
+  })
+
+  it('a literal catalog-name query is a strong candidate and the exact search_type survives removeDuplicates', async () => {
+    const { repository } = makeRepository({
+      exact: [row('p1', '1.0' as any)],
+      keyword: [row('p1', 0.5, { fullKeywordCoverage: false })],
+    })
+
+    const result = await repository.searchWithSuggestions('puerto madero')
+
+    expect(result.hasStrongCandidate).toBe(true)
+    expect(result.results[0].search_type).toBe('exact')
+  })
+
+  it('a string-scored content match survives the minScore filter instead of becoming NaN', async () => {
+    const { repository } = makeRepository({
+      content: [row('p1', '0.9' as any)], // Number('0.9') + 0.4 = 1.3
+    })
+
+    const result = await repository.searchWithSuggestions('puerto madero', { minScore: 0.2 })
+
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0].score).toBeCloseTo(1.3)
+    expect(Number.isNaN(result.results[0].score)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Suggestions skipped for strong candidates
 // ---------------------------------------------------------------------------
 

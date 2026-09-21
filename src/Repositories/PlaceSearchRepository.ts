@@ -42,10 +42,18 @@ class PlaceSearchRepository {
       const contentMatch = await this.contentSearch(normalizedQuery, cityId)
 
       const allResults = [
-        ...exactMatch.map((r) => ({ ...r, score: r.score + 1.0, search_type: 'exact' })),
-        ...keywordMatch.map((r) => ({ ...r, score: r.score + 0.8, search_type: 'keyword' })),
-        ...fuzzyMatch.map((r) => ({ ...r, score: r.score + 0.6, search_type: 'fuzzy' })),
-        ...contentMatch.map((r) => ({ ...r, score: r.score + 0.4, search_type: 'content' })),
+        ...exactMatch.map((r) => ({ ...r, score: Number(r.score) + 1.0, search_type: 'exact' })),
+        ...keywordMatch.map((r) => ({
+          ...r,
+          score: Number(r.score) + 0.8,
+          search_type: 'keyword',
+        })),
+        ...fuzzyMatch.map((r) => ({ ...r, score: Number(r.score) + 0.6, search_type: 'fuzzy' })),
+        ...contentMatch.map((r) => ({
+          ...r,
+          score: Number(r.score) + 0.4,
+          search_type: 'content',
+        })),
       ]
 
       const uniqueResults = this.removeDuplicates(allResults)
@@ -67,7 +75,7 @@ class PlaceSearchRepository {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
-      SELECT id, name, lat, lng, city_id AS "cityId", 1.0 as score
+      SELECT id, name, lat, lng, city_id AS "cityId", 1.0::float as score
       FROM "places"
       WHERE LOWER(name) = LOWER(:query)
       ${whereClause}
@@ -150,12 +158,12 @@ class PlaceSearchRepository {
 
     const sql = `
       SELECT id, name, lat, lng, city_id AS "cityId",
-             CASE
+             (CASE
                WHEN LOWER(name) LIKE LOWER(:exactQuery) THEN 0.9
                WHEN LOWER(name) LIKE LOWER(:startQuery) THEN 0.7
                WHEN LOWER(name) LIKE LOWER(:containsQuery) THEN 0.5
                ELSE 0.3
-             END as score
+             END)::float as score
       FROM "places"
       WHERE LOWER(name) LIKE LOWER(:containsQuery)
       ${whereClause}
