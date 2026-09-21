@@ -1,5 +1,6 @@
 import { validateAgentActions, AgentValidationFacts } from '../AgentValidator'
 import { AgentAction } from '../AgentPrompt'
+import { NONE_OF_THE_ABOVE_ROW_ID } from '../CandidateListMessage'
 
 function baseFacts(overrides: Partial<AgentValidationFacts> = {}): AgentValidationFacts {
   return {
@@ -40,6 +41,27 @@ describe('validateAgentActions', () => {
         {
           action: 'set_place("abc123")',
           reason: expect.stringContaining('abc123'),
+        },
+      ])
+    })
+
+    // CandidateListMessage's escape row: its id must never be a valid placeId, since it
+    // is never a member of toolPlaceIds or pendingCandidateIds — asserted explicitly
+    // rather than assumed, since a customer tapping "Ninguno de estos" still promotes
+    // to a synthesized list_reply (resolveInteractiveOption) whose id reaches this
+    // validator like any other pick.
+    it('rejects none_of_the_above as a placeId even when it happens to be offered/pending', () => {
+      const action: AgentAction = { type: 'set_place', placeId: NONE_OF_THE_ABOVE_ROW_ID }
+      const result = validateAgentActions(
+        [action],
+        baseFacts({ toolPlaceIds: [], pendingCandidateIds: [] })
+      )
+
+      expect(result.accepted).toEqual([])
+      expect(result.rejected).toEqual([
+        {
+          action: `set_place("${NONE_OF_THE_ABOVE_ROW_ID}")`,
+          reason: expect.stringContaining(NONE_OF_THE_ABOVE_ROW_ID),
         },
       ])
     })

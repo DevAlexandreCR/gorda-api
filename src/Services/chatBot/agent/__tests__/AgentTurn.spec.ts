@@ -46,6 +46,27 @@ jest.mock('../AgentExecutor', () => ({
   storePendingPin: (...args: unknown[]) => mockStorePendingPin(...args),
 }))
 
+// Real-executor mocks (used by exactly one test below, via jest.requireActual('../
+// AgentExecutor'), to prove the candidate-list gate against AgentExecutor's genuine
+// set_place no-op behavior instead of a hand-mocked `executed` result). Mirrors the
+// mocking AgentExecutor.spec.ts uses for the same module, so the real
+// executeAgentActions loads without pulling in Sequelize models/repositories.
+const mockFindPlaceById = jest.fn()
+jest.mock('../../../../Container/Container', () => ({
+  __esModule: true,
+  default: { getPlaceRepository: jest.fn(() => ({ findById: mockFindPlaceById })) },
+}))
+jest.mock('../../../store/Store', () => ({
+  Store: { getInstance: jest.fn(() => ({ findCityById: jest.fn(), findClientById: jest.fn(), createClient: jest.fn() })) },
+}))
+jest.mock('../../ServiceBooking', () => ({
+  bookService: jest.fn(),
+}))
+jest.mock('../../deterministic/DeterministicHandlers', () => ({
+  cancelService: jest.fn(),
+  insistService: jest.fn(),
+}))
+
 const mockSendGatedMessage = jest.fn()
 jest.mock('../../TurnSupport', () => ({
   sendGatedMessage: (...args: unknown[]) => mockSendGatedMessage(...args),
@@ -446,5 +467,360 @@ describe('runAgentTurn (chatbot-agent-conversation, task 2.8)', () => {
       (call) => JSON.parse(call[0] as string).event === 'agent_turn'
     )
     expect(agentTurnLogs).toHaveLength(0)
+  })
+
+  // Task 5.3 (design D9, spec wp-send-failure-resilience "Turn-level handling owns the
+  // failure"): executeAgentActions calls ctx.sendMessage (TurnSupport.sendGatedMessage)
+  // directly with no internal try/catch of its own (e.g. applySetPlaceFromLocation,
+  // applyCreateService/bookService, insistService), so a delivery failure surfaces as a
+  // rejection of the executeAgentActions promise itself — exactly what mocking
+  // executeAgentActions to reject reproduces here. That rejection must land in
+  // AgentTurn's own try/catch (not escape as an unhandled rejection) and end the turn
+  // through sendFallbackOnce, the same owned path a model-outage or validation failure
+  // uses.
+  it('executor send failure: a delivery rejection from executeAgentActions ends the turn through the owned fallback with no unhandled rejection', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse.mockResolvedValueOnce(
+      finalResult({
+        reply: '¡Listo, ya pedí tu taxi!',
+        actions: [{ type: 'create_service' }],
+      })
+    )
+    mockValidateAgentActions.mockReturnValueOnce({
+      accepted: [{ type: 'create_service' }],
+      rejected: [],
+    })
+    const deliveryError = new Error('line disconnected')
+    mockExecuteAgentActions.mockRejectedValueOnce(deliveryError)
+
+    const unhandledRejections: unknown[] = []
+    const onUnhandledRejection = (reason: unknown) => unhandledRejections.push(reason)
+    process.on('unhandledRejection', onUnhandledRejection)
+
+    let outcome: Awaited<ReturnType<typeof runAgentTurn>>
+    try {
+      outcome = await runAgentTurn(session as any, message, {
+        client: client as any,
+        model: 'gpt-test',
+      })
+      // Give any stray unhandled rejection a chance to surface before asserting.
+      await new Promise((resolve) => setImmediate(resolve))
+    } finally {
+      process.off('unhandledRejection', onUnhandledRejection)
+    }
+
+    expect(unhandledRejections).toEqual([])
+    expect(outcome).toEqual({
+      fallback: true,
+      toolCalls: 0,
+      actions: [],
+      rejected: [],
+      latencyMs: expect.any(Number),
+      model: 'gpt-test',
+    })
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendGatedMessage.mock.calls[0][1].id).toBe(MessagesEnum.ERROR_WHILE_PROCESSING)
+    expect(session.setStatus).toHaveBeenCalledTimes(1)
+    expect(session.setStatus).toHaveBeenCalledWith('SUPPORT')
+
+    // Task 2.9 / design D9: the fallback path still logs exactly once, with fallback: true.
+    const agentTurnLogs = consoleLogSpy.mock.calls.filter(
+      (call) => JSON.parse(call[0] as string).event === 'agent_turn'
+    )
+    expect(agentTurnLogs).toHaveLength(1)
+    expect(JSON.parse(agentTurnLogs[0][0] as string)).toMatchObject({
+      event: 'agent_turn',
+      fallback: true,
+      actions: [],
+    })
+  })
+})
+
+// Render search_place candidates as a selectable list instead of leaving the model to
+// enumerate them in prose (chatbot-agent-conversation follow-up). These tests drive the
+// same mocked runAgentTurn harness as above; executeSearchPlace is mocked per-call so a
+// call can be asserted to have "genuinely searched and returned candidates" independent
+// of the real AgentTools/ledger persistence (covered separately by AgentTools' own tests).
+describe('runAgentTurn: candidate list attachment (chatbot-agent-conversation follow-up)', () => {
+  let consoleLogSpy: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    mockBuildAgentContext.mockResolvedValue({ context: buildContext(), history: [] })
+    mockBuildAgentInput.mockReturnValue([])
+    mockToolsForTurn.mockReturnValue([
+      { type: 'function', name: 'search_place', description: 'd', parameters: {}, strict: true },
+    ])
+    mockExecuteSearchPlace.mockResolvedValue({ candidates: [], hasStrongCandidate: false })
+    mockSendGatedMessage.mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore()
+  })
+
+  it('attaches a list built from the last search_place call\'s candidates when no place was set this turn', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(
+        finalResult({ reply: 'Encontré varios puntos, ¿en cuál te recogemos?', actions: [] })
+      )
+    mockExecuteSearchPlace.mockResolvedValueOnce({
+      candidates: [
+        { id: 'p1', name: 'Studio F Campanario', score: 1 },
+        { id: 'p2', name: 'CLARO CAMPANARIO', score: 1 },
+      ],
+      hasStrongCandidate: false,
+    })
+    mockValidateAgentActions.mockReturnValueOnce({ accepted: [], rejected: [] })
+    mockExecuteAgentActions.mockResolvedValueOnce({ executed: [], suppressReply: false })
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    const sent = mockSendGatedMessage.mock.calls[0][1]
+    expect(sent.interactive.type).toBe('list')
+    expect(sent.interactive.body).toEqual({
+      text: 'Encontré varios puntos, ¿en cuál te recogemos?',
+    })
+    expect(sent.interactive.action.sections[0].rows).toEqual([
+      { id: 'p1', title: 'Studio F Campanario' },
+      { id: 'p2', title: 'CLARO CAMPANARIO' },
+      { id: 'none_of_the_above', title: 'Ninguno de estos' },
+    ])
+  })
+
+  it('does not attach a list when a set_place action actually executed', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(
+        finalResult({
+          reply: 'Perfecto, confirmado en Campanario',
+          actions: [{ type: 'set_place', placeId: 'p1' }],
+        })
+      )
+    mockExecuteSearchPlace.mockResolvedValueOnce({
+      candidates: [{ id: 'p1', name: 'Studio F Campanario', score: 1 }],
+      hasStrongCandidate: true,
+    })
+    mockValidateAgentActions.mockReturnValueOnce({
+      accepted: [{ type: 'set_place', placeId: 'p1' }],
+      rejected: [],
+    })
+    mockExecuteAgentActions.mockResolvedValueOnce({ executed: ['set_place'], suppressReply: false })
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendGatedMessage.mock.calls[0][1].interactive).toBeNull()
+  })
+
+  it('does not attach a list when set_place_from_location actually executed, even if search_place also ran this turn', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(
+        finalResult({
+          reply: 'Listo, ubicado',
+          actions: [{ type: 'set_place_from_location', reference: 'frente al parque' }],
+        })
+      )
+    mockExecuteSearchPlace.mockResolvedValueOnce({
+      candidates: [{ id: 'p1', name: 'Studio F Campanario', score: 1 }],
+      hasStrongCandidate: false,
+    })
+    mockValidateAgentActions.mockReturnValueOnce({
+      accepted: [{ type: 'set_place_from_location', reference: 'frente al parque' }],
+      rejected: [],
+    })
+    mockExecuteAgentActions.mockResolvedValueOnce({
+      executed: ['set_place_from_location'],
+      suppressReply: false,
+    })
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendGatedMessage.mock.calls[0][1].interactive).toBeNull()
+  })
+
+  it('does not send anything (and therefore no list) when the reply is suppressed (create_service turn), even if search_place ran', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(
+        finalResult({ reply: '¡Listo, ya pedí tu taxi!', actions: [{ type: 'create_service' }] })
+      )
+    mockExecuteSearchPlace.mockResolvedValueOnce({
+      candidates: [{ id: 'p1', name: 'A', score: 1 }],
+      hasStrongCandidate: false,
+    })
+    mockValidateAgentActions.mockReturnValueOnce({
+      accepted: [{ type: 'create_service' }],
+      rejected: [],
+    })
+    mockExecuteAgentActions.mockResolvedValueOnce({ executed: ['create_service'], suppressReply: true })
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+
+    expect(mockSendGatedMessage).not.toHaveBeenCalled()
+  })
+
+  it('does not send anything (and therefore no list) when the reply text is empty, even if search_place ran', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(finalResult({ reply: '   ', actions: [] }))
+    mockExecuteSearchPlace.mockResolvedValueOnce({
+      candidates: [{ id: 'p1', name: 'A', score: 1 }],
+      hasStrongCandidate: false,
+    })
+    mockValidateAgentActions.mockReturnValueOnce({ accepted: [], rejected: [] })
+    mockExecuteAgentActions.mockResolvedValueOnce({ executed: [], suppressReply: false })
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+
+    expect(mockSendGatedMessage).not.toHaveBeenCalled()
+  })
+
+  it('does not attach a list when no search_place ran this turn', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse.mockResolvedValueOnce(
+      finalResult({ reply: 'Hola, ¿en qué lugar te recogemos?', actions: [] })
+    )
+    mockValidateAgentActions.mockReturnValueOnce({ accepted: [], rejected: [] })
+    mockExecuteAgentActions.mockResolvedValueOnce({ executed: [], suppressReply: false })
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendGatedMessage.mock.calls[0][1].interactive).toBeNull()
+  })
+
+  // Gate correctness (design intent): the reply-send point must read AgentExecutor's
+  // `result.executed` — what genuinely ran — not `validation.accepted`. applySetPlace
+  // can silently no-op when PlaceRepository.findById misses a validated id
+  // ("AgentExecutor: set_place id not found in repository", AgentExecutor.ts), and the
+  // customer must still get a usable list in that case.
+  it('attaches a list when set_place was accepted by the validator but no-opped in the executor (executed stays empty)', async () => {
+    const session = buildSession()
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(
+        finalResult({
+          reply: 'Perfecto, confirmado',
+          actions: [{ type: 'set_place', placeId: 'p1' }],
+        })
+      )
+    mockExecuteSearchPlace.mockResolvedValueOnce({
+      candidates: [{ id: 'p1', name: 'Studio F Campanario', score: 1 }],
+      hasStrongCandidate: true,
+    })
+    mockValidateAgentActions.mockReturnValueOnce({
+      accepted: [{ type: 'set_place', placeId: 'p1' }],
+      rejected: [],
+    })
+    // Run the REAL executeAgentActions (not a hand-mocked result) with
+    // PlaceRepository.findById missing the validated id, so this test proves
+    // AgentExecutor's genuine set_place no-op drives the gate end-to-end, rather
+    // than restating a hand-crafted `executed: []`.
+    const { executeAgentActions: realExecuteAgentActions } = jest.requireActual('../AgentExecutor')
+    mockFindPlaceById.mockResolvedValueOnce(null)
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockExecuteAgentActions.mockImplementationOnce(realExecuteAgentActions)
+
+    await runAgentTurn(session as any, message, { client: client as any, model: 'gpt-test' })
+    consoleErrorSpy.mockRestore()
+
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    const sent = mockSendGatedMessage.mock.calls[0][1]
+    expect(sent.interactive.type).toBe('list')
+    expect(sent.interactive.action.sections[0].rows[0]).toEqual({
+      id: 'p1',
+      title: 'Studio F Campanario',
+    })
+  })
+
+  // The subtle part (spec): ToolCallLedger accumulates candidates across every
+  // search_place call this turn by design (an id offered by an earlier call stays
+  // valid for set_place). The list itself must reflect only the LAST call's
+  // candidates — what the model's reply is actually about — while
+  // session.state.pending_candidates (via the real ToolCallLedger/session.setState,
+  // reproduced here since executeSearchPlace is otherwise fully mocked) keeps the
+  // full accumulated set so a later free-text reply about the first query still
+  // resolves.
+  it('with two search_place calls, the list contains ONLY the last call\'s candidates, while session.state.pending_candidates holds both', async () => {
+    const setState = jest.fn().mockResolvedValue(undefined)
+    const session = buildSession({ setState })
+    const message = buildMessage()
+    const client = buildClient()
+    client.createResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place'))
+      .mockResolvedValueOnce(functionCallsResult('c2', 'search_place'))
+      .mockResolvedValueOnce(
+        finalResult({ reply: '¿En cuál de estos te recogemos?', actions: [] })
+      )
+
+    const firstCandidates = [{ id: 'p1', name: 'Studio F Campanario', score: 1 }]
+    const secondCandidates = [
+      { id: 'p2', name: 'CLARO CAMPANARIO', score: 1 },
+      { id: 'p3', name: 'CINES CAMPANARIO', score: 1 },
+    ]
+
+    // Reproduces AgentTools.executeSearchPlace's real ledger/session.state persistence
+    // (record every call's candidates into the shared ledger, mocked here since
+    // executeSearchPlace itself is jest.mock'd for this whole spec file), so the ledger
+    // and session.state assertions below reflect the real accumulation contract.
+    mockExecuteSearchPlace.mockImplementationOnce(async (_session, _query, ledger) => {
+      ledger.record(firstCandidates.map(({ id, name }) => ({ id, name })))
+      await _session.setState({ pending_candidates: ledger.candidates })
+      return { candidates: firstCandidates, hasStrongCandidate: false }
+    })
+    mockExecuteSearchPlace.mockImplementationOnce(async (_session, _query, ledger) => {
+      ledger.record(secondCandidates.map(({ id, name }) => ({ id, name })))
+      await _session.setState({ pending_candidates: ledger.candidates })
+      return { candidates: secondCandidates, hasStrongCandidate: false }
+    })
+
+    mockValidateAgentActions.mockReturnValueOnce({ accepted: [], rejected: [] })
+    mockExecuteAgentActions.mockResolvedValueOnce({ executed: [], suppressReply: false })
+
+    await runAgentTurn(session as any, message, {
+      client: client as any,
+      maxToolCalls: 3,
+      model: 'gpt-test',
+    })
+
+    expect(setState).toHaveBeenCalled()
+    const lastPendingCandidates = setState.mock.calls[setState.mock.calls.length - 1][0]
+      .pending_candidates
+    expect(lastPendingCandidates.map((c: { id: string }) => c.id)).toEqual(['p1', 'p2', 'p3'])
+
+    expect(mockSendGatedMessage).toHaveBeenCalledTimes(1)
+    const sent = mockSendGatedMessage.mock.calls[0][1]
+    expect(sent.interactive.action.sections[0].rows).toEqual([
+      { id: 'p2', title: 'CLARO CAMPANARIO' },
+      { id: 'p3', title: 'CINES CAMPANARIO' },
+      { id: 'none_of_the_above', title: 'Ninguno de estos' },
+    ])
   })
 })

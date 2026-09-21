@@ -1,5 +1,7 @@
 import { renderInteractiveAsText } from '../renderInteractiveAsText'
 import { ChatBotMessage } from '../../../../Types/ChatBotMessage'
+import { buildCandidateListInteractive } from '../../../chatBot/agent/CandidateListMessage'
+import { AgentToolCandidate } from '../../../chatBot/agent/AgentTools'
 
 function baseMessage(overrides: Partial<ChatBotMessage> = {}): ChatBotMessage {
   return {
@@ -86,6 +88,35 @@ describe('renderInteractiveAsText (spec: wp-interactive-fallback - Interactive c
     const message = baseMessage({ message: 'Hola, como estas?', interactive: null })
 
     expect(renderInteractiveAsText(message)).toBe('Hola, como estas?')
+  })
+
+  // Candidate list (chatbot-agent-conversation follow-up): CandidateListMessage's
+  // escape row must number like any other row, since resolveInteractiveOption's
+  // ordinal matching (design D4) mirrors this same numbering.
+  it('Candidate list: numbers place rows and the "Ninguno de estos" escape row last', () => {
+    const candidates: AgentToolCandidate[] = [
+      { id: 'p1', name: 'Studio F Campanario', score: 1 },
+      { id: 'p2', name: 'CLARO CAMPANARIO', score: 1 },
+      { id: 'p3', name: 'CINES CAMPANARIO', score: 1 },
+    ]
+    const message = baseMessage({
+      message: 'Encontré varios puntos en Campanario, ¿en cuál te recogemos?',
+      interactive: buildCandidateListInteractive(
+        'Encontré varios puntos en Campanario, ¿en cuál te recogemos?',
+        candidates
+      ),
+    })
+
+    expect(renderInteractiveAsText(message)).toBe(
+      [
+        'Encontré varios puntos en Campanario, ¿en cuál te recogemos?',
+        '',
+        '1. Studio F Campanario',
+        '2. CLARO CAMPANARIO',
+        '3. CINES CAMPANARIO',
+        '4. Ninguno de estos',
+      ].join('\n')
+    )
   })
 
   it('includes header and footer text around the body and options when present', () => {

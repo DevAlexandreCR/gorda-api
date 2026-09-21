@@ -1,5 +1,7 @@
 import { resolveInteractiveOption } from '../resolveInteractiveOption'
 import { Interactive } from '../../services/Official/Constants/Interactive'
+import { buildCandidateListInteractive } from '../../../chatBot/agent/CandidateListMessage'
+import { AgentToolCandidate } from '../../../chatBot/agent/AgentTools'
 
 const buttonInteractive: Interactive = {
   type: 'button',
@@ -86,6 +88,40 @@ describe('resolveInteractiveOption (spec: wp-interactive-fallback - Plain-text o
 
   it('Options superseded by a later plain message: no interactive payload means no pick', () => {
     expect(resolveInteractiveOption('1', null)).toBeNull()
+  })
+
+  // Candidate list (chatbot-agent-conversation follow-up): row ids are PLACE ids
+  // (CandidateListMessage), so "2" round-trips to the SECOND candidate's place id with
+  // no new plumbing — the same list_reply promotion path any other list uses.
+  it('Candidate list pick: "2" resolves to the second candidate\'s place id', () => {
+    const candidates: AgentToolCandidate[] = [
+      { id: 'p1', name: 'Studio F Campanario', score: 1 },
+      { id: 'p2', name: 'CLARO CAMPANARIO', score: 1 },
+      { id: 'p3', name: 'CINES CAMPANARIO', score: 1 },
+    ]
+    const candidateList = buildCandidateListInteractive('¿En cuál te recogemos?', candidates)
+
+    const result = resolveInteractiveOption('2', candidateList)
+
+    expect(result).toEqual({
+      type: 'list_reply',
+      list_reply: { id: 'p2', title: 'CLARO CAMPANARIO' },
+    })
+  })
+
+  it('Candidate list escape row: the ordinal after every candidate resolves to none_of_the_above', () => {
+    const candidates: AgentToolCandidate[] = [
+      { id: 'p1', name: 'Studio F Campanario', score: 1 },
+      { id: 'p2', name: 'CLARO CAMPANARIO', score: 1 },
+    ]
+    const candidateList = buildCandidateListInteractive('¿En cuál te recogemos?', candidates)
+
+    const result = resolveInteractiveOption('3', candidateList)
+
+    expect(result).toEqual({
+      type: 'list_reply',
+      list_reply: { id: 'none_of_the_above', title: 'Ninguno de estos' },
+    })
   })
 
   it('a location_request_message interactive (no buttons/rows) never matches', () => {

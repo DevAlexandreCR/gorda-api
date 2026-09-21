@@ -24,9 +24,15 @@ import {
   AGENT_OUTPUT_JSON_SCHEMA,
   getAgentPrompt,
 } from './AgentPrompt'
-import { toolsForTurn, executeSearchPlace, ToolCallLedger } from './AgentTools'
+import {
+  toolsForTurn,
+  executeSearchPlace,
+  ToolCallLedger,
+  SearchPlaceToolResult,
+} from './AgentTools'
 import { validateAgentActions, AgentValidationFacts } from './AgentValidator'
 import { executeAgentActions, storePendingPin, AgentExecutorContext } from './AgentExecutor'
+import { buildCandidateListInteractive } from './CandidateListMessage'
 
 // AgentTurn (task 2.8, design D2/D3): orchestrates one full agent turn — model
 // loop (bounded tool-calling) -> validate -> (regenerate once on rejection) ->
@@ -151,12 +157,20 @@ async function runModelLoop(params: {
   ledger: ToolCallLedger
   model?: string
   reasoningEffort?: string
-}): Promise<{ output: AgentOutput; toolCallCount: number }> {
+}): Promise<{
+  output: AgentOutput
+  toolCallCount: number
+  // The last search_place call's result within this attempt only, or null if this
+  // attempt made no search_place call — the regeneration attempt starts fresh, so
+  // AgentTurn (below) carries the previous attempt's value forward when this is null.
+  lastSearchResult: SearchPlaceToolResult | null
+}> {
   const { client, instructions, tools, maxToolCalls, session, ledger, model, reasoningEffort } =
     params
   let input = params.input
   let toolCallCount = 0
   let forceFinalize = false
+  let lastSearchResult: SearchPlaceToolResult | null = null
   const maxRounds = maxToolCalls + 2
 
   for (let round = 0; round < maxRounds; round++) {
@@ -171,7 +185,7 @@ async function runModelLoop(params: {
     })
 
     if (result.type === 'final') {
-      return { output: result.data, toolCallCount }
+      return { output: result.data, toolCallCount, lastSearchResult }
     }
 
     const functionOutputs: Array<{ callId: string; output: string }> = []
@@ -181,6 +195,7 @@ async function runModelLoop(params: {
       if (toolOffered && toolCallCount < maxToolCalls) {
         const args = (call.arguments ?? {}) as { query?: string }
         const toolResult = await executeSearchPlace(session, args.query ?? '', ledger)
+        lastSearchResult = toolResult
         toolCallCount++
         functionOutputs.push({ callId: call.callId, output: JSON.stringify(toolResult) })
       } else {
@@ -251,6 +266,11 @@ export async function runAgentTurn(
     const tools = toolsForTurn(hasLocationThisTurn)
 
     let toolCalls = 0
+    // The LAST search_place call's candidates only (not the full ToolCallLedger, which
+    // accumulates across every call this turn by design) — carried forward across the
+    // regeneration attempt below since a retry that makes no new search_place call
+    // must still let the send point below see the original attempt's last search.
+    let lastSearchResult: SearchPlaceToolResult | null = null
     let loopResult = await runModelLoop({
       client,
       instructions,
@@ -263,6 +283,7 @@ export async function runAgentTurn(
       reasoningEffort,
     })
     toolCalls += loopResult.toolCallCount
+    if (loopResult.lastSearchResult) lastSearchResult = loopResult.lastSearchResult
 
     let facts = buildValidationFacts(first.context, session, ledger, hasLocationThisTurn)
     let validation = validateAgentActions(loopResult.output.actions, facts)
@@ -292,6 +313,7 @@ export async function runAgentTurn(
         reasoningEffort,
       })
       toolCalls += loopResult.toolCallCount
+      if (loopResult.lastSearchResult) lastSearchResult = loopResult.lastSearchResult
 
       facts = buildValidationFacts(retry.context, session, ledger, hasLocationThisTurn)
       validation = validateAgentActions(loopResult.output.actions, facts)
@@ -348,7 +370,27 @@ export async function runAgentTurn(
     if (result.halted !== 'non_covered_area') {
       const reply = loopResult.output.reply?.trim() ?? ''
       if (!result.suppressReply && reply !== '') {
-        await sendGatedMessage(session, buildReplyMessage(reply))
+        const replyMessage = buildReplyMessage(reply)
+
+        // Render search_place candidates as a selectable list instead of leaving the
+        // model to enumerate them in prose. Gated on `result.executed` (what
+        // AgentExecutor genuinely ran) rather than `validation.accepted`: applySetPlace
+        // can silently no-op when PlaceRepository.findById misses a validated id, and
+        // the customer must still get a usable list in that case. This overwrites
+        // whatever `interactive` buildReplyMessage's cloned DEFAULT_MESSAGE may carry —
+        // no merge — so a later admin misconfiguration of the DEFAULT_MESSAGE catalog
+        // row is never mistaken for a bug here.
+        const placeWasSet = result.executed.some(
+          (type) => type === 'set_place' || type === 'set_place_from_location'
+        )
+        if (!placeWasSet && lastSearchResult && lastSearchResult.candidates.length > 0) {
+          replyMessage.interactive = buildCandidateListInteractive(
+            reply,
+            lastSearchResult.candidates
+          )
+        }
+
+        await sendGatedMessage(session, replyMessage)
       }
     }
 
