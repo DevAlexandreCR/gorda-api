@@ -39,7 +39,11 @@ export interface AgentExecutorContext {
 export type ExecutionHaltReason = 'non_covered_area'
 
 export interface ExecutionResult {
-  // AgentActionType values, in the order actually applied (stops early on `halted`).
+  // AgentActionType values that actually took effect, in the order applied (stops
+  // early on `halted`). `set_place`/`set_place_from_location` are omitted here when
+  // their apply function degraded defensively without setting a place, so consumers
+  // (AgentTurn's candidate-list gate, the agent_turn log) see what really happened —
+  // not merely what AgentValidator accepted.
   executed: AgentActionType[]
   // Set when a validated `create_service` executed this turn (spec: "Service creation
   // turn sends the catalog confirmation only") — AgentTurn must discard the agent's
@@ -65,11 +69,15 @@ async function applySetClientName(session: Session, name: string): Promise<void>
   await Store.getInstance().createClient(contact)
 }
 
+// Returns whether the place was actually set on the session, so
+// executeAgentActions can report `executed` truthfully (only what took effect, not
+// merely what was attempted) — callers gate customer-facing behavior on that (e.g.
+// AgentTurn's candidate-list fallback).
 async function applySetPlace(
   session: Session,
   placeId: string,
   ctx: AgentExecutorContext
-): Promise<void> {
+): Promise<boolean> {
   let place: PlaceInterface | null = null
   try {
     place = await Container.getPlaceRepository().findById(placeId)
@@ -90,11 +98,12 @@ async function applySetPlace(
     console.error('AgentExecutor: set_place id not found in repository', session.id, placeId, {
       fallbackName,
     })
-    return
+    return false
   }
 
   await session.setPlace(place)
   await session.setState({ pending_candidates: [] })
+  return true
 }
 
 /**
@@ -108,11 +117,16 @@ function resolveCoverageCity() {
   return Store.getInstance().findCityById('popayan') ?? null
 }
 
+// `applied` reports whether the place was actually set on the session (so
+// executeAgentActions can report `executed` truthfully); `halted` reports whether the
+// turn must stop applying further actions. The two are independent: a non-covered pin
+// halts the turn (already sent NON_COVERED_AREA and completed the session) but never
+// applies a place, so it is `{ applied: false, halted: true }`.
 async function applySetPlaceFromLocation(
   session: Session,
   reference: string,
   ctx: AgentExecutorContext
-): Promise<{ halted: boolean }> {
+): Promise<{ applied: boolean; halted: boolean }> {
   // GPS location fixes the place without search: the pin is either the current
   // message's location, or — when the customer's reference-name message arrives on a
   // later, text-only turn — the pin stored by storePendingPin on the turn the location
@@ -126,14 +140,14 @@ async function applySetPlaceFromLocation(
       'AgentExecutor: set_place_from_location with no location this turn and no pending pin',
       session.id
     )
-    return { halted: false }
+    return { applied: false, halted: false }
   }
 
   const city = resolveCoverageCity()
   if (!city) {
     await ctx.sendMessage(Messages.getSingleMessage(MessagesEnum.NON_COVERED_AREA))
     await session.setStatus(Session.STATUS_COMPLETED)
-    return { halted: true }
+    return { applied: false, halted: true }
   }
 
   const place: PlaceInterface = {
@@ -147,7 +161,7 @@ async function applySetPlaceFromLocation(
 
   await session.setPlace(place)
   await session.setState({ pending_pin: null })
-  return { halted: false }
+  return { applied: true, halted: false }
 }
 
 async function applyCreateService(session: Session, ctx: AgentExecutorContext): Promise<void> {
@@ -207,14 +221,19 @@ export async function executeAgentActions(
         executed.push(action.type)
         break
 
-      case 'set_place':
-        await applySetPlace(session, action.placeId, ctx)
-        executed.push(action.type)
+      case 'set_place': {
+        const applied = await applySetPlace(session, action.placeId, ctx)
+        if (applied) {
+          executed.push(action.type)
+        }
         break
+      }
 
       case 'set_place_from_location': {
-        const { halted } = await applySetPlaceFromLocation(session, action.reference, ctx)
-        executed.push(action.type)
+        const { applied, halted } = await applySetPlaceFromLocation(session, action.reference, ctx)
+        if (applied) {
+          executed.push(action.type)
+        }
         if (halted) {
           return { executed, suppressReply, halted: 'non_covered_area' }
         }

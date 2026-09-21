@@ -141,19 +141,30 @@ describe('AgentExecutor.executeAgentActions', () => {
     expect(result.executed).toEqual(['set_place'])
   })
 
-  it('set_place: skips defensively (no throw) when the repository returns nothing for a validated id', async () => {
+  it('set_place: skips defensively (no throw), and is NOT reported in executed, when the repository returns nothing for a validated id', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
     const session = buildSession()
     const ctx = buildCtx({ placeCandidates: [{ id: 'p1', name: 'Campanario' }] })
     mockFindById.mockResolvedValue(null)
 
     const result = await executeAgentActions(
       session as any,
-      [{ type: 'set_place', placeId: 'p1' }] as AgentAction[],
+      [
+        { type: 'set_place', placeId: 'p1' },
+        { type: 'set_comment', text: 'still runs' },
+      ] as AgentAction[],
       ctx
     )
 
     expect(session.setPlace).not.toHaveBeenCalled()
-    expect(result.executed).toEqual(['set_place'])
+    expect(result.executed).toEqual(['set_comment'])
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'AgentExecutor: set_place id not found in repository',
+      session.id,
+      'p1',
+      { fallbackName: 'Campanario' }
+    )
+    consoleErrorSpy.mockRestore()
   })
 
   it('set_place_from_location: builds the place from the current message pin and reference', async () => {
@@ -205,6 +216,25 @@ describe('AgentExecutor.executeAgentActions', () => {
     )
   })
 
+  it('set_place_from_location: not reported in executed when there is neither a location this turn nor a pending pin', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    const session = buildSession()
+    const ctx = buildCtx({ currentMessage: buildMessage({ location: null }) })
+
+    const result = await executeAgentActions(
+      session as any,
+      [
+        { type: 'set_place_from_location', reference: 'la esquina' },
+        { type: 'set_comment', text: 'still runs' },
+      ] as AgentAction[],
+      ctx
+    )
+
+    expect(session.setPlace).not.toHaveBeenCalled()
+    expect(result.executed).toEqual(['set_comment'])
+    consoleErrorSpy.mockRestore()
+  })
+
   it('set_place_from_location: outside coverage sends NON_COVERED_AREA, completes the session, and halts the turn', async () => {
     const session = buildSession()
     const sendMessage = jest.fn().mockResolvedValue(undefined)
@@ -228,8 +258,11 @@ describe('AgentExecutor.executeAgentActions', () => {
     )
     expect(session.setStatus).toHaveBeenCalledWith('COMPLETED')
     expect(session.setPlace).not.toHaveBeenCalled()
+    // No place was applied here — the pin resolved but fell outside coverage — so
+    // `executed` must not claim set_place_from_location, even though `halted` already
+    // stops the loop on its own.
     expect(result).toEqual({
-      executed: ['set_place_from_location'],
+      executed: [],
       suppressReply: false,
       halted: 'non_covered_area',
     })
