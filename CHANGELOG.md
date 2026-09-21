@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the dependency on the `ia-app` service, the legacy `MessageStrategy` response strategies and `ai/*` client (`EntityExtractor`, `MessageHandler`, `GordaChatBot`), the `Types/Intent.ts` type, and the `@huggingface/inference` dependency.
 - **Breaking:** remove the `whatsapp-web.js` transport (`WWebClient` and its adapters, the `whatsapp-web-js` transport value, `restartChromium`), the Chromium binary from the Docker image, and the `CHROMIUM_PATH`/`WWEB_VERSION` configuration. Any environment still pairing a whatsapp-web.js line must re-pair it as Baileys.
 
+### Fixed
+
+- Fix the `build` script serving stale static assets: each `cp -r src/X build/src/X` step copied the source directory *inside* an already-existing destination on every rebuild after the first (producing `prompts/prompts`, `views/views`, `assets/assets`, `.well-known/.well-known`), leaving the original copy untouched. Since `AgentPrompt` resolves its prompt as `path.join(__dirname, 'prompts', 'agent.md')`, a built deployment kept serving the agent prompt from the first build ever made, silently ignoring every later prompt change. The copy steps are now idempotent (`mkdir -p` + `cp -r src/X/. build/src/X/`).
+
 ## [2.1.0(2026-09-05)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.0...2.0.14)
 
 ### Added
