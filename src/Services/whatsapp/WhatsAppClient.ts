@@ -600,23 +600,31 @@ export class WhatsAppClient {
     switch (service.status) {
       case Service.STATUS_IN_PROGRESS:
         if (!service.metadata) {
-          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
-          if (!session.notifications.assigned) {
-            await session.setNotification(NotificationType.assigned)
-            const snapshotVehicle = (snapshot.val() as any)?.vehicle as VehicleSnapshot | undefined
-            let vehicleForMsg: VehicleSnapshot
-            if (snapshotVehicle?.plate) {
-              vehicleForMsg = snapshotVehicle
-            } else if (service.driver_id) {
-              const vehicle = await resolveDriverCurrentVehicle(service.driver_id)
-              vehicleForMsg = { plate: vehicle?.plate ?? '', color: vehicle?.color ?? null }
-            } else {
-              vehicleForMsg = { plate: '', color: null }
-            }
-            msg = Messages.serviceAssigned(vehicleForMsg)
-            message = msg
-            mustSend = msg.enabled && !this.wpClient.wpNotifications
+          if (session.notifications.assigned) {
+            await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+            break
           }
+          // Claim the flag synchronously (before the first await) so a concurrent
+          // invocation on the same tick already sees it set (design Decision 2).
+          const claim = session.setNotification(NotificationType.assigned).catch((e) => {
+            Sentry.captureException(e)
+            console.error('setNotification', this.wpClient.alias, e)
+          })
+          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
+          await claim
+          const snapshotVehicle = (snapshot.val() as any)?.vehicle as VehicleSnapshot | undefined
+          let vehicleForMsg: VehicleSnapshot
+          if (snapshotVehicle?.plate) {
+            vehicleForMsg = snapshotVehicle
+          } else if (service.driver_id) {
+            const vehicle = await resolveDriverCurrentVehicle(service.driver_id)
+            vehicleForMsg = { plate: vehicle?.plate ?? '', color: vehicle?.color ?? null }
+          } else {
+            vehicleForMsg = { plate: '', color: null }
+          }
+          msg = Messages.serviceAssigned(vehicleForMsg)
+          message = msg
+          mustSend = msg.enabled && !this.wpClient.wpNotifications
         } else if ((service.metadata?.arrived_at ?? 0) > 0 && !service.metadata?.start_trip_at) {
           if (!session.notifications.arrived) {
             await session.setNotification(NotificationType.arrived)
@@ -626,24 +634,42 @@ export class WhatsAppClient {
           }
         }
         break
-      case Service.STATUS_TERMINATED:
-        await session.setStatus(Session.STATUS_COMPLETED)
-        if (!session.notifications.completed) {
-          await session.setNotification(NotificationType.completed)
-          msg = Messages.completedService()
-          message = msg
-          mustSend = msg.enabled && !this.wpClient.wpNotifications
+      case Service.STATUS_TERMINATED: {
+        if (session.notifications.completed) {
+          await session.setStatus(Session.STATUS_COMPLETED)
+          break
         }
-        break
-      case Service.STATUS_CANCELED:
+        // Claim before the first await (design Decision 2): setNotification
+        // flips the in-memory flag synchronously and only then awaits Postgres.
+        const claim = session.setNotification(NotificationType.completed).catch((e) => {
+          Sentry.captureException(e)
+          console.error('setNotification', this.wpClient.alias, e)
+        })
         await session.setStatus(Session.STATUS_COMPLETED)
-        if (!session.notifications.completed) {
-          await session.setNotification(NotificationType.completed)
-          msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
-          message = msg
-          mustSend = msg.enabled && !this.wpClient.wpNotifications
-        }
+        await claim
+        msg = Messages.completedService()
+        message = msg
+        mustSend = msg.enabled && !this.wpClient.wpNotifications
         break
+      }
+      case Service.STATUS_CANCELED: {
+        if (session.notifications.completed) {
+          await session.setStatus(Session.STATUS_COMPLETED)
+          break
+        }
+        // Claim before the first await (design Decision 2): setNotification
+        // flips the in-memory flag synchronously and only then awaits Postgres.
+        const claim = session.setNotification(NotificationType.completed).catch((e) => {
+          Sentry.captureException(e)
+          console.error('setNotification', this.wpClient.alias, e)
+        })
+        await session.setStatus(Session.STATUS_COMPLETED)
+        await claim
+        msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
+        message = msg
+        mustSend = msg.enabled && !this.wpClient.wpNotifications
+        break
+      }
       case Service.STATUS_PENDING:
         await session.setStatus(Session.STATUS_REQUESTING_SERVICE)
         break

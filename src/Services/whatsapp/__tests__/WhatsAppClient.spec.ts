@@ -8,6 +8,17 @@ jest.mock('../../store/Store', () => ({
       getChats: jest.fn(),
       findClientById: jest.fn(),
       getChatById: jest.fn(),
+      // Consumed by Messages.serviceAssigned via getStore().findMessageById in the
+      // serviceChanged describe block below (spec: wp-notification-single-delivery).
+      // Enabled by default so mustSend evaluates true unless a test says otherwise.
+      findMessageById: jest.fn().mockReturnValue({
+        id: 'service_assigned',
+        name: 'service_assigned',
+        message: 'Tu conductor llega en un movil placa [[PLATE]], color [[COLOR]]',
+        enabled: true,
+        description: '',
+        interactive: null,
+      }),
     }),
   },
 }))
@@ -112,6 +123,7 @@ jest.mock('../../../Repositories/MessageRepository', () => ({
 
 import * as Sentry from '@sentry/node'
 import { Worker } from 'bullmq'
+import { DataSnapshot } from 'firebase-admin/lib/database'
 import { WhatsAppClient } from '../WhatsAppClient'
 import { WpClient } from '../../../Interfaces/WpClient'
 import { WpClients } from '../constants/WPClients'
@@ -126,6 +138,7 @@ import Session from '../../../Models/Session'
 import ChatSessionRecord from '../../../Models/ChatSessionRecord'
 import WhatsappMessageRecord from '../../../Models/WhatsappMessageRecord'
 import MessageRepository from '../../../Repositories/MessageRepository'
+import WpNotificationRepository from '../../../Repositories/WpNotificationRepository'
 import { Store } from '../../store/Store'
 import { Interactive } from '../services/Official/Constants/Interactive'
 
@@ -366,8 +379,12 @@ describe('WhatsAppClient.onReady conversation-turn worker registration (design D
 
   it('is idempotent: onReady firing twice for the same wpClient (reconnect) registers exactly one worker', () => {
     const mockWorker = Worker as unknown as jest.Mock
+    const offNotifications = WpNotificationRepository.offNotifications as jest.Mock
+    const onServiceAssigned = WpNotificationRepository.onServiceAssigned as jest.Mock
     const { whatsAppClient } = buildClient({ id: 'wp-client-onready-idempotent' })
     const callsBefore = mockWorker.mock.calls.length
+    const offCallsBefore = offNotifications.mock.calls.length
+    const assignedCallsBefore = onServiceAssigned.mock.calls.length
 
     whatsAppClient.onReady()
     whatsAppClient.onReady()
@@ -378,6 +395,16 @@ describe('WhatsAppClient.onReady conversation-turn worker registration (design D
         getConversationTurnQueueName('wp-client-onready-idempotent')
       )
     ).toBe(true)
+
+    // Task 2.2(d): each onReady call detaches before it re-attaches — one
+    // offNotifications per onReady, ordered before that same call's
+    // onServiceAssigned registration (spec: wp-notification-single-delivery).
+    expect(offNotifications.mock.calls.length - offCallsBefore).toBe(2)
+    expect(onServiceAssigned.mock.calls.length - assignedCallsBefore).toBe(2)
+    const offOrder = offNotifications.mock.invocationCallOrder.slice(offCallsBefore)
+    const assignedOrder = onServiceAssigned.mock.invocationCallOrder.slice(assignedCallsBefore)
+    expect(offOrder[0]).toBeLessThan(assignedOrder[0])
+    expect(offOrder[1]).toBeLessThan(assignedOrder[1])
   })
 
   it('registers a differently-named queue per wpClientId', () => {
@@ -393,6 +420,100 @@ describe('WhatsAppClient.onReady conversation-turn worker registration (design D
     expect(QueueService.getInstance().hasWorker(getConversationTurnQueueName('wp-client-b'))).toBe(
       true
     )
+  })
+})
+
+// Task 2.2 (design Decision 2, spec: wp-notification-single-delivery): serviceChanged claims
+// session.notifications.<kind> synchronously, before its first await, so a concurrent
+// invocation for the same service sees the flag already set and skips the send. The fake
+// session below mirrors the real Session shape closely enough to exercise that race:
+// setNotification flips the flag synchronously (like the real Session.setNotification does
+// before awaiting Postgres) and only resolves on a later tick, and setStatus likewise
+// resolves on a later tick, so two overlapping serviceChanged calls interleave exactly like
+// they would against the real, Postgres-backed Session.
+describe('WhatsAppClient.serviceChanged (design Decision 2, spec: wp-notification-single-delivery)', () => {
+  function buildFakeSession() {
+    const session = {
+      notifications: { assigned: false, arrived: false, completed: false } as Record<
+        string,
+        boolean
+      >,
+      setStatus: jest.fn(async () => {
+        await new Promise((resolve) => setImmediate(resolve))
+      }),
+      setNotification: jest.fn(),
+    }
+    // Assigned separately so the implementation can close over `session` (flips the flag
+    // synchronously, exactly like the real Session.setNotification, before its own await).
+    session.setNotification = jest.fn(async (kind: string) => {
+      session.notifications[kind] = true
+      await new Promise((resolve) => setImmediate(resolve))
+    })
+    return session
+  }
+
+  // in_progress, no metadata, with a vehicle snapshot carrying a plate — takes the
+  // "assigned" branch under test without needing to mock driver/vehicle resolution.
+  function buildAssignedSnapshot(): DataSnapshot {
+    return {
+      key: 'svc-1',
+      val: () => ({
+        id: 'svc-1',
+        client_id: '573001112233@c.us',
+        status: 'in_progress',
+        driver_id: 'drv-1',
+        vehicle: { plate: 'ABC123', color: null },
+      }),
+    } as unknown as DataSnapshot
+  }
+
+  it('concurrent invocations for the same in-progress, no-metadata service send exactly one SERVICE_ASSIGNED message', async () => {
+    const session = buildFakeSession()
+    const findSessionByChatId = jest.fn().mockReturnValue(session)
+    const { whatsAppClient, client } = buildClient(
+      { chatBot: true, wpNotifications: false, assistant: false },
+      { findSessionByChatId }
+    )
+    const snap = buildAssignedSnapshot()
+
+    const p1 = whatsAppClient.serviceChanged(snap)
+    const p2 = whatsAppClient.serviceChanged(snap)
+    await Promise.all([p1, p2])
+
+    expect(client.sendMessage).toHaveBeenCalledTimes(1)
+    expect(session.setNotification).toHaveBeenCalledTimes(1)
+    expect(session.setStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('flag already set: status is still updated, but nothing is claimed or sent again', async () => {
+    const session = buildFakeSession()
+    session.notifications.assigned = true
+    const findSessionByChatId = jest.fn().mockReturnValue(session)
+    const { whatsAppClient, client } = buildClient(
+      { chatBot: true, wpNotifications: false, assistant: false },
+      { findSessionByChatId }
+    )
+
+    await whatsAppClient.serviceChanged(buildAssignedSnapshot())
+
+    expect(session.setStatus).toHaveBeenCalledTimes(1)
+    expect(session.setNotification).not.toHaveBeenCalled()
+    expect(client.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('wpNotifications line: claims the flag and updates status but sends nothing', async () => {
+    const session = buildFakeSession()
+    const findSessionByChatId = jest.fn().mockReturnValue(session)
+    const { whatsAppClient, client } = buildClient(
+      { chatBot: true, wpNotifications: true, assistant: false },
+      { findSessionByChatId }
+    )
+
+    await whatsAppClient.serviceChanged(buildAssignedSnapshot())
+
+    expect(session.setNotification).toHaveBeenCalledTimes(1)
+    expect(session.setStatus).toHaveBeenCalledTimes(1)
+    expect(client.sendMessage).not.toHaveBeenCalled()
   })
 })
 
