@@ -182,8 +182,14 @@ export class OfficialClient implements WPClientInterface {
           timeout: this.config.timeout,
         })
         .then((response) => {
-          const msgId = response.data.messages[0]?.id ?? DateHelper.unix()
-          console.log('Message sent', message.id, 'to', phone)
+          const wamid = response.data.messages[0]?.id
+          // When outboundId is set (chatbot turn replies), it is used as the
+          // persisted row id so this write and TurnSupport.recordOutboundMessage
+          // converge on one whatsapp_messages row; the wamid is then only
+          // logged, not stored — messageId must not be assumed to always be a
+          // wamid.
+          const msgId = message.outboundId ?? wamid ?? DateHelper.unix()
+          console.log('Message sent', message.id, 'to', phone, 'wamid', wamid, 'stored as', msgId)
           MessageRepository.addMessage(this.wpClient.id, chat.id, {
             id: msgId,
             created_at: DateHelper.unix(),

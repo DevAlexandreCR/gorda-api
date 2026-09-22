@@ -268,3 +268,53 @@ describe('sendGatedMessage recordOutboundMessage (happy path)', () => {
     expect(persistedMessage.interactive).toEqual(interactive)
   })
 })
+
+// Task: hotfix for the Official (Cloud API) double-persisted turn reply
+// (OfficialClient.text() wamid row + recordOutboundMessage session row). Both
+// writers now converge on one whatsapp_messages row via a shared outboundId
+// stamped onto the message sent through session.sendMessage.
+describe('sendGatedMessage outboundId convergence (fix-wp-notification-double-send)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  it('sends a message stamped with a UUID outboundId equal to the id later recorded via SessionRepository.addMsg', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const originalMessage = buildOutboundMessage()
+
+    await sendGatedMessage(mockSession as any, originalMessage)
+
+    const [sentMessage] = mockSession.sendMessage.mock.calls[0]
+    const [, persistedMessage] = (SessionRepository.addMsg as jest.Mock).mock.calls[0]
+
+    expect(sentMessage.outboundId).toMatch(uuidPattern)
+    expect(persistedMessage.id).toBe(sentMessage.outboundId)
+  })
+
+  it('does not mutate the original catalog message object with an outboundId', async () => {
+    const mockSession = buildMockSession('573001234567@c.us')
+    const originalMessage = buildOutboundMessage()
+
+    await sendGatedMessage(mockSession as any, originalMessage)
+
+    expect(originalMessage).not.toHaveProperty('outboundId')
+  })
+
+  it('records nothing when the send is rejected', async () => {
+    jest.useFakeTimers()
+    const mockSession = buildMockSession('573001234567@c.us')
+    mockSession.sendMessage = jest.fn().mockRejectedValue(new Error('line disconnected'))
+
+    const outcome = sendGatedMessage(mockSession as any, buildOutboundMessage())
+    const assertion = expect(outcome).rejects.toThrow('line disconnected')
+
+    await jest.advanceTimersByTimeAsync(2000)
+    await jest.advanceTimersByTimeAsync(2000)
+
+    await assertion
+    expect(SessionRepository.addMsg).not.toHaveBeenCalled()
+    jest.useRealTimers()
+  })
+})

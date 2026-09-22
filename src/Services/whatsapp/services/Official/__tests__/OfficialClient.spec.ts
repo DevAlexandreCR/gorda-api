@@ -227,9 +227,7 @@ describe('sanitizeInteractiveForOfficial (spec: official-interactive-length-limi
       footer: { text: 'x'.repeat(65) },
       action: {
         button: 'Abrir lista de opciones aquí',
-        sections: [
-          { title: 'Una sección con un título largo', rows: [{ id: 'r1', title: 'ok' }] },
-        ],
+        sections: [{ title: 'Una sección con un título largo', rows: [{ id: 'r1', title: 'ok' }] }],
         buttons: [{ type: 'reply', reply: { id: 'b1', title: 'Una etiqueta muy larga' } }],
       },
     }
@@ -354,5 +352,47 @@ describe('OfficialClient.text interactive sanitization (spec: official-interacti
       })
     )
     expect(message.interactive).toEqual(originalSnapshot)
+  })
+})
+
+describe('OfficialClient.text outboundId convergence (fix-wp-notification-double-send)', () => {
+  let client: OfficialClient
+  const mockedStore = Store.getInstance() as unknown as {
+    findClientById: jest.Mock
+    getChatById: jest.Mock
+  }
+  const mockedMessageRepository = MessageRepository as jest.Mocked<typeof MessageRepository>
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    client = new OfficialClient(wpClient)
+    mockedStore.findClientById.mockReturnValue(undefined)
+    mockedStore.getChatById.mockResolvedValue({ id: 'chat-1' })
+    mockedAxios.post.mockResolvedValue({ data: { messages: [{ id: 'wamid.1' }] } })
+  })
+
+  it('persists the row under message.outboundId when set, not the wamid', async () => {
+    const message = buildMessage(null)
+    message.outboundId = 'turn-outbound-id-1'
+
+    await client.text('573001234567@c.us', message)
+
+    expect(mockedMessageRepository.addMessage).toHaveBeenCalledWith(
+      wpClient.id,
+      'chat-1',
+      expect.objectContaining({ id: 'turn-outbound-id-1' })
+    )
+  })
+
+  it('falls back to the Cloud API wamid when outboundId is absent (existing behaviour)', async () => {
+    const message = buildMessage(null)
+
+    await client.text('573001234567@c.us', message)
+
+    expect(mockedMessageRepository.addMessage).toHaveBeenCalledWith(
+      wpClient.id,
+      'chat-1',
+      expect.objectContaining({ id: 'wamid.1' })
+    )
   })
 })

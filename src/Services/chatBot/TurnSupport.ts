@@ -33,10 +33,14 @@ function retryPromise<T>(promiseFactory: () => Promise<T>, maxRetries: number): 
   })
 }
 
-async function recordOutboundMessage(session: Session, message: ChatBotMessage): Promise<void> {
+async function recordOutboundMessage(
+  session: Session,
+  message: ChatBotMessage,
+  outboundId: string
+): Promise<void> {
   const wpMessage: WpMessage = {
     created_at: DateHelper.unix(),
-    id: randomUUID(),
+    id: outboundId,
     type: MessageTypes.TEXT,
     msg: message.message,
     processed: true,
@@ -75,12 +79,17 @@ export async function sendGatedMessage(session: Session, message: ChatBotMessage
   // failure on every stale turn. Do not move this below the retryPromise call.
   await session.assertTurnStillValid()
 
+  // Shared with the transport's own persistence (e.g. OfficialClient.text) so
+  // both writers converge on the same whatsapp_messages row.
+  const outboundId = randomUUID()
+  const outboundMessage: ChatBotMessage = { ...message, outboundId }
+
   // Design D9: a factory (not an already-created promise) so each of the three
   // attempts issues a new send instead of re-awaiting the same settled
   // rejection. A failure after all retries is logged, reported to Sentry, and
   // rethrown to the caller — it MUST NOT terminate the process (spec:
   // wp-send-failure-resilience).
-  await retryPromise<void>(() => session.sendMessage(message), 3).catch((e) => {
+  await retryPromise<void>(() => session.sendMessage(outboundMessage), 3).catch((e) => {
     console.error('failed to send gated message', {
       wpClientId: session.wp_client_id,
       chatId: session.chat_id,
@@ -90,5 +99,5 @@ export async function sendGatedMessage(session: Session, message: ChatBotMessage
     throw e instanceof Error ? e : new Error(String(e))
   })
 
-  await recordOutboundMessage(session, message)
+  await recordOutboundMessage(session, message, outboundId)
 }
