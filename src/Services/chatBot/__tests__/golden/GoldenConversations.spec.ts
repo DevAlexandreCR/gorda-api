@@ -421,6 +421,49 @@ describe('Golden conversations (chatbot-agent-conversation, task 5.2)', () => {
     expect(session.status).toBe('BOOKING')
   })
 
+  it('2b) stale pending candidates: a non-matching answer triggers a fresh search (design D5)', async () => {
+    const session = buildSession({
+      state: {
+        comment: null,
+        pending_candidates: [
+          { id: 'sb1', name: 'San Bernardino' },
+          { id: 'sb2', name: 'Sub Estacion San Bernardino' },
+        ],
+        pending_pin: null,
+        awaiting: null,
+      },
+    })
+
+    storeState.findPlacesResult = {
+      place: null,
+      suggestions: [{ id: 'tr1', name: 'El Tizón Rojo' }],
+      hasStrongCandidate: false,
+    }
+
+    mockCreateResponse
+      .mockResolvedValueOnce(functionCallsResult('c1', 'search_place', { query: 'Tizón rojo' }))
+      .mockResolvedValueOnce(finalResult('Encontré un punto. ¿En cuál te recogemos?', []))
+
+    await turn(session, textMessage('msg-1', 'Tizón rojo'))
+
+    // The model issued a fresh search_place call instead of treating the text
+    // as an answer to the stale San Bernardino list.
+    expect(mockFindPlacesWithSuggestions).toHaveBeenCalledTimes(1)
+    expect(mockFindPlacesWithSuggestions).toHaveBeenCalledWith('Tizón rojo')
+
+    // The new results replace the pending list entirely (no San Bernardino left).
+    expect(session.state.pending_candidates).toEqual([{ id: 'tr1', name: 'El Tizón Rojo' }])
+    expect(session.place).toBeNull()
+
+    expect(session.sendMessage).toHaveBeenCalledTimes(1)
+    const sentMessage = session.sendMessage.mock.calls[0][0]
+    expect(sentMessage.message).toBe('Encontré un punto. ¿En cuál te recogemos?')
+    expect(sentMessage.interactive.action.sections[0].rows).toContainEqual(
+      expect.objectContaining({ id: 'tr1', title: 'El Tizón Rojo' })
+    )
+    expect(session.status).toBe('BOOKING')
+  })
+
   it('3) GPS pin with a reference name: set_place_from_location with no search performed', async () => {
     const session = buildSession()
 

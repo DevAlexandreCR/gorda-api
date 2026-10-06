@@ -8,6 +8,14 @@ interface SearchResult extends PlaceInterface {
   fullKeywordCoverage?: boolean
 }
 
+/**
+ * Accent-folded, lower-cased form of the `name` column, used in every search
+ * strategy's comparison so a query without Spanish diacritics (already
+ * folded by `normalizeQuery`) scores identically against a catalog name that
+ * carries them (design D2, fix-chatbot-unsupported-search-and-double-assigned).
+ */
+export const NORMALIZED_NAME_SQL = "lower(translate(name, 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN'))"
+
 interface SearchOptions {
   cityId?: string
   limit?: number
@@ -77,7 +85,7 @@ class PlaceSearchRepository {
     const sql = `
       SELECT id, name, lat, lng, city_id AS "cityId", 1.0::float as score
       FROM "places"
-      WHERE LOWER(name) = LOWER(:query)
+      WHERE ${NORMALIZED_NAME_SQL} = LOWER(:query)
       ${whereClause}
     `
 
@@ -96,10 +104,10 @@ class PlaceSearchRepository {
 
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
     const keywordConditions = keywords
-      .map((_, i) => `LOWER(name) LIKE LOWER(:keyword${i})`)
+      .map((_, i) => `${NORMALIZED_NAME_SQL} LIKE LOWER(:keyword${i})`)
       .join(' OR ')
     const matchedKeywordsExpr = keywords
-      .map((_, i) => `CASE WHEN LOWER(name) LIKE LOWER(:keyword${i}) THEN 1 ELSE 0 END`)
+      .map((_, i) => `CASE WHEN ${NORMALIZED_NAME_SQL} LIKE LOWER(:keyword${i}) THEN 1 ELSE 0 END`)
       .join(' + ')
 
     const sql = `
@@ -132,11 +140,11 @@ class PlaceSearchRepository {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
-      SELECT id, name, lat, lng, city_id AS "cityId", similarity(name, :query) AS score
+      SELECT id, name, lat, lng, city_id AS "cityId", similarity(${NORMALIZED_NAME_SQL}, :query) AS score
       FROM "places"
-      WHERE name % :query
+      WHERE ${NORMALIZED_NAME_SQL} % :query
       ${whereClause}
-      AND similarity(name, :query) > 0.2
+      AND similarity(${NORMALIZED_NAME_SQL}, :query) > 0.2
     `
 
     try {
@@ -159,13 +167,13 @@ class PlaceSearchRepository {
     const sql = `
       SELECT id, name, lat, lng, city_id AS "cityId",
              (CASE
-               WHEN LOWER(name) LIKE LOWER(:exactQuery) THEN 0.9
-               WHEN LOWER(name) LIKE LOWER(:startQuery) THEN 0.7
-               WHEN LOWER(name) LIKE LOWER(:containsQuery) THEN 0.5
+               WHEN ${NORMALIZED_NAME_SQL} LIKE LOWER(:exactQuery) THEN 0.9
+               WHEN ${NORMALIZED_NAME_SQL} LIKE LOWER(:startQuery) THEN 0.7
+               WHEN ${NORMALIZED_NAME_SQL} LIKE LOWER(:containsQuery) THEN 0.5
                ELSE 0.3
              END)::float as score
       FROM "places"
-      WHERE LOWER(name) LIKE LOWER(:containsQuery)
+      WHERE ${NORMALIZED_NAME_SQL} LIKE LOWER(:containsQuery)
       ${whereClause}
     `
 
@@ -310,9 +318,9 @@ class PlaceSearchRepository {
     const whereClause = cityId ? 'AND city_id = :cityId' : ''
 
     const sql = `
-      SELECT DISTINCT id, name, similarity(name, :query) as sim_score
+      SELECT DISTINCT id, name, similarity(${NORMALIZED_NAME_SQL}, :query) as sim_score
       FROM "places"
-      WHERE similarity(name, :query) > 0.1
+      WHERE similarity(${NORMALIZED_NAME_SQL}, :query) > 0.1
       ${whereClause}
       ORDER BY sim_score DESC
       LIMIT 5
