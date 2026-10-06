@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1(2026-10-06)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.1...2.1.0)
+
 ### Added
 
 - Add an agent-first conversation turn for `chatBot` lines: an OpenAI Responses model (`OpenAIResponsesClient`) drives each turn through a structured prompt, an `AgentContextBuilder` (session, place, and booking context), a `search_place` tool backed by the existing place-search strategy, deterministic action validation (`AgentValidator`), and an executor that applies the model's actions (set place, book service, send message). Booking is centralized in a new `ServiceBooking` helper shared by the agent and deterministic paths. Each turn emits a structured `agent_turn` log (inputs, actions, tool calls, outcome).
