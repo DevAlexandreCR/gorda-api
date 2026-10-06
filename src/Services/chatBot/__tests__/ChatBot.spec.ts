@@ -334,6 +334,96 @@ describe('ChatBot — concurrent new-session creation vs. an unrelated added eve
 // before this restart. The boot sweep must still enqueue a turn for it.
 // ---------------------------------------------------------------------------
 
+describe("ChatBot.sync — 'modified' listener notification merge (design D6)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  async function setupModifiedListener(initialNotifications: SessionInterface['notifications']) {
+    const wpClient = buildFakeWpClient()
+    const chatBot = new ChatBot(wpClient, 'wp-client-1')
+    let capturedListener!: (type: string, session: Session) => void | Promise<void>
+    jest.spyOn(SessionRepository, 'getActiveSessions').mockResolvedValue([])
+    jest
+      .spyOn(SessionRepository, 'sessionActiveListener')
+      .mockImplementation((_wpClientId, listener) => {
+        capturedListener = listener
+      })
+
+    chatBot.sync()
+    await flushPromises()
+
+    const sessionInMap = buildSessionRecordAsSession({
+      id: 'session-m',
+      chat_id: 'chat-m',
+      notifications: initialNotifications,
+    })
+    await capturedListener('added', sessionInMap)
+
+    return { chatBot, capturedListener }
+  }
+
+  it('keeps assigned: true in memory when a stale modified event carries assigned: false', async () => {
+    const { chatBot, capturedListener } = await setupModifiedListener({
+      greeting: true,
+      assigned: true,
+      arrived: false,
+      completed: false,
+    })
+
+    const eventSession = buildSessionRecordAsSession({
+      id: 'session-m',
+      chat_id: 'chat-m',
+      notifications: { greeting: true, assigned: false, arrived: false, completed: false },
+    })
+    await capturedListener('modified', eventSession)
+
+    const result = chatBot.getSessionById('session-m')
+    expect(result!.notifications.assigned).toBe(true)
+  })
+
+  it('sets arrived: true in memory when a modified event carries arrived: true over an in-memory false', async () => {
+    const { chatBot, capturedListener } = await setupModifiedListener({
+      greeting: true,
+      assigned: true,
+      arrived: false,
+      completed: false,
+    })
+
+    const eventSession = buildSessionRecordAsSession({
+      id: 'session-m',
+      chat_id: 'chat-m',
+      notifications: { greeting: true, assigned: true, arrived: true, completed: false },
+    })
+    await capturedListener('modified', eventSession)
+
+    const result = chatBot.getSessionById('session-m')
+    expect(result!.notifications.arrived).toBe(true)
+  })
+
+  it('still overwrites status, state and place from the modified event', async () => {
+    const { chatBot, capturedListener } = await setupModifiedListener({
+      greeting: true,
+      assigned: true,
+      arrived: false,
+      completed: false,
+    })
+
+    const eventSession = buildSessionRecordAsSession({
+      id: 'session-m',
+      chat_id: 'chat-m',
+      status: SessionStatuses.COMPLETED,
+      place: { id: 'place-1' } as unknown as SessionInterface['place'],
+      notifications: { greeting: true, assigned: true, arrived: false, completed: false },
+    })
+    await capturedListener('modified', eventSession)
+
+    const result = chatBot.getSessionById('session-m')
+    expect(result!.status).toBe(SessionStatuses.COMPLETED)
+    expect(result!.place).toEqual({ id: 'place-1' })
+  })
+})
+
 describe('ChatBot.sync — boot sweep for a legacy-status session loaded as BOOKING', () => {
   const enqueueMock = enqueueConversationTurn as jest.Mock
 

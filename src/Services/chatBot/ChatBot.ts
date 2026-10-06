@@ -6,6 +6,7 @@ import { WPClientInterface } from '../whatsapp/interfaces/WPClientInterface'
 import { WpMessageInterface } from '../whatsapp/interfaces/WpMessageInterface'
 import ChatIdHelper from '../../Helpers/ChatIdHelper'
 import { WpClients } from '../whatsapp/constants/WPClients'
+import { WpNotifications } from '../../Types/WpNotifications'
 
 export default class ChatBot {
   private readonly wpClient: WPClientInterface
@@ -66,7 +67,10 @@ export default class ChatBot {
             if (sessionInMap) {
               sessionInMap.status = session.status
               sessionInMap.place = session.place
-              sessionInMap.notifications = session.notifications
+              sessionInMap.notifications = this.mergeNotifications(
+                sessionInMap.notifications,
+                session.notifications
+              )
               sessionInMap.wp_client_id = session.wp_client_id
               sessionInMap.state = session.state
               sessionInMap.created_at = session.created_at
@@ -85,6 +89,22 @@ export default class ChatBot {
 
   public removeSession(sessionId: string): void {
     this.sessions.delete(sessionId)
+  }
+
+  // Notification flags only ever go from false to true in this system, so a
+  // stale 'modified' event (one that re-read the row before a concurrent flag
+  // claim was persisted) must never flip an in-memory true back to false
+  // (design D6).
+  private mergeNotifications(
+    inMemory: WpNotifications,
+    fromEvent: WpNotifications
+  ): WpNotifications {
+    return {
+      greeting: inMemory.greeting || fromEvent.greeting,
+      assigned: inMemory.assigned || fromEvent.assigned,
+      arrived: inMemory.arrived || fromEvent.arrived,
+      completed: inMemory.completed || fromEvent.completed,
+    }
   }
 
   async processMessage(message: WpMessageInterface): Promise<void> {

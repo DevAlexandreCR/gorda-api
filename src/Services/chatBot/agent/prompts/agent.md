@@ -268,9 +268,14 @@ instead of calling it again.
   may instead answer in plain text — an ordinal ("la primera", "el
   segundo"), a bare number, a name match, or a short confirmation ("sí",
   "esa"). Resolve that against `session.pending_candidates` and call
-  `set_place` with the matching candidate's id. Never call `search_place`
-  again just to re-resolve an answer to a question you already asked; use
-  the pending candidates.
+  `set_place` with the matching candidate's id. For an answer that does
+  match one of them this way, never call `search_place` again just to
+  re-resolve it; use the pending candidates.
+- If the customer's text matches none of `session.pending_candidates` by
+  ordinal, number, name or short confirmation, it is not an answer to that
+  list — treat it as a new place description and call `search_place` with
+  it in this same turn. The new results replace the pending list; do not
+  ask the customer to confirm against the stale candidates first.
 
 ### When the customer rejects every candidate
 
@@ -376,6 +381,9 @@ only get one retry, so make it count.
 - Never set a place with an id you were not given this turn or that is not
   in `session.pending_candidates`. Never pass `none_of_the_above` to
   `set_place` — it is an escape marker, not a place id.
+- Never ask the customer to confirm, or name as a candidate, a place that
+  is not in `session.pending_candidates` or in this turn's `search_place`
+  results.
 - Never search for a place when the current message carries a GPS location.
 - Never phrase a place you name, confirm, or offer as a destination
   ("¿Te diriges a...?", "¿Para dónde vas?"). Every place in this

@@ -355,6 +355,69 @@ describe('OfficialClient.text interactive sanitization (spec: official-interacti
   })
 })
 
+describe('OfficialClient.text candidate list numbering (spec: chatbot-candidate-list)', () => {
+  let client: OfficialClient
+  const mockedStore = Store.getInstance() as unknown as {
+    findClientById: jest.Mock
+    getChatById: jest.Mock
+  }
+  const mockedMessageRepository = MessageRepository as jest.Mocked<typeof MessageRepository>
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    client = new OfficialClient(wpClient)
+    mockedStore.findClientById.mockReturnValue(undefined)
+    mockedStore.getChatById.mockResolvedValue({ id: 'chat-1' })
+    mockedAxios.post.mockResolvedValue({ data: { messages: [{ id: 'wamid.1' }] } })
+  })
+
+  function buildListInteractive(bodyText: string, rowTitles: string[]): Interactive {
+    return {
+      type: 'list',
+      body: { text: bodyText },
+      action: {
+        button: 'Ver opciones',
+        sections: [
+          {
+            rows: rowTitles.map((title, index) => ({ id: `row-${index + 1}`, title })),
+          },
+        ],
+      },
+    }
+  }
+
+  it('appends the numbered candidate names to the body without mutating the original interactive', async () => {
+    const interactive = buildListInteractive('¿Cuál de estas opciones es la correcta?', [
+      'A',
+      'B',
+      'C',
+      'Ninguno de estos',
+    ])
+    const originalSnapshot = JSON.parse(JSON.stringify(interactive))
+    const message = buildMessage(interactive)
+
+    await client.text('573001234567@c.us', message)
+
+    const [, postedData] = mockedAxios.post.mock.calls[0]
+    const sentInteractive = (postedData as unknown as { interactive: Interactive }).interactive
+    expect(sentInteractive.body!.text.endsWith('1. A\n2. B\n3. C\n4. Ninguno de estos')).toBe(true)
+    expect(mockedMessageRepository.addMessage).toHaveBeenCalledTimes(1)
+    expect(message.interactive).toEqual(originalSnapshot)
+  })
+
+  it('truncates a body that would exceed 1024 chars (after appending the numbered names) with an ellipsis', async () => {
+    const interactive = buildListInteractive('x'.repeat(1020), ['A', 'B'])
+    const message = buildMessage(interactive)
+
+    await client.text('573001234567@c.us', message)
+
+    const [, postedData] = mockedAxios.post.mock.calls[0]
+    const sentInteractive = (postedData as unknown as { interactive: Interactive }).interactive
+    expect(sentInteractive.body!.text.length).toBe(1024)
+    expect(sentInteractive.body!.text.endsWith('…')).toBe(true)
+  })
+})
+
 describe('OfficialClient.text outboundId convergence (fix-wp-notification-double-send)', () => {
   let client: OfficialClient
   const mockedStore = Store.getInstance() as unknown as {

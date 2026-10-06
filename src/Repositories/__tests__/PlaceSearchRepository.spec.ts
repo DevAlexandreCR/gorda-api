@@ -1,4 +1,4 @@
-import PlaceSearchRepository from '../PlaceSearchRepository'
+import PlaceSearchRepository, { NORMALIZED_NAME_SQL } from '../PlaceSearchRepository'
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -21,9 +21,13 @@ function buildQueryMock(config: {
   suggestions?: any[]
 }) {
   return jest.fn(async (sql: string) => {
-    if (sql.includes('LOWER(name) = LOWER(:query)')) return config.exact ?? []
+    // Fingerprints no longer key off a bare `LOWER(name)`/`name` substring:
+    // every strategy now wraps the comparison in NORMALIZED_NAME_SQL
+    // (design D2), so each strategy is identified by a part of its query
+    // that NORMALIZED_NAME_SQL does not itself contain.
+    if (sql.includes('1.0::float as score')) return config.exact ?? []
     if (sql.includes('fullKeywordCoverage')) return config.keyword ?? []
-    if (sql.includes('name % :query')) return config.fuzzy ?? []
+    if (sql.includes('% :query')) return config.fuzzy ?? []
     if (sql.includes(':exactQuery')) return config.content ?? []
     if (sql.includes('sim_score')) return config.suggestions ?? []
     throw new Error(`Unrecognized SQL in test mock: ${sql}`)
@@ -275,5 +279,59 @@ describe('PlaceSearchRepository.searchWithSuggestions() - suggestions gating', (
     expect(result.hasStrongCandidate).toBe(false)
     expect(suggestionQueryWasCalled(query)).toBe(true)
     expect(result.suggestions).toEqual([{ id: 's1', name: 'Suggested Place' }])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Accent-insensitive SQL (design D2, fix-chatbot-unsupported-search-and-double-assigned)
+// ---------------------------------------------------------------------------
+
+describe('PlaceSearchRepository - accent-insensitive SQL (design D2)', () => {
+  it('every generated query compares against NORMALIZED_NAME_SQL and never a bare LOWER(name)', async () => {
+    const collectedSql: string[] = []
+    const query = jest.fn(async (sql: string) => {
+      collectedSql.push(sql)
+      return []
+    })
+    const repository = new PlaceSearchRepository({ query } as any)
+
+    // 'tizon rojo' has two >2-char, non-stopword keywords, so keywordSearch
+    // issues a query too; an all-empty result set is not a strong candidate,
+    // so generateSuggestions also runs. That's all 5 strategies covered.
+    await repository.searchWithSuggestions('tizon rojo')
+
+    expect(collectedSql.length).toBe(5)
+    for (const sql of collectedSql) {
+      expect(sql).toContain(NORMALIZED_NAME_SQL)
+      expect(sql).not.toContain('LOWER(name)')
+      expect(sql).not.toContain('name % :query')
+    }
+  })
+})
+
+describe('PlaceSearchRepository - NORMALIZED_NAME_SQL translate() table integrity', () => {
+  function parseTranslateTable(): [string, string] {
+    const match = NORMALIZED_NAME_SQL.match(/translate\(name, '([^']+)', '([^']+)'\)/)
+    if (!match) throw new Error('NORMALIZED_NAME_SQL does not contain a translate() call')
+    return [match[1], match[2]]
+  }
+
+  it('has equal-length from/to character tables', () => {
+    const [from, to] = parseTranslateTable()
+    expect(from.length).toBe(to.length)
+  })
+
+  it('folds every character in the translate() from-table the same way normalizeQuery does', () => {
+    const [from, to] = parseTranslateTable()
+    const { repository } = makeRepository({})
+    // normalizeQuery is private; this reaches it directly so the test is
+    // tied to the real folding logic instead of a re-asserted duplicate.
+    const normalizeQuery = (repository as any).normalizeQuery.bind(repository)
+
+    for (let i = 0; i < from.length; i++) {
+      const char = from[i]
+      const expectedFold = to[i].toLowerCase()
+      expect(normalizeQuery(char)).toBe(expectedFold)
+    }
   })
 })

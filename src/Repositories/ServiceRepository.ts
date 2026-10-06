@@ -52,8 +52,10 @@ class ServiceRepository {
     return service
   }
 
-  public onServiceChanged(onChanged: (data: DataSnapshot) => void): void {
-    Database.dbServices().orderByChild('created_at').limitToLast(100).on('child_changed', onChanged)
+  public onServiceChanged(onChanged: (data: DataSnapshot) => void): () => void {
+    const query = Database.dbServices().orderByChild('created_at').limitToLast(100)
+    query.on('child_changed', onChanged)
+    return () => query.off('child_changed', onChanged)
   }
 }
 

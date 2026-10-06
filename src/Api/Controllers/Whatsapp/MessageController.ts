@@ -14,6 +14,7 @@ import { InboundMessagePolicy } from '../../../Services/whatsapp/policies/Inboun
 import InboundMessageDedupCache from '../../../Services/whatsapp/policies/InboundMessageDedupCache'
 import { WpClients } from '../../../Services/whatsapp/constants/WPClients'
 import { interactiveReplyId } from '../../../Services/whatsapp/interactive/interactiveReplyId'
+import { promoteTextPick } from '../../../Services/whatsapp/interactive/promoteTextPick'
 
 const controller = Router()
 const store = Store.getInstance()
@@ -26,6 +27,35 @@ type WebhookMessage = {
   text?: { body?: string }
   location?: { name?: string; latitude: number; longitude: number }
   interactive?: any
+  image?: { caption?: string }
+  video?: { caption?: string }
+  document?: { caption?: string }
+}
+
+type InboundTypeClassification = 'processable' | 'media' | 'ignore'
+
+const PROCESSABLE_INBOUND_TYPES: ReadonlySet<string> = new Set([
+  MessageTypes.TEXT,
+  MessageTypes.LOCATION,
+  MessageTypes.INTERACTIVE,
+])
+
+const MEDIA_INBOUND_TYPES: ReadonlySet<string> = new Set([
+  MessageTypes.AUDIO,
+  MessageTypes.VOICE,
+  MessageTypes.IMAGE,
+  MessageTypes.VIDEO,
+  MessageTypes.DOCUMENT,
+])
+
+export function classifyInboundType(type: string, hasText: boolean): InboundTypeClassification {
+  if (hasText || PROCESSABLE_INBOUND_TYPES.has(type)) {
+    return 'processable'
+  }
+  if (MEDIA_INBOUND_TYPES.has(type)) {
+    return 'media'
+  }
+  return 'ignore'
 }
 
 controller.post('/whatsapp/webhook', (req: Request, res: Response) => {
@@ -205,13 +235,20 @@ export async function processOfficialMessage(
 
   const messageTimestamp = policyDecision.normalizedTimestamp ?? Math.floor(Date.now() / 1000)
 
-  const type: MessageTypes = message.text?.body
-    ? MessageTypes.TEXT
-    : message.location
-      ? MessageTypes.LOCATION
-      : message.type
-        ? (message.type as MessageTypes)
-        : MessageTypes.UNKNOWN
+  const captionText = message.image?.caption ?? message.video?.caption ?? message.document?.caption
+  const hasCaptionText = Boolean(captionText?.trim())
+  const hasTextContent = Boolean(message.text?.body?.trim()) || hasCaptionText
+
+  // A media message with a non-empty caption is classified as text (design D1) so it
+  // reaches the chatbot like a normal text message instead of being filtered as media.
+  const type: MessageTypes =
+    message.text?.body || hasCaptionText
+      ? MessageTypes.TEXT
+      : message.location
+        ? MessageTypes.LOCATION
+        : message.type
+          ? (message.type as MessageTypes)
+          : MessageTypes.UNKNOWN
   const wpMessage = new WpMessageAdapter(
     {
       id: messageId,
@@ -219,7 +256,7 @@ export async function processOfficialMessage(
       from: message.from + '@c.us',
       type: type,
       isStatus: false,
-      body: message.text?.body ?? type,
+      body: message.text?.body ?? (hasCaptionText ? (captionText as string) : type),
       location: message.location
         ? {
             name: message.location?.name ?? MessageHelper.LOCATION_NO_NAME,
@@ -236,12 +273,22 @@ export async function processOfficialMessage(
     wpMessage.body = interactiveReplyId(wpMessage.interactiveReply) ?? wpMessage.body
   }
 
+  const isChatBotEnabled = store.wpClients[wpClientId]?.chatBot === true
+
+  // Spec: chatbot-candidate-list ("Plain-text picks are promoted on every transport").
+  // Promote a plain-text pick of the latest offered list/button before the message is
+  // persisted, so the stored row and the chatbot both see INTERACTIVE with the row id
+  // as body, matching the Baileys behavior.
+  if (isChatBotEnabled) {
+    await promoteTextPick(wpClientId, message.from, wpMessage)
+  }
+
   const chat = await store.getChatById(wpClientId, message.from, profileName)
 
   await MessageRepository.addMessage(wpClientId, chat.id, {
     id: wpMessage.id,
     created_at: messageTimestamp,
-    type: type,
+    type: wpMessage.type,
     body: wpMessage.body,
     location: wpMessage.location ?? null,
     fromMe: false,
@@ -251,16 +298,26 @@ export async function processOfficialMessage(
 
   wpClientService.triggerEvent(WpEvents.MESSAGE_RECEIVED, wpMessage)
 
-  const hasTextContent = message.text?.body?.trim()
-  const isProcessableType =
-    type === MessageTypes.TEXT ||
-    type === MessageTypes.LOCATION ||
-    type === MessageTypes.INTERACTIVE
-  const isChatBotEnabled = store.wpClients[wpClientId]?.chatBot === true
+  if (!isChatBotEnabled) {
+    return
+  }
 
-  if (!hasTextContent && !isProcessableType && isChatBotEnabled) {
+  const classification = classifyInboundType(type, hasTextContent)
+
+  if (classification === 'media') {
     const msg = store.findMessageById(MessagesEnum.MESSAGE_TYPE_NOT_SUPPORTED)
-    wpClientService.sendMessage(wpMessage.from, msg)
+    if (msg.enabled) {
+      wpClientService.sendMessage(wpMessage.from, msg)
+    }
+  } else if (classification === 'ignore') {
+    console.log(
+      JSON.stringify({
+        event: 'inbound_ignored_type',
+        type,
+        wpClientId,
+        messageId,
+      })
+    )
   }
 }
 

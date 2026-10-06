@@ -70,7 +70,9 @@ jest.mock('../../../Repositories/WpNotificationRepository', () => ({
 jest.mock('../../../Repositories/ServiceRepository', () => ({
   __esModule: true,
   default: {
-    onServiceChanged: jest.fn(),
+    // Returns a fresh unsubscribe spy per call (design D7), so tests can assert onReady
+    // calls the previous registration's unsubscribe before registering a new one.
+    onServiceChanged: jest.fn(() => jest.fn()),
   },
 }))
 
@@ -139,6 +141,8 @@ import ChatSessionRecord from '../../../Models/ChatSessionRecord'
 import WhatsappMessageRecord from '../../../Models/WhatsappMessageRecord'
 import MessageRepository from '../../../Repositories/MessageRepository'
 import WpNotificationRepository from '../../../Repositories/WpNotificationRepository'
+import ServiceRepository from '../../../Repositories/ServiceRepository'
+import SessionRepository from '../../../Repositories/SessionRepository'
 import { Store } from '../../store/Store'
 import { Interactive } from '../services/Official/Constants/Interactive'
 
@@ -407,6 +411,31 @@ describe('WhatsAppClient.onReady conversation-turn worker registration (design D
     expect(offOrder[1]).toBeLessThan(assignedOrder[1])
   })
 
+  // Task 6.1 (design D7, spec: chatbot-session-sync): onServiceChanged's unsubscribe must
+  // be invoked before onReady re-registers, so a reconnect never leaves two live
+  // 'child_changed' listeners on the services query.
+  it('detaches the previous service-change listener before registering a new one on a second onReady', () => {
+    const onServiceChanged = ServiceRepository.onServiceChanged as jest.Mock
+    const { whatsAppClient } = buildClient({ id: 'wp-client-service-changed-detach' })
+    const callsBefore = onServiceChanged.mock.calls.length
+
+    whatsAppClient.onReady()
+    whatsAppClient.onReady()
+
+    const calls = onServiceChanged.mock.calls.slice(callsBefore)
+    const results = onServiceChanged.mock.results.slice(callsBefore)
+    expect(calls).toHaveLength(2)
+    // Both registrations pass the same bound class-field callback.
+    expect(calls[0][0]).toBe(calls[1][0])
+
+    const firstUnsubscribe = results[0].value as jest.Mock
+    const secondUnsubscribe = results[1].value as jest.Mock
+    // Only one live listener remains: the first registration was torn down before the
+    // second call re-attached, and the second (current) registration is left untouched.
+    expect(firstUnsubscribe).toHaveBeenCalledTimes(1)
+    expect(secondUnsubscribe).not.toHaveBeenCalled()
+  })
+
   it('registers a differently-named queue per wpClientId', () => {
     const { whatsAppClient: clientA } = buildClient({ id: 'wp-client-a' })
     const { whatsAppClient: clientB } = buildClient({ id: 'wp-client-b' })
@@ -433,12 +462,19 @@ describe('WhatsAppClient.onReady conversation-turn worker registration (design D
 // they would against the real, Postgres-backed Session.
 describe('WhatsAppClient.serviceChanged (design Decision 2, spec: wp-notification-single-delivery)', () => {
   function buildFakeSession() {
+    // `events` records when each mock's own body actually settles/runs, so tests can assert
+    // on real completion order (not just invocation order, which is unchanged by task 5.1 —
+    // setNotification is always *called* before setStatus; what 5.1 changes is whether its
+    // promise *settles* before setStatus is invoked).
+    const events: string[] = []
     const session = {
       notifications: { assigned: false, arrived: false, completed: false } as Record<
         string,
         boolean
       >,
+      events,
       setStatus: jest.fn(async () => {
+        events.push('setStatus-called')
         await new Promise((resolve) => setImmediate(resolve))
       }),
       setNotification: jest.fn(),
@@ -448,6 +484,7 @@ describe('WhatsAppClient.serviceChanged (design Decision 2, spec: wp-notificatio
     session.setNotification = jest.fn(async (kind: string) => {
       session.notifications[kind] = true
       await new Promise((resolve) => setImmediate(resolve))
+      events.push('setNotification-settled')
     })
     return session
   }
@@ -514,6 +551,127 @@ describe('WhatsAppClient.serviceChanged (design Decision 2, spec: wp-notificatio
     expect(session.setNotification).toHaveBeenCalledTimes(1)
     expect(session.setStatus).toHaveBeenCalledTimes(1)
     expect(client.sendMessage).not.toHaveBeenCalled()
+  })
+
+  // Task 5.1 (design D6): the claimed flag must be durably persisted before the status
+  // write runs, so the status write's own re-read can never observe a stale (pre-claim)
+  // notifications row. See buildFakeSession's comment: this checks settle order, not call
+  // order, which is the part task 5.1 actually changes.
+  it('persists the claimed notification flag before the status write runs', async () => {
+    const session = buildFakeSession()
+    const findSessionByChatId = jest.fn().mockReturnValue(session)
+    const { whatsAppClient } = buildClient(
+      { chatBot: true, wpNotifications: false, assistant: false },
+      { findSessionByChatId }
+    )
+
+    await whatsAppClient.serviceChanged(buildAssignedSnapshot())
+
+    expect(session.events).toEqual(['setNotification-settled', 'setStatus-called'])
+  })
+
+  it('two sequential invocations, the second after the first fully resolves, send exactly once', async () => {
+    const session = buildFakeSession()
+    const findSessionByChatId = jest.fn().mockReturnValue(session)
+    const { whatsAppClient, client } = buildClient(
+      { chatBot: true, wpNotifications: false, assistant: false },
+      { findSessionByChatId }
+    )
+
+    await whatsAppClient.serviceChanged(buildAssignedSnapshot())
+    await whatsAppClient.serviceChanged(buildAssignedSnapshot())
+
+    expect(client.sendMessage).toHaveBeenCalledTimes(1)
+    expect(session.setNotification).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Task 5.3 (design D6, spec: chatbot-session-sync): end-to-end regression wiring a REAL
+// Session + a REAL ChatBot (bypassing this file's top-level ChatBot mock via
+// jest.requireActual) through ChatBot.sync()'s 'modified' listener, instead of the faked
+// `session` object used in the describe block above. SessionRepository.updateStatus is
+// mocked to reproduce the actual bug mechanism: its own re-read can land before the
+// notification claim's write commits, in which case it emits a 'modified' event carrying
+// the pre-claim (stale) flag — exactly what a real Postgres round-trip race would produce.
+// This test must fail when both 5.1 (ordered persistence) and 5.2 (monotonic merge) are
+// reverted, and pass when either one alone is applied.
+describe('WhatsAppClient.serviceChanged — duplicate SERVICE_ASSIGNED regression (design D6, spec: chatbot-session-sync, task 5.3)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  const chatId = '573005550000'
+  const wpClientId = 'wp-client-5-3'
+
+  function buildSnapshot(): DataSnapshot {
+    return {
+      key: 'svc-5-3',
+      val: () => ({
+        id: 'svc-5-3',
+        client_id: chatId,
+        status: 'in_progress',
+        driver_id: 'drv-1',
+        vehicle: { plate: 'ABC123', color: null },
+      }),
+    } as unknown as DataSnapshot
+  }
+
+  it('sends SERVICE_ASSIGNED exactly once across two child_changed events even when the status write races a stale notifications re-read', async () => {
+    const RealChatBot = jest.requireActual('../../chatBot/ChatBot').default
+    const { whatsAppClient, client } = buildClient({
+      id: wpClientId,
+      chatBot: true,
+      wpNotifications: false,
+      assistant: false,
+    })
+
+    let capturedListener!: (type: string, session: Session) => void | Promise<void>
+    jest.spyOn(SessionRepository, 'getActiveSessions').mockResolvedValue([])
+    jest
+      .spyOn(SessionRepository, 'sessionActiveListener')
+      .mockImplementation((_wpClientId, listener) => {
+        capturedListener = listener
+      })
+
+    // Flips true only once the (mocked) notification-claim round trip finishes, so
+    // updateStatus's mock below can tell whether its own "read" would, against the real
+    // Postgres-backed repository, have observed the claim yet.
+    let notificationCommitted = false
+    jest.spyOn(SessionRepository, 'updateNotification').mockImplementation(async () => {
+      await flushMicrotasks()
+      notificationCommitted = true
+    })
+    jest.spyOn(SessionRepository, 'updateStatus').mockImplementation(async (session) => {
+      if (!notificationCommitted) {
+        const staleEventSession = new Session(chatId)
+        staleEventSession.id = session.id
+        staleEventSession.wp_client_id = wpClientId
+        staleEventSession.notifications = {
+          greeting: false,
+          assigned: false,
+          arrived: false,
+          completed: false,
+        }
+        await capturedListener('modified', staleEventSession)
+      }
+      return session
+    })
+
+    const realChatBot = new RealChatBot(client, wpClientId)
+    realChatBot.sync()
+    await flushMicrotasks()
+
+    const sessionInMap = new Session(chatId)
+    sessionInMap.id = 'session-5-3'
+    sessionInMap.wp_client_id = wpClientId
+    await capturedListener('added', sessionInMap)
+
+    ;(whatsAppClient as any).chatBot = realChatBot
+
+    await whatsAppClient.serviceChanged(buildSnapshot())
+    await whatsAppClient.serviceChanged(buildSnapshot())
+
+    expect(client.sendMessage).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -42,8 +42,8 @@ import MessageRepository from '../../Repositories/MessageRepository'
 import DatabaseService from '../firebase/Database'
 import { VehicleSnapshot } from '../chatBot/Messages'
 import { resolveDriverCurrentVehicle } from '../drivers/DriverVehicleResolver'
-import { resolveInteractiveOption } from './interactive/resolveInteractiveOption'
 import { interactiveReplyId } from './interactive/interactiveReplyId'
+import { promoteTextPick } from './interactive/promoteTextPick'
 
 export class WhatsAppClient {
   public client: WPClientInterface
@@ -51,6 +51,7 @@ export class WhatsAppClient {
   private chatBot: ChatBot
   private store: Store = Store.getInstance()
   private wpClient: WpClient
+  private offServiceChanged?: () => void
   public deleting = false
   public starting = false
 
@@ -103,6 +104,10 @@ export class WhatsAppClient {
 
   onReady = (): void => {
     WpNotificationRepository.offNotifications(this.wpClient.id)
+    // Detach the previously registered service-change listener (if any) before anything
+    // else, so onReady re-firing on reconnect never leaves more than one live listener on
+    // the services query (design D7).
+    if (this.offServiceChanged) this.offServiceChanged()
     this.chatBot = new ChatBot(this.client, this.wpClient.id)
     // Register the per-WpClient conversation-turn queue + worker right after ChatBot
     // construction (design D6): the turn processor resolves this.chatBot through
@@ -121,7 +126,7 @@ export class WhatsAppClient {
     WpNotificationRepository.onNewService(this.wpClient.id, this.onNewService)
     WpNotificationRepository.onServiceCanceled(this.wpClient.id, this.serviceCanceled)
     WpNotificationRepository.onServiceTerminated(this.wpClient.id, this.serviceTerminated)
-    ServiceRepository.onServiceChanged(this.serviceChanged)
+    this.offServiceChanged = ServiceRepository.onServiceChanged(this.serviceChanged)
     if (this.socket) this.socket.to(this.wpClient.id).emit(WpEvents.READY)
     console.log(this.client.getInfo())
   }
@@ -162,7 +167,7 @@ export class WhatsAppClient {
         )
       } else {
         if (this.client.serviceName !== WpClients.OFFICIAL) {
-          await this.promoteInteractiveOptionPick(msg)
+          await promoteTextPick(this.wpClient.id, msg.from, msg)
 
           const chat = await msg.getChat()
           const contact = await chat.getContact().catch(() => null)
@@ -223,23 +228,6 @@ export class WhatsAppClient {
       console.log('onMessageReceived Error', this.wpClient.alias, error.message)
       Sentry.captureException(error)
     }
-  }
-
-  // Design D3/D4 (spec: wp-interactive-fallback): on a Baileys line, a plain-text pick
-  // of the most recently offered catalog option is promoted to INTERACTIVE before the
-  // message is persisted or checked by isProcessableMsg, matching a native button/list
-  // reply. Only a TEXT message is a candidate; an already-INTERACTIVE message (a native
-  // reply forwarded through the adapter) passes through unchanged.
-  private async promoteInteractiveOptionPick(msg: WpMessageInterface): Promise<void> {
-    if (msg.type !== MessageTypes.TEXT) return
-
-    const latestOutbound = await MessageRepository.findLatestOutbound(this.wpClient.id, msg.from)
-    const matched = resolveInteractiveOption(msg.body, latestOutbound?.interactive ?? null)
-    if (!matched) return
-
-    msg.type = MessageTypes.INTERACTIVE
-    msg.interactiveReply = matched
-    msg.body = matched.button_reply?.id ?? matched.list_reply?.id ?? msg.body
   }
 
   private async shouldProcessInboundMessage(msg: WpMessageInterface): Promise<boolean> {
@@ -606,12 +594,14 @@ export class WhatsAppClient {
           }
           // Claim the flag synchronously (before the first await) so a concurrent
           // invocation on the same tick already sees it set (design Decision 2).
+          // The claim is persisted before the status write (design D6) so the status
+          // update's realtime `modified` event can never carry a stale `assigned: false`.
           const claim = session.setNotification(NotificationType.assigned).catch((e) => {
             Sentry.captureException(e)
             console.error('setNotification', this.wpClient.alias, e)
           })
-          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
           await claim
+          await session.setStatus(Session.STATUS_SERVICE_IN_PROGRESS)
           const snapshotVehicle = (snapshot.val() as any)?.vehicle as VehicleSnapshot | undefined
           let vehicleForMsg: VehicleSnapshot
           if (snapshotVehicle?.plate) {
@@ -641,12 +631,14 @@ export class WhatsAppClient {
         }
         // Claim before the first await (design Decision 2): setNotification
         // flips the in-memory flag synchronously and only then awaits Postgres.
+        // Persisted before the status write (design D6) so the status update's
+        // realtime `modified` event can never carry a stale `completed: false`.
         const claim = session.setNotification(NotificationType.completed).catch((e) => {
           Sentry.captureException(e)
           console.error('setNotification', this.wpClient.alias, e)
         })
-        await session.setStatus(Session.STATUS_COMPLETED)
         await claim
+        await session.setStatus(Session.STATUS_COMPLETED)
         msg = Messages.completedService()
         message = msg
         mustSend = msg.enabled && !this.wpClient.wpNotifications
@@ -659,12 +651,14 @@ export class WhatsAppClient {
         }
         // Claim before the first await (design Decision 2): setNotification
         // flips the in-memory flag synchronously and only then awaits Postgres.
+        // Persisted before the status write (design D6) so the status update's
+        // realtime `modified` event can never carry a stale `completed: false`.
         const claim = session.setNotification(NotificationType.completed).catch((e) => {
           Sentry.captureException(e)
           console.error('setNotification', this.wpClient.alias, e)
         })
-        await session.setStatus(Session.STATUS_COMPLETED)
         await claim
+        await session.setStatus(Session.STATUS_COMPLETED)
         msg = Messages.getSingleMessage(MessagesEnum.CANCELED)
         message = msg
         mustSend = msg.enabled && !this.wpClient.wpNotifications

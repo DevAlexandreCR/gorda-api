@@ -116,6 +116,23 @@ export class OfficialClient implements WPClientInterface {
     })
   }
 
+  // Design D3: the interactive list rows are hidden behind "Ver opciones" on the
+  // Cloud API, so the candidate names are also spelled out, numbered, in the body
+  // text. Baileys renders the same `interactive` as plain numbered text already
+  // (see renderInteractiveAsText.ts), so it must not receive this body suffix.
+  private static readonly BODY_TEXT_MAX = 1024
+  private static readonly ELLIPSIS = '…'
+
+  private truncateBody(value: string): string {
+    if (value.length <= OfficialClient.BODY_TEXT_MAX) {
+      return value
+    }
+    return (
+      value.slice(0, OfficialClient.BODY_TEXT_MAX - OfficialClient.ELLIPSIS.length) +
+      OfficialClient.ELLIPSIS
+    )
+  }
+
   private getInteractive(message: ChatBotMessage): Interactive | false {
     if (!message.interactive) {
       return false
@@ -124,7 +141,18 @@ export class OfficialClient implements WPClientInterface {
     // Only the Official (Cloud API) transport enforces these length caps: Baileys
     // has none and renders the same interactive payload as plain text, so the
     // shared message builder is free to carry full, untruncated names.
-    return sanitizeInteractiveForOfficial(message.interactive)
+    const sanitized = sanitizeInteractiveForOfficial(message.interactive)
+
+    if (sanitized.type === 'list' && sanitized.body) {
+      const rows = (sanitized.action.sections ?? []).flatMap((section) => section.rows)
+      const numberedNames = rows.map((row, index) => `${index + 1}. ${row.title}`).join('\n')
+      sanitized.body = {
+        ...sanitized.body,
+        text: this.truncateBody(`${sanitized.body.text}\n\n${numberedNames}`),
+      }
+    }
+
+    return sanitized
   }
 
   async sendMessage(phoneNumber: string, message: ChatBotMessage): Promise<void> {
