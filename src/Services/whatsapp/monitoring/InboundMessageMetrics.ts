@@ -1,10 +1,12 @@
 import config from '../../../../config'
 
-type MetricReason =
+export type MetricReason =
   | 'old_message'
   | 'duplicate_message'
   | 'invalid_timestamp_processed'
   | 'future_timestamp_processed'
+  | 'phone_requested'
+  | 'bsuid_linked'
 
 type MetricPayload = {
   provider: string

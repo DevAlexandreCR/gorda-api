@@ -22,6 +22,13 @@ export class Store {
   static instance: Store
   drivers: Map<string, Driver> = new Map()
   clients: Map<string, ClientInterface> = new Map()
+  // BSUIDs are opaque transport ids, never phone-shaped (finding 6 of
+  // support-wp-bsuid-phone-request) — they live only in this map, indexed by
+  // the exact BSUID string, never in `clients` (which stays phone-keyed).
+  clientsByUserId: Map<string, ClientInterface> = new Map()
+  // Phone -> BSUID remembered before the client row exists yet, consumed by
+  // `createClient` once the row is created (see `rememberUserIdForPhone`).
+  pendingUserIdByPhone: Map<string, string> = new Map()
   messages: Map<MessagesEnum, ChatBotMessage> = new Map()
   wpClients: ClientDictionary = {}
   wpChats: Map<string, Chat> = new Map()
@@ -61,6 +68,16 @@ export class Store {
   async createClient(client: WpContactInterface): Promise<ClientInterface> {
     const createdClient = await this.clientRepository.create(client)
     this.cacheClient(createdClient)
+
+    const pendingUserId = createdClient.phone
+      ? this.pendingUserIdByPhone.get(createdClient.phone)
+      : undefined
+
+    if (pendingUserId) {
+      this.pendingUserIdByPhone.delete(createdClient.phone)
+      return this.linkClientUserId(createdClient.id, pendingUserId)
+    }
+
     return createdClient
   }
 
@@ -185,6 +202,88 @@ export class Store {
     if (client.phone) {
       this.clients.set(client.phone, client)
     }
+
+    // Index by BSUID (exact string, no normalization) into a dedicated map —
+    // never into `clients`, which must stay phone-keyed (finding 6). Evict
+    // any stale key this same client previously held (e.g. after a relink).
+    for (const [cachedUserId, cachedClient] of this.clientsByUserId) {
+      if (cachedClient.id === client.id && cachedUserId !== client.wpUserId) {
+        this.clientsByUserId.delete(cachedUserId)
+      }
+    }
+
+    if (client.wpUserId) {
+      // A BSUID belongs to at most one client at a time (DB-enforced by the
+      // unique partial index plus `ClientRepository.setUserId`'s clear-then-
+      // set transaction). If a stale cached object for a different client is
+      // still shown holding this BSUID, clear it in place — mutating the
+      // shared reference also fixes the `clients` phone-keyed cache entries
+      // for that displaced client, preventing a relink ping-pong on its next
+      // `from`-bearing message.
+      const previousHolder = this.clientsByUserId.get(client.wpUserId)
+      if (previousHolder && previousHolder.id !== client.id) {
+        previousHolder.wpUserId = null
+      }
+
+      this.clientsByUserId.set(client.wpUserId, client)
+    }
+  }
+
+  findClientByUserId(userId: string): ClientInterface | undefined {
+    if (!userId) return undefined
+    return this.clientsByUserId.get(userId)
+  }
+
+  async linkClientUserId(clientId: string, userId: string): Promise<ClientInterface> {
+    const updatedClient = await this.clientRepository.setUserId(clientId, userId)
+    this.cacheClient(updatedClient)
+    return updatedClient
+  }
+
+  async relinkClientUserId(
+    previousUserId: string,
+    currentUserId: string
+  ): Promise<ClientInterface | null> {
+    const updatedClient = await this.clientRepository.relinkUserId(previousUserId, currentUserId)
+    if (!updatedClient) return null
+
+    this.cacheClient(updatedClient)
+    return updatedClient
+  }
+
+  rememberUserIdForPhone(phone: string, userId: string): void {
+    this.pendingUserIdByPhone.set(phone, userId)
+  }
+
+  async storeOrLinkClient({
+    phone,
+    name,
+    userId,
+  }: {
+    phone: string
+    name?: string
+    userId: string
+  }): Promise<ClientInterface> {
+    const existing = this.findClientById(phone) ?? (await this.clientRepository.findByPhone(phone))
+
+    if (existing) {
+      return this.linkClientUserId(existing.id, userId)
+    }
+
+    // `createClient` takes a `WpContactInterface` (pushname/number/photo) and
+    // has no place for `phone`/`wpUserId`, so a brand-new client linked by
+    // BSUID is stored directly through the repository instead (design D4).
+    // The row is created WITHOUT `wpUserId` and linked via `linkClientUserId`
+    // right after: `store()` would upsert `wp_user_id` unconditionally and
+    // could collide with the unique partial index if another client still
+    // holds this BSUID, whereas `ClientRepository.setUserId`'s transaction
+    // clears that prior holder first (finding 4).
+    const createdClient = await this.clientRepository.store({
+      id: phone,
+      phone,
+      name: name ?? 'Usuario',
+    })
+    return this.linkClientUserId(createdClient.id, userId)
   }
 
   private normalizeClientId(clientId: string): string {
