@@ -459,3 +459,77 @@ describe('OfficialClient.text outboundId convergence (fix-wp-notification-double
     )
   })
 })
+
+describe('OfficialClient.requestContactInfo (design: support-wp-bsuid-phone-request D3)', () => {
+  let client: OfficialClient
+  const mockedStore = Store.getInstance() as unknown as {
+    findClientById: jest.Mock
+    getChatById: jest.Mock
+  }
+  const mockedMessageRepository = MessageRepository as jest.Mocked<typeof MessageRepository>
+  const BSUID = 'CO.4510540692592955'
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    client = new OfficialClient(wpClient)
+  })
+
+  it('POSTs the exact ApiRecipientMessage payload: no `to` key, recipient set to the BSUID, interactive.type is request_contact_info', async () => {
+    mockedAxios.post.mockResolvedValue({ data: { messages: [{ id: 'wamid.req-1' }] } })
+
+    await client.requestContactInfo(BSUID, 'Por favor comparte tu número de teléfono.')
+
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+    const [url, data, options] = mockedAxios.post.mock.calls[0]
+
+    expect(url).toBe(config.WAPI_URL + wpClient.id + '/messages')
+    expect(data).toEqual({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      recipient: BSUID,
+      type: 'interactive',
+      interactive: {
+        type: 'request_contact_info',
+        body: { text: 'Por favor comparte tu número de teléfono.' },
+        action: { name: 'request_contact_info' },
+      },
+    })
+    expect(data).not.toHaveProperty('to')
+    expect(options).toMatchObject({ timeout: 5000 })
+  })
+
+  it('truncates an over-limit body through the existing truncateBody helper', async () => {
+    mockedAxios.post.mockResolvedValue({ data: { messages: [{ id: 'wamid.req-2' }] } })
+    const longBody = 'x'.repeat(1030)
+
+    await client.requestContactInfo(BSUID, longBody)
+
+    const [, data] = mockedAxios.post.mock.calls[0]
+    const sent = data as unknown as { interactive: { body: { text: string } } }
+    expect(sent.interactive.body.text.length).toBe(1024)
+    expect(sent.interactive.body.text.endsWith('…')).toBe(true)
+  })
+
+  it('never touches the chat/queue path: no getChatById, no addMessage, no queue add', async () => {
+    mockedAxios.post.mockResolvedValue({ data: { messages: [{ id: 'wamid.req-3' }] } })
+
+    await client.requestContactInfo(BSUID, 'hola')
+
+    expect(mockedStore.getChatById).not.toHaveBeenCalled()
+    expect(mockedMessageRepository.addMessage).not.toHaveBeenCalled()
+  })
+
+  it('rethrows and logs error.response.data on a rejected axios call', async () => {
+    const error = {
+      response: { data: { error: { message: 'Unsupported recipient', code: 131062 } } },
+    }
+    mockedAxios.post.mockRejectedValue(error)
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
+
+    await expect(client.requestContactInfo(BSUID, 'hola')).rejects.toBe(error)
+
+    expect(logSpy).toHaveBeenCalledWith(error.response.data)
+
+    logSpy.mockRestore()
+  })
+})

@@ -60,7 +60,7 @@ IgnoredInboundMessageAudit.init(
       field: 'message_id',
     },
     chatId: {
-      type: DataTypes.STRING(64),
+      type: DataTypes.STRING(160),
       allowNull: true,
       field: 'chat_id',
     },
