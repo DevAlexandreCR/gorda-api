@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2(2026-10-16)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.2...2.1.1)
+
+### Added
+
+- Add BSUID (Business-Scoped User ID) sender resolution for the Official (Cloud API) transport: `resolveOfficialSender.ts` resolves a message's phone through a strict precedence (`from` → `value.contacts[].wa_id` → a previously linked BSUID → unknown), never guessing or promoting the opaque BSUID into any phone-keyed structure. Add `clients.wp_user_id` (nullable, unique when set) and `Store.clientsByUserId` as the sole place a BSUID is ever stored.
+- Add `OfficialClient.requestContactInfo`, sending Meta's `request_contact_info` interactive button directly to a BSUID (no `to` field, no queue) when a sender cannot be resolved to a phone; rate-limited to once per 10 minutes per (line, BSUID) pair via the new `BsuidPendingStore`, which also holds the triggering message pending (30-minute TTL) for replay once the phone is known.
+- Add the `ASK_FOR_PHONE_NUMBER` catalog message (seeded, editable from the admin panel) sent with the phone request; add a hardcoded Spanish fallback used only if the catalog row is ever missing.
+- Add handling for a `contacts`-type reply with `origin: 'contact_request'`: links the BSUID to the attested phone (`ClientRepository.setUserId`/`findByUserId`/`relinkUserId`, clearing any prior holder of the same BSUID first) and replays the pending message, or sends `GREETING` if nothing is pending. A `contacts` reply with `origin: 'other'` (a forwarded card) is ignored.
+- Add `user_id_update` webhook handling (`handleUserIdUpdate`): when Meta reports a user's underlying phone number changed, the previously linked BSUID is silently re-linked to the new phone via `Store.relinkClientUserId`.
+- Widen `ignored_inbound_messages_audit.chat_id` to `VARCHAR(160)` so a BSUID (up to 131 chars) can be audited without truncation; widen `IgnoredInboundMessageReason`/`InboundMessageMetrics.MetricReason` with `'phone_requested' | 'bsuid_linked'`.
+- **Operator action after deploy**: review/edit the seeded `ASK_FOR_PHONE_NUMBER` text in the admin panel (Settings → Messages) if a line's tone needs adjusting; subscribe the Meta app's webhook to the `user_id_update` field (it is separate from `messages`); confirm the deployed Graph API version in `WAPI_URL` accepts a bare `recipient` (no `to`) and `request_contact_info` — bump the version if a live test returns error `131062` or an unknown-field error.
+
+### Fixed
+
+- Fix a crash on an Official (Cloud API) webhook message whose `from` is absent (a BSUID-only sender, e.g. a WhatsApp-username customer never previously contacted): `ChatIdHelper.normalize(undefined)` threw on `.replace`, silently dropping the message with no reply to the customer. The sender is now resolved via BSUID precedence or routed into the phone-request flow instead of crashing.
+
 ## [2.1.1(2026-10-06)](https://github.com/DevAlexandreCR/gorda-api/compare/2.1.1...2.1.0)
 
 ### Added

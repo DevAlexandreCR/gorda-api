@@ -1,5 +1,5 @@
 export type Interactive = {
-  type: 'list' | 'button' | 'product' | 'flow' | 'location_request_message'
+  type: 'list' | 'button' | 'product' | 'flow' | 'location_request_message' | 'request_contact_info'
   body?: {
     text: string
   }

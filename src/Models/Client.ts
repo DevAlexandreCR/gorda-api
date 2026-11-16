@@ -9,6 +9,7 @@ class Client extends Model<ClientInterface, ClientCreationAttributes> implements
   public name!: string
   public phone!: string
   public photoUrl!: string
+  public wpUserId!: string | null
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
@@ -33,6 +34,11 @@ Client.init(
       allowNull: false,
       field: 'photo_url',
       defaultValue: '',
+    },
+    wpUserId: {
+      type: DataTypes.STRING(160),
+      field: 'wp_user_id',
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,

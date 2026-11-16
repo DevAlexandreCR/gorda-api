@@ -10,6 +10,12 @@ jest.mock('../../../../Services/store/Store', () => ({
       wpClients: {},
       getChatById: jest.fn().mockResolvedValue({ id: 'chat-1' }),
       findMessageById: jest.fn(),
+      findClientById: jest.fn(),
+      findClientByUserId: jest.fn(),
+      linkClientUserId: jest.fn(),
+      relinkClientUserId: jest.fn(),
+      storeOrLinkClient: jest.fn(),
+      rememberUserIdForPhone: jest.fn(),
     }),
   },
 }))
@@ -44,11 +50,19 @@ jest.mock('../../../../Services/whatsapp/policies/InboundMessageDedupCache', () 
   },
 }))
 
-import { processOfficialMessage, classifyInboundType } from '../MessageController'
+import {
+  processOfficialMessage,
+  classifyInboundType,
+  handleUserIdUpdate,
+  ASK_FOR_PHONE_NUMBER_FALLBACK,
+} from '../MessageController'
 import MessageRepository from '../../../../Repositories/MessageRepository'
+import IgnoredInboundMessageAuditRepository from '../../../../Repositories/IgnoredInboundMessageAuditRepository'
 import { Store } from '../../../../Services/store/Store'
 import { MessageTypes } from '../../../../Services/whatsapp/constants/MessageTypes'
 import { Interactive } from '../../../../Services/whatsapp/services/Official/Constants/Interactive'
+import { MessagesEnum } from '../../../../Services/chatBot/MessagesEnum'
+import BsuidPendingStore from '../../../../Services/whatsapp/services/Official/BsuidPendingStore'
 
 describe('processOfficialMessage interactive list_reply normalization (design D10, task 5.1)', () => {
   const wpClientService = { triggerEvent: jest.fn() } as any
@@ -287,5 +301,330 @@ describe('classifyInboundType (pure function, task 1.2e)', () => {
   it('treats any type as processable once text is present', () => {
     expect(classifyInboundType(MessageTypes.AUDIO, true)).toBe('processable')
     expect(classifyInboundType('unsupported', true)).toBe('processable')
+  })
+})
+
+// Spec: wp-bsuid-sender-resolution (support-wp-bsuid-phone-request, tasks 8-9, 10.1).
+// BsuidPendingStore is a real, in-process singleton (not mocked) so these tests exercise
+// its actual 10-minute/30-minute windows via fake timers; `reset()` is test-only (added for
+// this task) and clears it between cases so unrelated tests never share pending/rate-limit
+// state through the same key.
+describe('processOfficialMessage BSUID phone resolution (support-wp-bsuid-phone-request, tasks 8-9)', () => {
+  const wpClientService = {
+    triggerEvent: jest.fn(),
+    sendMessage: jest.fn(),
+    requestContactInfo: jest.fn(),
+  } as any
+  const store = Store.getInstance() as any
+
+  const askForPhoneNumberMsg = {
+    id: MessagesEnum.ASK_FOR_PHONE_NUMBER,
+    name: 'ASK_FOR_PHONE_NUMBER',
+    description: 'ASK_FOR_PHONE_NUMBER',
+    message: 'Catalog: comparte tu numero de telefono',
+    enabled: true,
+    interactive: null,
+  }
+
+  const greetingMsg = {
+    id: MessagesEnum.GREETING,
+    name: 'GREETING',
+    description: 'GREETING',
+    message: 'Hola, bienvenido',
+    enabled: true,
+    interactive: null,
+  }
+
+  // Mirrors Store.findMessageById's real fallback shape for an id that isn't in the
+  // catalog at all (finding 5) — used to prove the hardcoded fallback wins over it.
+  const defaultMessageFallback = {
+    id: MessagesEnum.DEFAULT_MESSAGE,
+    name: MessagesEnum.DEFAULT_MESSAGE,
+    description: MessagesEnum.DEFAULT_MESSAGE,
+    message: MessagesEnum.DEFAULT_MESSAGE,
+    enabled: true,
+  }
+
+  const BSUID = 'CO.4510540692592955'
+
+  const bsuidMessage = (overrides: Record<string, any> = {}) => ({
+    id: overrides.id ?? 'wamid.bsuid',
+    timestamp: Math.floor(Date.now() / 1000),
+    from_user_id: BSUID,
+    type: 'text',
+    text: { body: 'hola' },
+    ...overrides,
+  })
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-15T00:00:00Z'))
+    BsuidPendingStore.reset()
+    ;(MessageRepository.addMessage as jest.Mock).mockResolvedValue(undefined)
+    store.wpClients = {}
+    store.getChatById = jest.fn().mockResolvedValue({ id: 'chat-1' })
+    store.findClientById = jest.fn().mockReturnValue(undefined)
+    store.findClientByUserId = jest.fn().mockReturnValue(undefined)
+    store.linkClientUserId = jest.fn().mockResolvedValue({ id: 'client-1' })
+    store.storeOrLinkClient = jest
+      .fn()
+      .mockResolvedValue({ id: '573001234567', phone: '573001234567' })
+    store.rememberUserIdForPhone = jest.fn()
+    store.findMessageById = jest.fn((id: MessagesEnum) =>
+      id === MessagesEnum.GREETING ? greetingMsg : askForPhoneNumberMsg
+    )
+    wpClientService.requestContactInfo = jest.fn().mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('(a) a BSUID-only text message requests the phone once and dispatches nothing', async () => {
+    const message = bsuidMessage({ id: 'wamid.a' })
+
+    await processOfficialMessage(message as any, 'Cliente', 'wp-client-1', wpClientService)
+
+    expect(wpClientService.requestContactInfo).toHaveBeenCalledTimes(1)
+    expect(wpClientService.requestContactInfo).toHaveBeenCalledWith(
+      BSUID,
+      askForPhoneNumberMsg.message
+    )
+    expect(store.getChatById).not.toHaveBeenCalled()
+    expect(MessageRepository.addMessage).not.toHaveBeenCalled()
+    expect(wpClientService.triggerEvent).not.toHaveBeenCalled()
+    expect(IgnoredInboundMessageAuditRepository.recordIgnoredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'phone_requested', wpClientId: 'wp-client-1' })
+    )
+  })
+
+  it('(b) a second BSUID-only message within 10 minutes does not request again', async () => {
+    await processOfficialMessage(
+      bsuidMessage({ id: 'wamid.b1' }) as any,
+      'Cliente',
+      'wp-client-1',
+      wpClientService
+    )
+
+    jest.setSystemTime(new Date('2026-10-15T00:05:00Z'))
+
+    await processOfficialMessage(
+      bsuidMessage({ id: 'wamid.b2', timestamp: Math.floor(Date.now() / 1000) }) as any,
+      'Cliente',
+      'wp-client-1',
+      wpClientService
+    )
+
+    expect(wpClientService.requestContactInfo).toHaveBeenCalledTimes(1)
+    expect(IgnoredInboundMessageAuditRepository.recordIgnoredEvent).toHaveBeenCalledTimes(2)
+  })
+
+  it('(c) an attested contact share replays the pending message instead of sending GREETING', async () => {
+    await processOfficialMessage(
+      bsuidMessage({ id: 'wamid.c-pending' }) as any,
+      'Cliente',
+      'wp-client-1',
+      wpClientService
+    )
+
+    const contactsMessage = {
+      id: 'wamid.c-contacts',
+      timestamp: Math.floor(Date.now() / 1000),
+      from_user_id: BSUID,
+      type: 'contacts',
+      contacts: [
+        {
+          origin: 'contact_request',
+          phones: [{ wa_id: '573001234567', phone: '+573001234567' }],
+          name: { formatted_name: 'Juan' },
+        },
+      ],
+    }
+
+    await processOfficialMessage(contactsMessage as any, 'Cliente', 'wp-client-1', wpClientService)
+
+    expect(store.storeOrLinkClient).toHaveBeenCalledWith({
+      phone: '573001234567',
+      name: 'Juan',
+      userId: BSUID,
+    })
+    expect(IgnoredInboundMessageAuditRepository.recordIgnoredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'bsuid_linked', chatId: '573001234567' })
+    )
+    expect(store.getChatById).toHaveBeenCalledWith('wp-client-1', '573001234567', 'Cliente')
+    expect(MessageRepository.addMessage).toHaveBeenCalledTimes(1)
+    const persisted = (MessageRepository.addMessage as jest.Mock).mock.calls[0][2]
+    expect(persisted.body).toBe('hola')
+    expect(wpClientService.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('(c2) an attested contact share with nothing pending sends GREETING instead', async () => {
+    const contactsMessage = {
+      id: 'wamid.c2-contacts',
+      timestamp: Math.floor(Date.now() / 1000),
+      from_user_id: BSUID,
+      type: 'contacts',
+      contacts: [
+        {
+          origin: 'contact_request',
+          phones: [{ wa_id: '573001234567', phone: '+573001234567' }],
+        },
+      ],
+    }
+
+    await processOfficialMessage(contactsMessage as any, 'Cliente', 'wp-client-1', wpClientService)
+
+    expect(store.storeOrLinkClient).toHaveBeenCalledTimes(1)
+    expect(MessageRepository.addMessage).not.toHaveBeenCalled()
+    expect(wpClientService.sendMessage).toHaveBeenCalledWith(
+      '573001234567@c.us',
+      expect.objectContaining({ id: MessagesEnum.GREETING })
+    )
+  })
+
+  it('(d) a forwarded contact card (origin: other) is ignored entirely', async () => {
+    const contactsMessage = {
+      id: 'wamid.d',
+      timestamp: Math.floor(Date.now() / 1000),
+      from_user_id: BSUID,
+      type: 'contacts',
+      contacts: [{ origin: 'other', phones: [{ wa_id: '573001234567' }] }],
+    }
+
+    await processOfficialMessage(contactsMessage as any, 'Cliente', 'wp-client-1', wpClientService)
+
+    expect(store.storeOrLinkClient).not.toHaveBeenCalled()
+    expect(wpClientService.sendMessage).not.toHaveBeenCalled()
+    expect(MessageRepository.addMessage).not.toHaveBeenCalled()
+    expect(IgnoredInboundMessageAuditRepository.recordIgnoredEvent).not.toHaveBeenCalled()
+  })
+
+  it('(e) opportunistic link fires when from and from_user_id are both present and the cached client has no wpUserId', async () => {
+    store.findClientById = jest.fn().mockReturnValue({ id: '573001234567', wpUserId: undefined })
+
+    const message = {
+      id: 'wamid.e',
+      timestamp: Math.floor(Date.now() / 1000),
+      from: '573001234567',
+      from_user_id: BSUID,
+      type: 'text',
+      text: { body: 'hola' },
+    }
+
+    await processOfficialMessage(message as any, 'Cliente', 'wp-client-1', wpClientService)
+
+    expect(store.linkClientUserId).toHaveBeenCalledWith('573001234567', BSUID)
+    expect(MessageRepository.addMessage).toHaveBeenCalledTimes(1)
+    expect(wpClientService.requestContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('(f) resolves via value.contacts[].wa_id when from is absent and dispatches normally', async () => {
+    const message = {
+      id: 'wamid.f',
+      timestamp: Math.floor(Date.now() / 1000),
+      type: 'text',
+      text: { body: 'hola' },
+    }
+
+    await processOfficialMessage(message as any, 'Cliente', 'wp-client-1', wpClientService, {
+      contacts: [{ wa_id: '573009999999', profile: { name: 'Case B' } }],
+    })
+
+    expect(store.getChatById).toHaveBeenCalledWith('wp-client-1', '573009999999', 'Case B')
+    expect(MessageRepository.addMessage).toHaveBeenCalledTimes(1)
+    expect(wpClientService.requestContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('(g) resolves via a previously linked BSUID when from and contacts are both absent', async () => {
+    store.findClientByUserId = jest.fn().mockReturnValue({ phone: '573005555555' })
+
+    const message = {
+      id: 'wamid.g',
+      timestamp: Math.floor(Date.now() / 1000),
+      from_user_id: 'CO.9999999999999',
+      type: 'text',
+      text: { body: 'hola' },
+    }
+
+    await processOfficialMessage(message as any, 'Cliente', 'wp-client-1', wpClientService)
+
+    expect(store.findClientByUserId).toHaveBeenCalledWith('CO.9999999999999')
+    expect(store.getChatById).toHaveBeenCalledWith('wp-client-1', '573005555555', 'Cliente')
+    expect(MessageRepository.addMessage).toHaveBeenCalledTimes(1)
+    expect(wpClientService.requestContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('(h) a disabled catalog message sends nothing but still writes the audit row', async () => {
+    store.findMessageById = jest.fn().mockReturnValue({ ...askForPhoneNumberMsg, enabled: false })
+
+    await processOfficialMessage(
+      bsuidMessage({ id: 'wamid.h' }) as any,
+      'Cliente',
+      'wp-client-1',
+      wpClientService
+    )
+
+    expect(wpClientService.requestContactInfo).not.toHaveBeenCalled()
+    expect(IgnoredInboundMessageAuditRepository.recordIgnoredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'phone_requested' })
+    )
+  })
+
+  it('(i) a missing catalog row uses the hardcoded fallback, not the fake DEFAULT_MESSAGE', async () => {
+    store.findMessageById = jest.fn().mockReturnValue(defaultMessageFallback)
+
+    await processOfficialMessage(
+      bsuidMessage({ id: 'wamid.i' }) as any,
+      'Cliente',
+      'wp-client-1',
+      wpClientService
+    )
+
+    expect(wpClientService.requestContactInfo).toHaveBeenCalledWith(
+      BSUID,
+      ASK_FOR_PHONE_NUMBER_FALLBACK
+    )
+  })
+})
+
+// Spec: wp-bsuid-sender-resolution, requirement "`user_id_update` relinks a BSUID to a new
+// phone without customer interaction" (design D5, task 9.1).
+describe('handleUserIdUpdate (support-wp-bsuid-phone-request, task 9.1)', () => {
+  const store = Store.getInstance() as any
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('relinks a known previous identifier to the current one', async () => {
+    store.relinkClientUserId = jest.fn().mockResolvedValue({ id: 'client-1' })
+
+    await expect(
+      handleUserIdUpdate({
+        user_id_update: [{ user_id: { previous: 'CO.old', current: 'CO.new' } }],
+      })
+    ).resolves.toBeUndefined()
+
+    expect(store.relinkClientUserId).toHaveBeenCalledWith('CO.old', 'CO.new')
+  })
+
+  it('never throws outward, whether relink rejects or no prior holder exists', async () => {
+    store.relinkClientUserId = jest.fn().mockRejectedValueOnce(new Error('boom'))
+
+    await expect(
+      handleUserIdUpdate({
+        user_id_update: [{ user_id: { previous: 'CO.unknown', current: 'CO.new' } }],
+      })
+    ).resolves.toBeUndefined()
+
+    store.relinkClientUserId = jest.fn().mockResolvedValue(null)
+
+    await expect(
+      handleUserIdUpdate({
+        user_id_update: [{ user_id: { previous: 'CO.unknown2', current: 'CO.new2' } }],
+      })
+    ).resolves.toBeUndefined()
+
+    expect(store.relinkClientUserId).toHaveBeenCalledWith('CO.unknown2', 'CO.new2')
   })
 })

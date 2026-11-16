@@ -10,6 +10,7 @@ interface StoreClientInput {
   name: string
   phone: string
   photoUrl?: string
+  wpUserId?: string | null
 }
 
 class ClientRepository {
@@ -51,10 +52,51 @@ class ClientRepository {
     return client ? this.mapClient(client) : null
   }
 
+  // Exact-match lookup, no normalization: a BSUID is an opaque transport id,
+  // not a phone-shaped value (design D2/finding 6 of support-wp-bsuid-phone-request).
+  async findByUserId(userId: string): Promise<ClientInterface | null> {
+    if (!userId) return null
+
+    const client = await SequelizeClient.findOne({ where: { wpUserId: userId } })
+    return client ? this.mapClient(client) : null
+  }
+
   async store(clientData: StoreClientInput): Promise<ClientInterface> {
     const payload = this.buildPayload(clientData)
     const [client] = await SequelizeClient.upsert(payload, { returning: true })
     return this.mapClient(client)
+  }
+
+  // A phone can be reassigned to a different person over time, so any other
+  // row currently holding `userId` is cleared before it is set on `clientId`
+  // (finding 4). Both updates run in one transaction; the unique partial
+  // index on `wp_user_id` enforces the same invariant at the DB layer.
+  async setUserId(clientId: string, userId: string): Promise<ClientInterface> {
+    await this.sequelize.transaction(async (transaction) => {
+      await SequelizeClient.update(
+        { wpUserId: null },
+        { where: { wpUserId: userId, id: { [Op.ne]: clientId } }, transaction }
+      )
+
+      await SequelizeClient.update({ wpUserId: userId }, { where: { id: clientId }, transaction })
+    })
+
+    const client = await this.findById(clientId)
+    if (!client) {
+      throw new Error('Client not found')
+    }
+
+    return client
+  }
+
+  async relinkUserId(
+    previousUserId: string,
+    currentUserId: string
+  ): Promise<ClientInterface | null> {
+    const existing = await this.findByUserId(previousUserId)
+    if (!existing) return null
+
+    return this.setUserId(existing.id, currentUserId)
   }
 
   async create(contact: WpContactInterface): Promise<ClientInterface> {
@@ -74,12 +116,21 @@ class ClientRepository {
     const normalizedPhone = this.normalizePhone(data.phone)
     if (!normalizedPhone) throw new Error('Client phone is required')
 
-    return {
+    const payload: StoreClientInput & { id: string; phone: string } = {
       id: normalizedId,
       name: data.name?.trim() || 'Usuario',
       phone: normalizedPhone,
       photoUrl: data.photoUrl?.trim() || config.DEFAULT_CLIENT_PHOTO_URL,
     }
+
+    // Only set wp_user_id when the caller explicitly passed it, so existing
+    // callers that never mention it (DriverAppController, ClientController,
+    // create()) don't null out an already-linked BSUID on upsert.
+    if (data.wpUserId !== undefined) {
+      payload.wpUserId = data.wpUserId
+    }
+
+    return payload
   }
 
   private normalizeId(rawId?: string): string {

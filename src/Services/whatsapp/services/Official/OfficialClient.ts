@@ -13,7 +13,7 @@ import { WpChatAdapter } from './Adapters/WpChatAdapter'
 import MessageRepository from '../../../../Repositories/MessageRepository'
 import { MessageTypes } from '../../constants/MessageTypes'
 import DateHelper from '../../../../Helpers/DateHelper'
-import { ApiMessage } from './Constants/ApiMessage'
+import { ApiMessage, ApiRecipientMessage } from './Constants/ApiMessage'
 import { TypingIndicatorMessage } from './Constants/TypingIndicatorMessage'
 import { Interactive } from './Constants/Interactive'
 import { sanitizeInteractiveForOfficial } from './Constants/InteractiveLimits'
@@ -179,6 +179,43 @@ export class OfficialClient implements WPClientInterface {
       })
     } catch (error: any) {
       console.warn('Failed to send typing indicator:', error.response?.data ?? error.message)
+    }
+  }
+
+  // Design D3: sends Meta's `request_contact_info` interactive message to a
+  // Business-Scoped User ID (BSUID). There is no chat yet for this recipient
+  // (the phone is unknown), so this bypasses the queue, `getChatById`, and
+  // `addMessage` entirely — it is a one-off ask, not a persisted turn.
+  async requestContactInfo(userId: string, bodyText: string): Promise<void> {
+    const data: ApiRecipientMessage = {
+      messaging_product: this.config.messagingProduct,
+      recipient_type: 'individual',
+      recipient: userId,
+      type: 'interactive',
+      interactive: {
+        type: 'request_contact_info',
+        body: {
+          text: this.truncateBody(bodyText),
+        },
+        action: {
+          name: 'request_contact_info',
+        },
+      },
+    }
+
+    try {
+      const response = await axios.post(this.config.apiUrl, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        timeout: this.config.timeout,
+      })
+      const wamid = response.data.messages?.[0]?.id
+      console.log('Contact info requested for', userId, 'wamid', wamid)
+    } catch (error: any) {
+      console.log(error.response?.data)
+      throw error
     }
   }
 
